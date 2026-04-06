@@ -36,6 +36,9 @@ const Applications = () => {
   const [settingsAppId, setSettingsAppId] = useState<string | null>(null);
   const [editVersion, setEditVersion] = useState("");
   const [editMinVersion, setEditMinVersion] = useState("");
+  const [editMsgOutdated, setEditMsgOutdated] = useState("");
+  const [editMsgDisabled, setEditMsgDisabled] = useState("");
+  const [editMsgMaintenance, setEditMsgMaintenance] = useState("");
   const [saving, setSaving] = useState(false);
 
   const fetchApps = async () => {
