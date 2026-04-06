@@ -22,6 +22,9 @@ export type Database = {
           enabled: boolean
           id: string
           min_version: string | null
+          msg_disabled: string | null
+          msg_maintenance: string | null
+          msg_outdated: string | null
           name: string
           owner_id: string
           secret_key: string
@@ -34,6 +37,9 @@ export type Database = {
           enabled?: boolean
           id?: string
           min_version?: string | null
+          msg_disabled?: string | null
+          msg_maintenance?: string | null
+          msg_outdated?: string | null
           name: string
           owner_id: string
           secret_key?: string
@@ -46,6 +52,9 @@ export type Database = {
           enabled?: boolean
           id?: string
           min_version?: string | null
+          msg_disabled?: string | null
+          msg_maintenance?: string | null
+          msg_outdated?: string | null
           name?: string
           owner_id?: string
           secret_key?: string
