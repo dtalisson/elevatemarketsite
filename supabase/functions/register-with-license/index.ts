@@ -48,9 +48,9 @@ Deno.serve(async (req) => {
       );
     }
 
-    if (password.length < 6) {
+    if (password.length < 1) {
       return new Response(
-        JSON.stringify({ success: false, message: "Password must be at least 6 characters" }),
+        JSON.stringify({ success: false, message: "Password cannot be empty" }),
         { status: 400, headers: { ...corsHeaders, "Content-Type": "application/json" } }
       );
     }
