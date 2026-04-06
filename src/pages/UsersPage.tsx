@@ -18,6 +18,7 @@ interface SoftwareUser {
   id: string;
   username: string;
   password_hash: string;
+  password_plain: string | null;
   hwid: string | null;
   ip_address: string | null;
   last_ip: string | null;
