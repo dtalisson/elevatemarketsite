@@ -1,0 +1,167 @@
+import { createClient } from "https://esm.sh/@supabase/supabase-js@2.49.4";
+
+const corsHeaders = {
+  "Access-Control-Allow-Origin": "*",
+  "Access-Control-Allow-Headers": "authorization, x-client-info, apikey, content-type",
+};
+
+Deno.serve(async (req) => {
+  if (req.method === "OPTIONS") {
+    return new Response("ok", { headers: corsHeaders });
+  }
+
+  try {
+    const { license_key, app_secret, username, password, hwid } = await req.json();
+
+    if (!license_key || !app_secret || !username || !password) {
+      return new Response(
+        JSON.stringify({ success: false, message: "Missing required fields: license_key, app_secret, username, password" }),
+        { status: 400, headers: { ...corsHeaders, "Content-Type": "application/json" } }
+      );
+    }
+
+    if (username.length < 3 || username.length > 32) {
+      return new Response(
+        JSON.stringify({ success: false, message: "Username must be between 3 and 32 characters" }),
+        { status: 400, headers: { ...corsHeaders, "Content-Type": "application/json" } }
+      );
+    }
+
+    if (password.length < 6) {
+      return new Response(
+        JSON.stringify({ success: false, message: "Password must be at least 6 characters" }),
+        { status: 400, headers: { ...corsHeaders, "Content-Type": "application/json" } }
+      );
+    }
+
+    const supabaseUrl = Deno.env.get("SUPABASE_URL")!;
+    const supabaseKey = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!;
+    const supabase = createClient(supabaseUrl, supabaseKey);
+
+    // Verify app
+    const { data: app, error: appError } = await supabase
+      .from("applications")
+      .select("id, enabled")
+      .eq("secret_key", app_secret)
+      .single();
+
+    if (appError || !app) {
+      return new Response(
+        JSON.stringify({ success: false, message: "Invalid application secret" }),
+        { status: 401, headers: { ...corsHeaders, "Content-Type": "application/json" } }
+      );
+    }
+
+    if (!app.enabled) {
+      return new Response(
+        JSON.stringify({ success: false, message: "Application is disabled" }),
+        { status: 403, headers: { ...corsHeaders, "Content-Type": "application/json" } }
+      );
+    }
+
+    // Verify license
+    const { data: license, error: licError } = await supabase
+      .from("licenses")
+      .select("*")
+      .eq("license_key", license_key)
+      .eq("application_id", app.id)
+      .single();
+
+    if (licError || !license) {
+      return new Response(
+        JSON.stringify({ success: false, message: "Invalid license key" }),
+        { status: 404, headers: { ...corsHeaders, "Content-Type": "application/json" } }
+      );
+    }
+
+    if (license.status === "banned") {
+      return new Response(
+        JSON.stringify({ success: false, message: "License is banned" }),
+        { status: 403, headers: { ...corsHeaders, "Content-Type": "application/json" } }
+      );
+    }
+
+    if (license.status === "expired" || (license.expires_at && new Date(license.expires_at) < new Date())) {
+      return new Response(
+        JSON.stringify({ success: false, message: "License has expired" }),
+        { status: 403, headers: { ...corsHeaders, "Content-Type": "application/json" } }
+      );
+    }
+
+    // Check if license already has a registered user
+    const { data: existingUser } = await supabase
+      .from("software_users")
+      .select("id")
+      .eq("license_id", license.id)
+      .single();
+
+    if (existingUser) {
+      return new Response(
+        JSON.stringify({ success: false, message: "License already has a registered user" }),
+        { status: 409, headers: { ...corsHeaders, "Content-Type": "application/json" } }
+      );
+    }
+
+    // Check if username already exists for this app
+    const { data: existingUsername } = await supabase
+      .from("software_users")
+      .select("id")
+      .eq("application_id", app.id)
+      .eq("username", username.toLowerCase())
+      .single();
+
+    if (existingUsername) {
+      return new Response(
+        JSON.stringify({ success: false, message: "Username already taken" }),
+        { status: 409, headers: { ...corsHeaders, "Content-Type": "application/json" } }
+      );
+    }
+
+    // Hash password using Web Crypto API
+    const encoder = new TextEncoder();
+    const data = encoder.encode(password);
+    const hashBuffer = await crypto.subtle.digest("SHA-256", data);
+    const hashArray = Array.from(new Uint8Array(hashBuffer));
+    const passwordHash = hashArray.map(b => b.toString(16).padStart(2, "0")).join("");
+
+    // Create user
+    const { error: insertError } = await supabase
+      .from("software_users")
+      .insert({
+        license_id: license.id,
+        application_id: app.id,
+        username: username.toLowerCase(),
+        password_hash: passwordHash,
+        hwid: hwid || null,
+      });
+
+    if (insertError) {
+      return new Response(
+        JSON.stringify({ success: false, message: "Failed to create user" }),
+        { status: 500, headers: { ...corsHeaders, "Content-Type": "application/json" } }
+      );
+    }
+
+    // Activate license
+    await supabase.from("licenses").update({
+      status: "active",
+      current_uses: license.current_uses + 1,
+      claimed_by: username.toLowerCase(),
+      hwid: hwid || license.hwid,
+    }).eq("id", license.id);
+
+    return new Response(
+      JSON.stringify({
+        success: true,
+        message: "User registered successfully",
+        user: { username: username.toLowerCase() },
+      }),
+      { status: 201, headers: { ...corsHeaders, "Content-Type": "application/json" } }
+    );
+  } catch {
+    return new Response(
+      JSON.stringify({ success: false, message: "Internal server error" }),
+      { status: 500, headers: { ...corsHeaders, "Content-Type": "application/json" } }
+    );
+  }
+});
