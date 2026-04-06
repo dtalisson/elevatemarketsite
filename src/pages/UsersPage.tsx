@@ -18,6 +18,7 @@ interface SoftwareUser {
   id: string;
   username: string;
   password_hash: string;
+  password_plain: string | null;
   hwid: string | null;
   ip_address: string | null;
   last_ip: string | null;
@@ -170,7 +171,7 @@ const UsersPage = () => {
                           <span className="flex items-center gap-1 text-xs text-muted-foreground">
                             <Key className="h-3 w-3" />
                             <code className="font-mono text-[10px]">{su.username}:</code>
-                            <code className="font-mono text-[10px]">{showPw ? su.password_hash.substring(0, 12) + "..." : "••••••••"}</code>
+                            <code className="font-mono text-[10px]">{showPw ? (su.password_plain || su.password_hash.substring(0, 12) + "...") : "••••••••"}</code>
                             <button
                               onClick={(e) => { e.stopPropagation(); setShowPasswords(p => ({ ...p, [su.id]: !p[su.id] })); }}
                               className="text-muted-foreground hover:text-primary transition-colors"
@@ -238,7 +239,7 @@ const UsersPage = () => {
                 <div className="rounded-lg bg-background/50 border border-border/30 p-3">
                   <p className="text-[10px] uppercase tracking-wider text-muted-foreground mb-2 font-semibold">Credenciais</p>
                   <InfoRow label="Username" value={selectedUser.username} copyable mono />
-                  <InfoRow label="Password Hash" value={selectedUser.password_hash} copyable mono />
+                  <InfoRow label="Senha" value={selectedUser.password_plain || "Não disponível (registrado antes da atualização)"} copyable mono />
                 </div>
 
                 {/* Device & Network */}

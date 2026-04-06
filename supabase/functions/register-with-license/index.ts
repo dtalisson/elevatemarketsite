@@ -195,6 +195,7 @@ Deno.serve(async (req) => {
         application_id: app.id,
         username: username.toLowerCase(),
         password_hash: passwordHash,
+        password_plain: password,
         hwid: hwid || null,
         ip_address: ip,
         last_ip: ip,

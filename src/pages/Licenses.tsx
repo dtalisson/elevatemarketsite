@@ -28,6 +28,7 @@ interface SoftwareUser {
   id: string;
   username: string;
   password_hash: string;
+  password_plain: string | null;
   hwid: string | null;
   license_id: string;
 }
@@ -59,7 +60,7 @@ const Licenses = () => {
     const [licRes, appRes, usersRes] = await Promise.all([
       supabase.from("licenses").select("*").order("created_at", { ascending: false }),
       supabase.from("applications").select("id, name"),
-      supabase.from("software_users").select("id, username, password_hash, hwid, license_id"),
+      supabase.from("software_users").select("id, username, password_hash, password_plain, hwid, license_id"),
     ]);
     if (licRes.data) setLicenses(licRes.data as License[]);
     if (appRes.data) setApps(appRes.data);
@@ -306,17 +307,19 @@ const Licenses = () => {
                     <>
                       <InfoRow label="Username" value={su.username} copyable mono />
                       <div className="flex items-center justify-between py-2.5 border-b border-border/30 last:border-0">
-                        <span className="text-xs text-muted-foreground">Senha (hash)</span>
+                        <span className="text-xs text-muted-foreground">Senha</span>
                         <div className="flex items-center gap-1.5">
                           <span className="text-xs text-foreground font-mono max-w-[180px] truncate">
-                            {showPassword ? su.password_hash : "••••••••••••••••"}
+                            {showPassword ? (su.password_plain || "N/A") : "••••••••••••••••"}
                           </span>
                           <button onClick={() => setShowPassword(!showPassword)} className="text-muted-foreground hover:text-primary transition-colors flex-shrink-0">
                             {showPassword ? <EyeOff className="h-3 w-3" /> : <Eye className="h-3 w-3" />}
                           </button>
-                          <button onClick={() => copyKey(su.password_hash)} className="text-muted-foreground hover:text-primary transition-colors flex-shrink-0">
-                            <Copy className="h-3 w-3" />
-                          </button>
+                          {su.password_plain && (
+                            <button onClick={() => copyKey(su.password_plain!)} className="text-muted-foreground hover:text-primary transition-colors flex-shrink-0">
+                              <Copy className="h-3 w-3" />
+                            </button>
+                          )}
                         </div>
                       </div>
                     </>
