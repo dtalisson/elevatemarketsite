@@ -266,6 +266,106 @@ def login(username, password):
                 </pre>
               </TabsContent>
 
+              <TabsContent value="cpp">
+                <pre className="rounded-lg bg-muted p-3 font-mono text-sm text-foreground overflow-x-auto">
+{`#include <iostream>
+#include <string>
+#include <curl/curl.h>
+#include <nlohmann/json.hpp>
+
+using json = nlohmann::json;
+
+const std::string BASE_URL = "${baseUrl}";
+const std::string APP_SECRET = "coloque-seu-app-secret-aqui";
+
+// Callback para receber resposta HTTP
+size_t WriteCallback(void* contents, size_t size, size_t nmemb, std::string* s) {
+    s->append((char*)contents, size * nmemb);
+    return size * nmemb;
+}
+
+// Função auxiliar para POST
+json post_request(const std::string& endpoint, const json& body) {
+    CURL* curl = curl_easy_init();
+    std::string response;
+
+    if (curl) {
+        std::string url = BASE_URL + "/" + endpoint;
+        std::string payload = body.dump();
+
+        struct curl_slist* headers = nullptr;
+        headers = curl_slist_append(headers, "Content-Type: application/json");
+
+        curl_easy_setopt(curl, CURLOPT_URL, url.c_str());
+        curl_easy_setopt(curl, CURLOPT_POSTFIELDS, payload.c_str());
+        curl_easy_setopt(curl, CURLOPT_HTTPHEADER, headers);
+        curl_easy_setopt(curl, CURLOPT_WRITEFUNCTION, WriteCallback);
+        curl_easy_setopt(curl, CURLOPT_WRITEDATA, &response);
+
+        curl_easy_perform(curl);
+        curl_slist_free_all(headers);
+        curl_easy_cleanup(curl);
+    }
+    return json::parse(response);
+}
+
+// ── REGISTRO (primeira vez) ──────────────────────
+bool register_user(const std::string& license_key,
+                   const std::string& username,
+                   const std::string& password) {
+    json body = {
+        {"license_key", license_key},
+        {"app_secret", APP_SECRET},
+        {"username", username},
+        {"password", password}
+    };
+    auto res = post_request("register-with-license", body);
+    if (res["success"]) {
+        std::cout << "✅ Conta criada!" << std::endl;
+        return true;
+    }
+    std::cout << "❌ Erro: " << res["message"] << std::endl;
+    return false;
+}
+
+// ── LOGIN (acessos seguintes) ────────────────────
+bool login(const std::string& username,
+           const std::string& password) {
+    json body = {
+        {"app_secret", APP_SECRET},
+        {"username", username},
+        {"password", password}
+    };
+    auto res = post_request("login", body);
+    if (res["success"]) {
+        std::cout << "✅ Logado! Status: "
+                  << res["user"]["license"]["status"] << std::endl;
+        return true;
+    }
+    std::cout << "❌ " << res["message"] << std::endl;
+    return false;
+}
+
+// ── USO ──────────────────────────────────────────
+// int main() {
+//     curl_global_init(CURL_GLOBAL_DEFAULT);
+//
+//     // Primeira vez (com a key):
+//     // register_user("SUA-KEY", "meu_usuario", "minha_senha");
+//
+//     // Próximas vezes (só login):
+//     // if (login("meu_usuario", "minha_senha"))
+//     //     std::cout << "Programa liberado!" << std::endl;
+//
+//     curl_global_cleanup();
+//     return 0;
+// }
+//
+// Dependências: libcurl, nlohmann/json
+// Compilar: g++ -o app main.cpp -lcurl`}
+                </pre>
+              </TabsContent>
+
               <TabsContent value="csharp">
                 <pre className="rounded-lg bg-muted p-3 font-mono text-sm text-foreground overflow-x-auto">
 {`using System.Net.Http;
