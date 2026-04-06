@@ -249,6 +249,7 @@ const Applications = () => {
                   Exibida durante períodos de manutenção programada.
                 </p>
               </div>
+            </div>
 
             <Button onClick={saveVersions} className="w-full" disabled={saving}>
               <Save className="mr-2 h-4 w-4" />
