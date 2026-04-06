@@ -213,6 +213,43 @@ const Applications = () => {
               </div>
             </div>
 
+            {/* Mensagens Customizadas */}
+            <div className="space-y-3">
+              <p className="text-sm font-medium text-foreground">Mensagens para o Usuário</p>
+              <div className="space-y-2">
+                <Label>Versão Desatualizada</Label>
+                <Input
+                  value={editMsgOutdated}
+                  onChange={(e) => setEditMsgOutdated(e.target.value)}
+                  placeholder="ex: Sua versão está desatualizada. Baixe a nova versão!"
+                />
+                <p className="text-xs text-muted-foreground">
+                  Exibida quando o usuário está com uma versão abaixo da mínima.
+                </p>
+              </div>
+              <div className="space-y-2">
+                <Label>Aplicação Desativada</Label>
+                <Input
+                  value={editMsgDisabled}
+                  onChange={(e) => setEditMsgDisabled(e.target.value)}
+                  placeholder="ex: Esta aplicação está temporariamente indisponível."
+                />
+                <p className="text-xs text-muted-foreground">
+                  Exibida quando a aplicação está desligada (off).
+                </p>
+              </div>
+              <div className="space-y-2">
+                <Label>Em Manutenção</Label>
+                <Input
+                  value={editMsgMaintenance}
+                  onChange={(e) => setEditMsgMaintenance(e.target.value)}
+                  placeholder="ex: Estamos em manutenção. Volte em breve!"
+                />
+                <p className="text-xs text-muted-foreground">
+                  Exibida durante períodos de manutenção programada.
+                </p>
+              </div>
+
             <Button onClick={saveVersions} className="w-full" disabled={saving}>
               <Save className="mr-2 h-4 w-4" />
               {saving ? "Salvando..." : "Salvar"}
