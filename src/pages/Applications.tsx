@@ -20,6 +20,9 @@ interface Application {
   enabled: boolean;
   current_version: string | null;
   min_version: string | null;
+  msg_outdated: string | null;
+  msg_disabled: string | null;
+  msg_maintenance: string | null;
   created_at: string;
 }
 
@@ -33,6 +36,9 @@ const Applications = () => {
   const [settingsAppId, setSettingsAppId] = useState<string | null>(null);
   const [editVersion, setEditVersion] = useState("");
   const [editMinVersion, setEditMinVersion] = useState("");
+  const [editMsgOutdated, setEditMsgOutdated] = useState("");
+  const [editMsgDisabled, setEditMsgDisabled] = useState("");
+  const [editMsgMaintenance, setEditMsgMaintenance] = useState("");
   const [saving, setSaving] = useState(false);
 
   const fetchApps = async () => {
@@ -89,6 +95,9 @@ const Applications = () => {
     setSettingsAppId(app.id);
     setEditVersion(app.current_version || "");
     setEditMinVersion(app.min_version || "");
+    setEditMsgOutdated(app.msg_outdated || "");
+    setEditMsgDisabled(app.msg_disabled || "");
+    setEditMsgMaintenance(app.msg_maintenance || "");
   };
 
   const saveVersions = async () => {
@@ -100,6 +109,9 @@ const Applications = () => {
       .update({
         current_version: editVersion || null,
         min_version: editMinVersion || null,
+        msg_outdated: editMsgOutdated || null,
+        msg_disabled: editMsgDisabled || null,
+        msg_maintenance: editMsgMaintenance || null,
       })
       .eq("id", settingsAppId);
 
@@ -197,6 +209,44 @@ const Applications = () => {
                 />
                 <p className="text-xs text-muted-foreground">
                   Se o programa do cliente enviar uma versão abaixo dessa, será bloqueado e forçado a atualizar.
+                </p>
+              </div>
+            </div>
+
+            {/* Mensagens Customizadas */}
+            <div className="space-y-3">
+              <p className="text-sm font-medium text-foreground">Mensagens para o Usuário</p>
+              <div className="space-y-2">
+                <Label>Versão Desatualizada</Label>
+                <Input
+                  value={editMsgOutdated}
+                  onChange={(e) => setEditMsgOutdated(e.target.value)}
+                  placeholder="ex: Sua versão está desatualizada. Baixe a nova versão!"
+                />
+                <p className="text-xs text-muted-foreground">
+                  Exibida quando o usuário está com uma versão abaixo da mínima.
+                </p>
+              </div>
+              <div className="space-y-2">
+                <Label>Aplicação Desativada</Label>
+                <Input
+                  value={editMsgDisabled}
+                  onChange={(e) => setEditMsgDisabled(e.target.value)}
+                  placeholder="ex: Esta aplicação está temporariamente indisponível."
+                />
+                <p className="text-xs text-muted-foreground">
+                  Exibida quando a aplicação está desligada (off).
+                </p>
+              </div>
+              <div className="space-y-2">
+                <Label>Em Manutenção</Label>
+                <Input
+                  value={editMsgMaintenance}
+                  onChange={(e) => setEditMsgMaintenance(e.target.value)}
+                  placeholder="ex: Estamos em manutenção. Volte em breve!"
+                />
+                <p className="text-xs text-muted-foreground">
+                  Exibida durante períodos de manutenção programada.
                 </p>
               </div>
             </div>
