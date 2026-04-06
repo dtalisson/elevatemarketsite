@@ -95,6 +95,9 @@ const Applications = () => {
     setSettingsAppId(app.id);
     setEditVersion(app.current_version || "");
     setEditMinVersion(app.min_version || "");
+    setEditMsgOutdated(app.msg_outdated || "");
+    setEditMsgDisabled(app.msg_disabled || "");
+    setEditMsgMaintenance(app.msg_maintenance || "");
   };
 
   const saveVersions = async () => {
