@@ -53,8 +53,63 @@ export type Database = {
         }
         Relationships: []
       }
+      auth_logs: {
+        Row: {
+          application_id: string
+          created_at: string
+          details: string | null
+          event_type: string
+          hwid: string | null
+          id: string
+          ip_address: string | null
+          license_id: string | null
+          success: boolean
+          username: string | null
+        }
+        Insert: {
+          application_id: string
+          created_at?: string
+          details?: string | null
+          event_type: string
+          hwid?: string | null
+          id?: string
+          ip_address?: string | null
+          license_id?: string | null
+          success?: boolean
+          username?: string | null
+        }
+        Update: {
+          application_id?: string
+          created_at?: string
+          details?: string | null
+          event_type?: string
+          hwid?: string | null
+          id?: string
+          ip_address?: string | null
+          license_id?: string | null
+          success?: boolean
+          username?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "auth_logs_application_id_fkey"
+            columns: ["application_id"]
+            isOneToOne: false
+            referencedRelation: "applications"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "auth_logs_license_id_fkey"
+            columns: ["license_id"]
+            isOneToOne: false
+            referencedRelation: "licenses"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       licenses: {
         Row: {
+          activated_at: string | null
           application_id: string
           claimed_by: string | null
           created_at: string
@@ -70,6 +125,7 @@ export type Database = {
           updated_at: string
         }
         Insert: {
+          activated_at?: string | null
           application_id: string
           claimed_by?: string | null
           created_at?: string
@@ -85,6 +141,7 @@ export type Database = {
           updated_at?: string
         }
         Update: {
+          activated_at?: string | null
           application_id?: string
           claimed_by?: string | null
           created_at?: string
@@ -145,6 +202,9 @@ export type Database = {
           created_at: string
           hwid: string | null
           id: string
+          ip_address: string | null
+          last_ip: string | null
+          last_login_at: string | null
           license_id: string
           password_hash: string
           updated_at: string
@@ -155,6 +215,9 @@ export type Database = {
           created_at?: string
           hwid?: string | null
           id?: string
+          ip_address?: string | null
+          last_ip?: string | null
+          last_login_at?: string | null
           license_id: string
           password_hash: string
           updated_at?: string
@@ -165,6 +228,9 @@ export type Database = {
           created_at?: string
           hwid?: string | null
           id?: string
+          ip_address?: string | null
+          last_ip?: string | null
+          last_login_at?: string | null
           license_id?: string
           password_hash?: string
           updated_at?: string

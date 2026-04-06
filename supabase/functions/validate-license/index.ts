@@ -5,10 +5,19 @@ const corsHeaders = {
   "Access-Control-Allow-Headers": "authorization, x-client-info, apikey, content-type",
 };
 
+function getClientIp(req: Request): string {
+  return req.headers.get("x-forwarded-for")?.split(",")[0]?.trim()
+    || req.headers.get("x-real-ip")
+    || req.headers.get("cf-connecting-ip")
+    || "unknown";
+}
+
 Deno.serve(async (req) => {
   if (req.method === "OPTIONS") {
     return new Response("ok", { headers: corsHeaders });
   }
+
+  const ip = getClientIp(req);
 
   try {
     const { license_key, app_secret, hwid } = await req.json();
@@ -24,7 +33,6 @@ Deno.serve(async (req) => {
     const supabaseKey = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!;
     const supabase = createClient(supabaseUrl, supabaseKey);
 
-    // Verify app secret
     const { data: app, error: appError } = await supabase
       .from("applications")
       .select("id, enabled")
@@ -39,13 +47,16 @@ Deno.serve(async (req) => {
     }
 
     if (!app.enabled) {
+      await supabase.from("auth_logs").insert({
+        application_id: app.id, event_type: "validate_failed",
+        ip_address: ip, hwid, success: false, details: "Application is disabled",
+      });
       return new Response(
         JSON.stringify({ valid: false, message: "Application is disabled" }),
         { status: 403, headers: { ...corsHeaders, "Content-Type": "application/json" } }
       );
     }
 
-    // Find license
     const { data: license, error: licError } = await supabase
       .from("licenses")
       .select("*")
@@ -54,14 +65,21 @@ Deno.serve(async (req) => {
       .single();
 
     if (licError || !license) {
+      await supabase.from("auth_logs").insert({
+        application_id: app.id, event_type: "validate_failed",
+        ip_address: ip, hwid, success: false, details: "License not found",
+      });
       return new Response(
         JSON.stringify({ valid: false, message: "License not found" }),
         { status: 404, headers: { ...corsHeaders, "Content-Type": "application/json" } }
       );
     }
 
-    // Check status
     if (license.status === "banned") {
+      await supabase.from("auth_logs").insert({
+        application_id: app.id, event_type: "validate_banned",
+        ip_address: ip, hwid, success: false, details: "License is banned", license_id: license.id,
+      });
       return new Response(
         JSON.stringify({ valid: false, message: "License is banned" }),
         { status: 403, headers: { ...corsHeaders, "Content-Type": "application/json" } }
@@ -69,25 +87,30 @@ Deno.serve(async (req) => {
     }
 
     if (license.status === "expired" || (license.expires_at && new Date(license.expires_at) < new Date())) {
-      // Auto-expire
       if (license.status !== "expired") {
         await supabase.from("licenses").update({ status: "expired" }).eq("id", license.id);
       }
+      await supabase.from("auth_logs").insert({
+        application_id: app.id, event_type: "validate_expired",
+        ip_address: ip, hwid, success: false, details: "License expired", license_id: license.id,
+      });
       return new Response(
         JSON.stringify({ valid: false, message: "License has expired" }),
         { status: 403, headers: { ...corsHeaders, "Content-Type": "application/json" } }
       );
     }
 
-    // Check HWID lock
     if (license.hwid && hwid && license.hwid !== hwid) {
+      await supabase.from("auth_logs").insert({
+        application_id: app.id, event_type: "validate_hwid_mismatch",
+        ip_address: ip, hwid, success: false, details: "HWID mismatch", license_id: license.id,
+      });
       return new Response(
         JSON.stringify({ valid: false, message: "License is locked to another device" }),
         { status: 403, headers: { ...corsHeaders, "Content-Type": "application/json" } }
       );
     }
 
-    // Check uses
     if (license.status === "unused") {
       if (license.current_uses >= license.max_uses) {
         return new Response(
@@ -96,16 +119,22 @@ Deno.serve(async (req) => {
         );
       }
 
-      // Activate
       const updates: Record<string, unknown> = {
         status: "active",
         current_uses: license.current_uses + 1,
         claimed_by: hwid || "unknown",
+        activated_at: new Date().toISOString(),
       };
       if (hwid && !license.hwid) updates.hwid = hwid;
 
       await supabase.from("licenses").update(updates).eq("id", license.id);
     }
+
+    // Log success
+    await supabase.from("auth_logs").insert({
+      application_id: app.id, event_type: "validate_success",
+      ip_address: ip, hwid, success: true, details: "License validated", license_id: license.id,
+    });
 
     return new Response(
       JSON.stringify({
@@ -120,7 +149,7 @@ Deno.serve(async (req) => {
       }),
       { status: 200, headers: { ...corsHeaders, "Content-Type": "application/json" } }
     );
-  } catch (err) {
+  } catch {
     return new Response(
       JSON.stringify({ valid: false, message: "Internal server error" }),
       { status: 500, headers: { ...corsHeaders, "Content-Type": "application/json" } }
