@@ -13,6 +13,7 @@ import {
   Code,
   Menu,
   X,
+  ChevronRight,
 } from "lucide-react";
 import { cn } from "@/lib/utils";
 
@@ -31,31 +32,36 @@ export const DashboardLayout = ({ children }: { children: ReactNode }) => {
   const [sidebarOpen, setSidebarOpen] = useState(false);
 
   return (
-    <div className="dark flex min-h-screen bg-background">
+    <div className="dark flex min-h-screen bg-background bg-grid bg-radial-glow">
       {/* Mobile overlay */}
       {sidebarOpen && (
-        <div className="fixed inset-0 z-40 bg-black/50 lg:hidden" onClick={() => setSidebarOpen(false)} />
+        <div className="fixed inset-0 z-40 bg-black/60 backdrop-blur-sm lg:hidden" onClick={() => setSidebarOpen(false)} />
       )}
 
       {/* Sidebar */}
       <aside
         className={cn(
-          "fixed inset-y-0 left-0 z-50 flex w-64 flex-col border-r border-sidebar-border bg-sidebar transition-transform lg:static lg:translate-x-0",
+          "fixed inset-y-0 left-0 z-50 flex w-64 flex-col border-r border-sidebar-border bg-sidebar/95 backdrop-blur-xl transition-transform duration-300 lg:static lg:translate-x-0",
           sidebarOpen ? "translate-x-0" : "-translate-x-full"
         )}
       >
+        {/* Logo */}
         <div className="flex h-16 items-center gap-3 border-b border-sidebar-border px-6">
-          <div className="flex h-8 w-8 items-center justify-center rounded-lg bg-primary/10">
-            <Shield className="h-4 w-4 text-primary" />
+          <div className="flex h-9 w-9 items-center justify-center rounded-xl bg-primary/15 glow-sm">
+            <Shield className="h-5 w-5 text-primary" />
           </div>
-          <span className="text-base font-semibold text-foreground">Elevate Auth</span>
+          <div>
+            <span className="text-sm font-bold text-foreground tracking-tight">Elevate Auth</span>
+            <p className="text-[10px] text-muted-foreground leading-none mt-0.5">Licensing System</p>
+          </div>
           <button className="ml-auto lg:hidden" onClick={() => setSidebarOpen(false)}>
             <X className="h-5 w-5 text-muted-foreground" />
           </button>
         </div>
 
-        <nav className="flex-1 space-y-1 p-3">
-          {navItems.map((item) => {
+        {/* Nav */}
+        <nav className="flex-1 space-y-1 p-3 mt-2">
+          {navItems.map((item, i) => {
             const active = location.pathname === item.href;
             return (
               <Link
@@ -63,24 +69,35 @@ export const DashboardLayout = ({ children }: { children: ReactNode }) => {
                 to={item.href}
                 onClick={() => setSidebarOpen(false)}
                 className={cn(
-                  "flex items-center gap-3 rounded-lg px-3 py-2.5 text-sm font-medium transition-colors",
+                  "group flex items-center gap-3 rounded-lg px-3 py-2.5 text-sm font-medium transition-all duration-200",
                   active
-                    ? "bg-sidebar-accent text-primary"
-                    : "text-sidebar-foreground hover:bg-sidebar-accent hover:text-sidebar-accent-foreground"
+                    ? "bg-primary/10 text-primary glow-sm border border-primary/20"
+                    : "text-sidebar-foreground hover:bg-sidebar-accent hover:text-foreground border border-transparent"
                 )}
+                style={{ animationDelay: `${i * 50}ms` }}
               >
-                <item.icon className="h-4 w-4" />
+                <item.icon className={cn("h-4 w-4 transition-colors", active ? "text-primary" : "text-muted-foreground group-hover:text-foreground")} />
                 {item.label}
+                {active && <ChevronRight className="ml-auto h-3 w-3 text-primary/60" />}
               </Link>
             );
           })}
         </nav>
 
+        {/* User section */}
         <div className="border-t border-sidebar-border p-3">
-          <div className="mb-2 truncate px-3 text-xs text-muted-foreground">{user?.user_metadata?.username || user?.email}</div>
+          <div className="mb-2 flex items-center gap-2 rounded-lg px-3 py-2">
+            <div className="flex h-7 w-7 items-center justify-center rounded-full bg-primary/15 text-xs font-bold text-primary">
+              {(user?.user_metadata?.username || "U")[0].toUpperCase()}
+            </div>
+            <div className="flex-1 min-w-0">
+              <p className="truncate text-xs font-medium text-foreground">{user?.user_metadata?.username || user?.email}</p>
+              <p className="text-[10px] text-muted-foreground">Administrador</p>
+            </div>
+          </div>
           <Button
             variant="ghost"
-            className="w-full justify-start gap-3 text-muted-foreground hover:text-foreground"
+            className="w-full justify-start gap-3 text-muted-foreground hover:text-destructive hover:bg-destructive/10 transition-all duration-200"
             onClick={signOut}
           >
             <LogOut className="h-4 w-4" />
@@ -91,13 +108,15 @@ export const DashboardLayout = ({ children }: { children: ReactNode }) => {
 
       {/* Main content */}
       <div className="flex flex-1 flex-col">
-        <header className="flex h-16 items-center gap-4 border-b border-border bg-card/50 px-6 lg:hidden">
-          <button onClick={() => setSidebarOpen(true)}>
+        <header className="flex h-16 items-center gap-4 border-b border-border bg-card/30 backdrop-blur-lg px-6 lg:hidden">
+          <button onClick={() => setSidebarOpen(true)} className="hover:bg-muted rounded-lg p-1.5 transition-colors">
             <Menu className="h-5 w-5 text-foreground" />
           </button>
           <div className="flex items-center gap-2">
-            <Shield className="h-4 w-4 text-primary" />
-            <span className="font-semibold text-foreground">Elevate Auth</span>
+            <div className="flex h-7 w-7 items-center justify-center rounded-lg bg-primary/15">
+              <Shield className="h-4 w-4 text-primary" />
+            </div>
+            <span className="font-bold text-foreground text-sm">Elevate Auth</span>
           </div>
         </header>
 
