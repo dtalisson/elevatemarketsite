@@ -14,6 +14,7 @@ import {
   Menu,
   X,
   ChevronRight,
+  Wifi,
 } from "lucide-react";
 import { cn } from "@/lib/utils";
 
@@ -22,6 +23,7 @@ const navItems = [
   { label: "Aplicações", icon: AppWindow, href: "/dashboard/applications" },
   { label: "Licenças", icon: Key, href: "/dashboard/licenses" },
   { label: "Usuários", icon: Users, href: "/dashboard/users" },
+  { label: "Online", icon: Wifi, href: "/dashboard/online" },
   { label: "Logs", icon: ScrollText, href: "/dashboard/logs" },
   { label: "API", icon: Code, href: "/dashboard/api" },
   { label: "Configurações", icon: Settings, href: "/dashboard/settings" },
