@@ -9,7 +9,7 @@ import { toast } from "sonner";
 import { Shield } from "lucide-react";
 
 const Login = () => {
-  const [email, setEmail] = useState("");
+  const [username, setUsername] = useState("");
   const [password, setPassword] = useState("");
   const [loading, setLoading] = useState(false);
   const navigate = useNavigate();
@@ -18,10 +18,11 @@ const Login = () => {
     e.preventDefault();
     setLoading(true);
 
+    const email = `${username.toLowerCase()}@elevateauth.local`;
     const { error } = await supabase.auth.signInWithPassword({ email, password });
 
     if (error) {
-      toast.error(error.message);
+      toast.error("Usuário ou senha incorretos");
     } else {
       navigate("/dashboard");
     }
@@ -47,13 +48,12 @@ const Login = () => {
           <CardContent>
             <form onSubmit={handleLogin} className="space-y-4">
               <div className="space-y-2">
-                <Label htmlFor="email">Email</Label>
+                <Label htmlFor="username">Usuário</Label>
                 <Input
-                  id="email"
-                  type="email"
-                  placeholder="seu@email.com"
-                  value={email}
-                  onChange={(e) => setEmail(e.target.value)}
+                  id="username"
+                  placeholder="seu_usuario"
+                  value={username}
+                  onChange={(e) => setUsername(e.target.value)}
                   required
                 />
               </div>
