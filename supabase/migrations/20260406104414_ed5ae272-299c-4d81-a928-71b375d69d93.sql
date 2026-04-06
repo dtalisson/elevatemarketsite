@@ -1,0 +1,1 @@
+ALTER TABLE public.licenses ALTER COLUMN license_key SET DEFAULT encode(extensions.gen_random_bytes(4), 'hex');
