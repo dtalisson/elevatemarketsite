@@ -70,6 +70,20 @@ Deno.serve(async (req) => {
       );
     }
 
+    // Check version
+    if (version && app.min_version && compareVersions(version, app.min_version) < 0) {
+      return new Response(
+        JSON.stringify({
+          success: false,
+          message: `Update required. Minimum version: ${app.min_version}, your version: ${version}`,
+          update_required: true,
+          current_version: app.current_version,
+          min_version: app.min_version,
+        }),
+        { status: 403, headers: { ...corsHeaders, "Content-Type": "application/json" } }
+      );
+    }
+
     // Verify license
     const { data: license, error: licError } = await supabase
       .from("licenses")
