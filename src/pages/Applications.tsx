@@ -20,6 +20,9 @@ interface Application {
   enabled: boolean;
   current_version: string | null;
   min_version: string | null;
+  msg_outdated: string | null;
+  msg_disabled: string | null;
+  msg_maintenance: string | null;
   created_at: string;
 }
 
