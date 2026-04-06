@@ -63,7 +63,8 @@ const ApiDocs = () => {
   "app_secret": "secret-key-da-aplicacao",
   "username": "nome_do_usuario",
   "password": "senha_segura",
-  "hwid": "identificador-do-hardware"  // opcional
+  "hwid": "identificador-do-hardware",  // opcional
+  "version": "1.0.0"                    // opcional
 }`}
                 </pre>
               </div>
@@ -84,7 +85,7 @@ const ApiDocs = () => {
                 <pre className="rounded-lg bg-muted p-3 font-mono text-sm text-destructive">
 {`400 — Campos obrigatórios faltando / validação
 401 — App secret inválido
-403 — App desabilitada / licença banida ou expirada
+403 — App desabilitada / licença banida ou expirada / versão desatualizada
 404 — Licença não encontrada
 409 — Licença já usada / username já existe`}
                 </pre>
@@ -117,7 +118,8 @@ const ApiDocs = () => {
   "app_secret": "secret-key-da-aplicacao",
   "username": "nome_do_usuario",
   "password": "senha_segura",
-  "hwid": "identificador-do-hardware"  // opcional
+  "hwid": "identificador-do-hardware",  // opcional
+  "version": "1.0.0"                    // opcional
 }`}
                 </pre>
               </div>
@@ -133,6 +135,10 @@ const ApiDocs = () => {
       "status": "active",
       "expires_at": "2025-12-31T00:00:00Z"
     }
+  },
+  "app": {
+    "current_version": "1.1.0",
+    "update_available": true
   }
 }`}
                 </pre>
@@ -142,7 +148,7 @@ const ApiDocs = () => {
                 <pre className="rounded-lg bg-muted p-3 font-mono text-sm text-destructive">
 {`400 — Campos obrigatórios faltando
 401 — App secret inválido / usuário ou senha errados
-403 — App desabilitada / licença banida/expirada / HWID diferente`}
+403 — App desabilitada / licença banida/expirada / HWID diferente / versão desatualizada`}
                 </pre>
               </div>
             </div>
