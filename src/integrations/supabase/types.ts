@@ -17,9 +17,11 @@ export type Database = {
       applications: {
         Row: {
           created_at: string
+          current_version: string | null
           description: string | null
           enabled: boolean
           id: string
+          min_version: string | null
           name: string
           owner_id: string
           secret_key: string
@@ -27,9 +29,11 @@ export type Database = {
         }
         Insert: {
           created_at?: string
+          current_version?: string | null
           description?: string | null
           enabled?: boolean
           id?: string
+          min_version?: string | null
           name: string
           owner_id: string
           secret_key?: string
@@ -37,9 +41,11 @@ export type Database = {
         }
         Update: {
           created_at?: string
+          current_version?: string | null
           description?: string | null
           enabled?: boolean
           id?: string
+          min_version?: string | null
           name?: string
           owner_id?: string
           secret_key?: string

@@ -1,5 +1,16 @@
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2.49.4";
 
+function compareVersions(a: string, b: string): number {
+  const pa = a.split(".").map(Number);
+  const pb = b.split(".").map(Number);
+  for (let i = 0; i < Math.max(pa.length, pb.length); i++) {
+    const na = pa[i] || 0;
+    const nb = pb[i] || 0;
+    if (na > nb) return 1;
+    if (na < nb) return -1;
+  }
+  return 0;
+}
 const corsHeaders = {
   "Access-Control-Allow-Origin": "*",
   "Access-Control-Allow-Headers": "authorization, x-client-info, apikey, content-type",
@@ -11,7 +22,7 @@ Deno.serve(async (req) => {
   }
 
   try {
-    const { license_key, app_secret, username, password, hwid } = await req.json();
+    const { license_key, app_secret, username, password, hwid, version } = await req.json();
 
     if (!license_key || !app_secret || !username || !password) {
       return new Response(
@@ -41,7 +52,7 @@ Deno.serve(async (req) => {
     // Verify app
     const { data: app, error: appError } = await supabase
       .from("applications")
-      .select("id, enabled")
+      .select("id, enabled, current_version, min_version")
       .eq("secret_key", app_secret)
       .single();
 
@@ -55,6 +66,20 @@ Deno.serve(async (req) => {
     if (!app.enabled) {
       return new Response(
         JSON.stringify({ success: false, message: "Application is disabled" }),
+        { status: 403, headers: { ...corsHeaders, "Content-Type": "application/json" } }
+      );
+    }
+
+    // Check version
+    if (version && app.min_version && compareVersions(version, app.min_version) < 0) {
+      return new Response(
+        JSON.stringify({
+          success: false,
+          message: `Update required. Minimum version: ${app.min_version}, your version: ${version}`,
+          update_required: true,
+          current_version: app.current_version,
+          min_version: app.min_version,
+        }),
         { status: 403, headers: { ...corsHeaders, "Content-Type": "application/json" } }
       );
     }
