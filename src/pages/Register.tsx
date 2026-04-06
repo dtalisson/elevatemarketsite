@@ -9,34 +9,46 @@ import { toast } from "sonner";
 import { Shield } from "lucide-react";
 
 const Register = () => {
-  const [email, setEmail] = useState("");
+  const [username, setUsername] = useState("");
   const [password, setPassword] = useState("");
-  const [displayName, setDisplayName] = useState("");
   const [loading, setLoading] = useState(false);
   const navigate = useNavigate();
 
   const handleRegister = async (e: React.FormEvent) => {
     e.preventDefault();
+    if (username.length < 3) {
+      toast.error("O usuário deve ter pelo menos 3 caracteres");
+      return;
+    }
     if (password.length < 6) {
       toast.error("A senha deve ter pelo menos 6 caracteres");
       return;
     }
+    if (!/^[a-zA-Z0-9_]+$/.test(username)) {
+      toast.error("O usuário pode conter apenas letras, números e _");
+      return;
+    }
     setLoading(true);
 
+    const email = `${username.toLowerCase()}@elevateauth.local`;
     const { error } = await supabase.auth.signUp({
       email,
       password,
       options: {
-        data: { display_name: displayName },
+        data: { username: username.toLowerCase(), display_name: username },
         emailRedirectTo: window.location.origin,
       },
     });
 
     if (error) {
-      toast.error(error.message);
+      if (error.message.includes("already")) {
+        toast.error("Este usuário já existe");
+      } else {
+        toast.error(error.message);
+      }
     } else {
-      toast.success("Conta criada! Verifique seu email para confirmar.");
-      navigate("/login");
+      toast.success("Conta criada com sucesso!");
+      navigate("/dashboard");
     }
     setLoading(false);
   };
@@ -60,23 +72,12 @@ const Register = () => {
           <CardContent>
             <form onSubmit={handleRegister} className="space-y-4">
               <div className="space-y-2">
-                <Label htmlFor="name">Nome</Label>
+                <Label htmlFor="username">Usuário</Label>
                 <Input
-                  id="name"
-                  placeholder="Seu nome"
-                  value={displayName}
-                  onChange={(e) => setDisplayName(e.target.value)}
-                  required
-                />
-              </div>
-              <div className="space-y-2">
-                <Label htmlFor="email">Email</Label>
-                <Input
-                  id="email"
-                  type="email"
-                  placeholder="seu@email.com"
-                  value={email}
-                  onChange={(e) => setEmail(e.target.value)}
+                  id="username"
+                  placeholder="seu_usuario"
+                  value={username}
+                  onChange={(e) => setUsername(e.target.value)}
                   required
                 />
               </div>
