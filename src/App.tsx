@@ -8,7 +8,7 @@ import { ProtectedRoute } from "@/components/ProtectedRoute";
 import Index from "./pages/Index";
 import NotFound from "./pages/NotFound";
 import Login from "./pages/Login";
-import Register from "./pages/Register";
+
 import Dashboard from "./pages/Dashboard";
 import Applications from "./pages/Applications";
 import Licenses from "./pages/Licenses";
