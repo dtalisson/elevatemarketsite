@@ -11,15 +11,25 @@ function compareVersions(a: string, b: string): number {
   }
   return 0;
 }
+
 const corsHeaders = {
   "Access-Control-Allow-Origin": "*",
   "Access-Control-Allow-Headers": "authorization, x-client-info, apikey, content-type",
 };
 
+function getClientIp(req: Request): string {
+  return req.headers.get("x-forwarded-for")?.split(",")[0]?.trim()
+    || req.headers.get("x-real-ip")
+    || req.headers.get("cf-connecting-ip")
+    || "unknown";
+}
+
 Deno.serve(async (req) => {
   if (req.method === "OPTIONS") {
     return new Response("ok", { headers: corsHeaders });
   }
+
+  const ip = getClientIp(req);
 
   try {
     const { app_secret, username, password, hwid, version } = await req.json();
@@ -50,6 +60,10 @@ Deno.serve(async (req) => {
     }
 
     if (!app.enabled) {
+      await supabase.from("auth_logs").insert({
+        application_id: app.id, event_type: "login_failed", username: username?.toLowerCase(),
+        ip_address: ip, hwid, success: false, details: "Application is disabled",
+      });
       return new Response(
         JSON.stringify({ success: false, message: "Application is disabled" }),
         { status: 403, headers: { ...corsHeaders, "Content-Type": "application/json" } }
@@ -58,6 +72,10 @@ Deno.serve(async (req) => {
 
     // Check version
     if (version && app.min_version && compareVersions(version, app.min_version) < 0) {
+      await supabase.from("auth_logs").insert({
+        application_id: app.id, event_type: "login_failed", username: username?.toLowerCase(),
+        ip_address: ip, hwid, success: false, details: `Version outdated: ${version} < ${app.min_version}`,
+      });
       return new Response(
         JSON.stringify({
           success: false,
@@ -79,6 +97,10 @@ Deno.serve(async (req) => {
       .single();
 
     if (userError || !user) {
+      await supabase.from("auth_logs").insert({
+        application_id: app.id, event_type: "login_failed", username: username.toLowerCase(),
+        ip_address: ip, hwid, success: false, details: "User not found",
+      });
       return new Response(
         JSON.stringify({ success: false, message: "Invalid username or password" }),
         { status: 401, headers: { ...corsHeaders, "Content-Type": "application/json" } }
@@ -93,6 +115,10 @@ Deno.serve(async (req) => {
     const passwordHash = hashArray.map(b => b.toString(16).padStart(2, "0")).join("");
 
     if (user.password_hash !== passwordHash) {
+      await supabase.from("auth_logs").insert({
+        application_id: app.id, event_type: "login_failed", username: username.toLowerCase(),
+        ip_address: ip, hwid, success: false, details: "Wrong password", license_id: user.license_id,
+      });
       return new Response(
         JSON.stringify({ success: false, message: "Invalid username or password" }),
         { status: 401, headers: { ...corsHeaders, "Content-Type": "application/json" } }
@@ -103,6 +129,10 @@ Deno.serve(async (req) => {
     const license = user.licenses;
 
     if (!license) {
+      await supabase.from("auth_logs").insert({
+        application_id: app.id, event_type: "login_failed", username: username.toLowerCase(),
+        ip_address: ip, hwid, success: false, details: "No license associated", license_id: user.license_id,
+      });
       return new Response(
         JSON.stringify({ success: false, message: "No license associated" }),
         { status: 403, headers: { ...corsHeaders, "Content-Type": "application/json" } }
@@ -110,6 +140,10 @@ Deno.serve(async (req) => {
     }
 
     if (license.status === "banned") {
+      await supabase.from("auth_logs").insert({
+        application_id: app.id, event_type: "login_banned", username: username.toLowerCase(),
+        ip_address: ip, hwid, success: false, details: "License is banned", license_id: license.id,
+      });
       return new Response(
         JSON.stringify({ success: false, message: "License is banned" }),
         { status: 403, headers: { ...corsHeaders, "Content-Type": "application/json" } }
@@ -120,6 +154,10 @@ Deno.serve(async (req) => {
       if (license.status !== "expired") {
         await supabase.from("licenses").update({ status: "expired" }).eq("id", license.id);
       }
+      await supabase.from("auth_logs").insert({
+        application_id: app.id, event_type: "login_expired", username: username.toLowerCase(),
+        ip_address: ip, hwid, success: false, details: "License expired", license_id: license.id,
+      });
       return new Response(
         JSON.stringify({ success: false, message: "License has expired" }),
         { status: 403, headers: { ...corsHeaders, "Content-Type": "application/json" } }
@@ -128,16 +166,26 @@ Deno.serve(async (req) => {
 
     // Check HWID
     if (user.hwid && hwid && user.hwid !== hwid) {
+      await supabase.from("auth_logs").insert({
+        application_id: app.id, event_type: "login_hwid_mismatch", username: username.toLowerCase(),
+        ip_address: ip, hwid, success: false, details: `HWID mismatch: expected ${user.hwid}`, license_id: license.id,
+      });
       return new Response(
         JSON.stringify({ success: false, message: "Account is locked to another device" }),
         { status: 403, headers: { ...corsHeaders, "Content-Type": "application/json" } }
       );
     }
 
-    // Update HWID if not set
-    if (hwid && !user.hwid) {
-      await supabase.from("software_users").update({ hwid }).eq("id", user.id);
-    }
+    // Update user info (HWID, IP, last login)
+    const userUpdates: Record<string, unknown> = { last_ip: ip, last_login_at: new Date().toISOString() };
+    if (hwid && !user.hwid) userUpdates.hwid = hwid;
+    await supabase.from("software_users").update(userUpdates).eq("id", user.id);
+
+    // Log success
+    await supabase.from("auth_logs").insert({
+      application_id: app.id, event_type: "login_success", username: username.toLowerCase(),
+      ip_address: ip, hwid: hwid || user.hwid, success: true, details: "Login successful", license_id: license.id,
+    });
 
     return new Response(
       JSON.stringify({
