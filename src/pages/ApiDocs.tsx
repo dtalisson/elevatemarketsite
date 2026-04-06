@@ -205,6 +205,7 @@ const ApiDocs = () => {
             <Tabs defaultValue="python" className="w-full">
               <TabsList className="mb-3">
                 <TabsTrigger value="python">Python</TabsTrigger>
+                <TabsTrigger value="cpp">C++</TabsTrigger>
                 <TabsTrigger value="csharp">C#</TabsTrigger>
                 <TabsTrigger value="nodejs">Node.js</TabsTrigger>
               </TabsList>
