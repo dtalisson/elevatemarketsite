@@ -1,5 +1,16 @@
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2.49.4";
 
+function compareVersions(a: string, b: string): number {
+  const pa = a.split(".").map(Number);
+  const pb = b.split(".").map(Number);
+  for (let i = 0; i < Math.max(pa.length, pb.length); i++) {
+    const na = pa[i] || 0;
+    const nb = pb[i] || 0;
+    if (na > nb) return 1;
+    if (na < nb) return -1;
+  }
+  return 0;
+}
 const corsHeaders = {
   "Access-Control-Allow-Origin": "*",
   "Access-Control-Allow-Headers": "authorization, x-client-info, apikey, content-type",
@@ -138,6 +149,10 @@ Deno.serve(async (req) => {
             status: license.status,
             expires_at: license.expires_at,
           },
+        },
+        app: {
+          current_version: app.current_version,
+          update_available: version && app.current_version ? compareVersions(version, app.current_version) < 0 : false,
         },
       }),
       { status: 200, headers: { ...corsHeaders, "Content-Type": "application/json" } }
