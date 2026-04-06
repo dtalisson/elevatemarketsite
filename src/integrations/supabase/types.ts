@@ -133,6 +133,54 @@ export type Database = {
         }
         Relationships: []
       }
+      software_users: {
+        Row: {
+          application_id: string
+          created_at: string
+          hwid: string | null
+          id: string
+          license_id: string
+          password_hash: string
+          updated_at: string
+          username: string
+        }
+        Insert: {
+          application_id: string
+          created_at?: string
+          hwid?: string | null
+          id?: string
+          license_id: string
+          password_hash: string
+          updated_at?: string
+          username: string
+        }
+        Update: {
+          application_id?: string
+          created_at?: string
+          hwid?: string | null
+          id?: string
+          license_id?: string
+          password_hash?: string
+          updated_at?: string
+          username?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "software_users_application_id_fkey"
+            columns: ["application_id"]
+            isOneToOne: false
+            referencedRelation: "applications"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "software_users_license_id_fkey"
+            columns: ["license_id"]
+            isOneToOne: false
+            referencedRelation: "licenses"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       user_roles: {
         Row: {
           id: string
