@@ -109,6 +109,9 @@ const Applications = () => {
       .update({
         current_version: editVersion || null,
         min_version: editMinVersion || null,
+        msg_outdated: editMsgOutdated || null,
+        msg_disabled: editMsgDisabled || null,
+        msg_maintenance: editMsgMaintenance || null,
       })
       .eq("id", settingsAppId);
 
