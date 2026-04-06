@@ -77,7 +77,7 @@ export const DashboardLayout = ({ children }: { children: ReactNode }) => {
         </nav>
 
         <div className="border-t border-sidebar-border p-3">
-          <div className="mb-2 truncate px-3 text-xs text-muted-foreground">{user?.email}</div>
+          <div className="mb-2 truncate px-3 text-xs text-muted-foreground">{user?.user_metadata?.username || user?.email}</div>
           <Button
             variant="ghost"
             className="w-full justify-start gap-3 text-muted-foreground hover:text-foreground"
