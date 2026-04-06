@@ -5,6 +5,7 @@ import { Button } from "@/components/ui/button";
 import {
   Shield,
   LayoutDashboard,
+  ScrollText,
   Key,
   AppWindow,
   Users,
@@ -22,6 +23,7 @@ const navItems = [
   { label: "Aplicações", icon: AppWindow, href: "/dashboard/applications" },
   { label: "Licenças", icon: Key, href: "/dashboard/licenses" },
   { label: "Usuários", icon: Users, href: "/dashboard/users" },
+  { label: "Logs", icon: ScrollText, href: "/dashboard/logs" },
   { label: "API", icon: Code, href: "/dashboard/api" },
   { label: "Configurações", icon: Settings, href: "/dashboard/settings" },
 ];
