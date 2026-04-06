@@ -15,6 +15,7 @@ import Licenses from "./pages/Licenses";
 import UsersPage from "./pages/UsersPage";
 import LogsPage from "./pages/LogsPage";
 import ApiDocs from "./pages/ApiDocs";
+import OnlinePage from "./pages/OnlinePage";
 import SettingsPage from "./pages/SettingsPage";
 
 const queryClient = new QueryClient();
@@ -35,6 +36,7 @@ const App = () => (
             <Route path="/dashboard/licenses" element={<ProtectedRoute><Licenses /></ProtectedRoute>} />
             <Route path="/dashboard/users" element={<ProtectedRoute><UsersPage /></ProtectedRoute>} />
             <Route path="/dashboard/logs" element={<ProtectedRoute><LogsPage /></ProtectedRoute>} />
+            <Route path="/dashboard/online" element={<ProtectedRoute><OnlinePage /></ProtectedRoute>} />
             <Route path="/dashboard/api" element={<ProtectedRoute><ApiDocs /></ProtectedRoute>} />
             <Route path="/dashboard/settings" element={<ProtectedRoute><SettingsPage /></ProtectedRoute>} />
             <Route path="*" element={<NotFound />} />
