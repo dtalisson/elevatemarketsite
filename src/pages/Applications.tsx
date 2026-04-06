@@ -210,65 +210,71 @@ const Applications = () => {
       </Dialog>
 
       {apps.length === 0 ? (
-        <Card className="border-border/50 bg-card">
+        <Card className="glass">
           <CardContent className="flex flex-col items-center justify-center py-16">
-            <AppWindow className="mb-4 h-12 w-12 text-muted-foreground" />
-            <p className="text-muted-foreground">Nenhuma aplicação criada</p>
-            <p className="text-sm text-muted-foreground">Crie sua primeira aplicação para começar</p>
+            <div className="mb-4 rounded-full bg-muted p-4">
+              <AppWindow className="h-10 w-10 text-muted-foreground" />
+            </div>
+            <p className="text-foreground font-medium">Nenhuma aplicação criada</p>
+            <p className="text-sm text-muted-foreground mt-1">Crie sua primeira aplicação para começar</p>
           </CardContent>
         </Card>
       ) : (
         <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
-          {apps.map((app) => (
-            <Card key={app.id} className="border-border/50 bg-card">
-              <CardHeader className="flex flex-row items-start justify-between pb-2">
+          {apps.map((app, i) => (
+            <Card
+              key={app.id}
+              className="glass glass-hover animate-fade-in-up overflow-hidden"
+              style={{ animationDelay: `${i * 80}ms`, animationFillMode: "backwards" }}
+            >
+              <div className={`absolute inset-0 bg-gradient-to-br ${app.enabled ? "from-primary/10 to-transparent" : "from-destructive/10 to-transparent"} opacity-50`} />
+              <CardHeader className="relative flex flex-row items-start justify-between pb-2">
                 <div>
-                  <CardTitle className="text-base">{app.name}</CardTitle>
+                  <CardTitle className="text-base font-bold">{app.name}</CardTitle>
                   {app.description && (
                     <p className="mt-1 text-xs text-muted-foreground">{app.description}</p>
                   )}
                 </div>
-                <Badge variant={app.enabled ? "default" : "destructive"}>
-                  {app.enabled ? "Ativo" : "Desativado"}
+                <Badge variant={app.enabled ? "default" : "destructive"} className={app.enabled ? "bg-success/15 text-success border-success/30" : ""}>
+                  {app.enabled ? "● Ativo" : "● Desativado"}
                 </Badge>
               </CardHeader>
-              <CardContent className="space-y-3">
+              <CardContent className="relative space-y-3">
                 <div>
-                  <p className="mb-1 text-xs text-muted-foreground">Secret Key</p>
+                  <p className="mb-1 text-[10px] uppercase tracking-wider text-muted-foreground">Secret Key</p>
                   <div className="flex items-center gap-2">
-                    <code className="flex-1 truncate rounded bg-muted px-2 py-1 font-mono text-xs text-foreground">
+                    <code className="flex-1 truncate rounded-lg bg-muted/50 border border-border/50 px-3 py-1.5 font-mono text-xs text-foreground">
                       {app.secret_key}
                     </code>
-                    <Button variant="ghost" size="icon" className="h-7 w-7" onClick={() => copyKey(app.secret_key)}>
+                    <Button variant="ghost" size="icon" className="h-7 w-7 hover:bg-primary/10 hover:text-primary transition-colors" onClick={() => copyKey(app.secret_key)}>
                       <Copy className="h-3 w-3" />
                     </Button>
                   </div>
                 </div>
 
-                {/* Version info */}
                 {(app.current_version || app.min_version) && (
                   <div className="flex gap-4 text-xs">
                     {app.current_version && (
-                      <div>
-                        <span className="text-muted-foreground">Versão: </span>
-                        <span className="font-mono text-foreground">{app.current_version}</span>
+                      <div className="flex items-center gap-1.5">
+                        <span className="text-muted-foreground">Versão:</span>
+                        <span className="font-mono text-primary font-medium">{app.current_version}</span>
                       </div>
                     )}
                     {app.min_version && (
-                      <div>
-                        <span className="text-muted-foreground">Mín: </span>
-                        <span className="font-mono text-foreground">{app.min_version}</span>
+                      <div className="flex items-center gap-1.5">
+                        <span className="text-muted-foreground">Mín:</span>
+                        <span className="font-mono text-accent font-medium">{app.min_version}</span>
                       </div>
                     )}
                   </div>
                 )}
 
-                <div className="flex justify-end gap-1">
-                  <Button variant="ghost" size="icon" className="h-7 w-7" onClick={() => openSettings(app)}>
-                    <Settings2 className="h-3 w-3" />
+                <div className="flex justify-end gap-1 pt-1">
+                  <Button variant="ghost" size="icon" className="h-8 w-8 hover:bg-primary/10 hover:text-primary transition-colors" onClick={() => openSettings(app)}>
+                    <Settings2 className="h-3.5 w-3.5" />
                   </Button>
-                  <Button variant="ghost" size="icon" className="h-7 w-7 text-destructive" onClick={() => deleteApp(app.id)}>
-                    <Trash2 className="h-3 w-3" />
+                  <Button variant="ghost" size="icon" className="h-8 w-8 hover:bg-destructive/10 hover:text-destructive transition-colors" onClick={() => deleteApp(app.id)}>
+                    <Trash2 className="h-3.5 w-3.5" />
                   </Button>
                 </div>
               </CardContent>

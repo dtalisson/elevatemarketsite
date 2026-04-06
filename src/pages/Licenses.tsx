@@ -147,21 +147,25 @@ const Licenses = () => {
       </div>
 
       {apps.length === 0 ? (
-        <Card className="border-border/50 bg-card">
+        <Card className="glass">
           <CardContent className="flex flex-col items-center justify-center py-16">
-            <Key className="mb-4 h-12 w-12 text-muted-foreground" />
-            <p className="text-muted-foreground">Crie uma aplicação primeiro</p>
+            <div className="mb-4 rounded-full bg-muted p-4">
+              <Key className="h-10 w-10 text-muted-foreground" />
+            </div>
+            <p className="text-foreground font-medium">Crie uma aplicação primeiro</p>
           </CardContent>
         </Card>
       ) : licenses.length === 0 ? (
-        <Card className="border-border/50 bg-card">
+        <Card className="glass">
           <CardContent className="flex flex-col items-center justify-center py-16">
-            <Key className="mb-4 h-12 w-12 text-muted-foreground" />
-            <p className="text-muted-foreground">Nenhuma licença gerada</p>
+            <div className="mb-4 rounded-full bg-muted p-4">
+              <Key className="h-10 w-10 text-muted-foreground" />
+            </div>
+            <p className="text-foreground font-medium">Nenhuma licença gerada</p>
           </CardContent>
         </Card>
       ) : (
-        <Card className="border-border/50 bg-card overflow-hidden">
+        <Card className="glass overflow-hidden">
           <div className="overflow-x-auto">
             <Table>
               <TableHeader>
