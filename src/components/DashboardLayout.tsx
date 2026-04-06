@@ -8,7 +8,6 @@ import {
   Key,
   AppWindow,
   Users,
-  Settings,
   LogOut,
   Code,
   Menu,
@@ -26,7 +25,6 @@ const navItems = [
   { label: "Online", icon: Wifi, href: "/dashboard/online" },
   { label: "Logs", icon: ScrollText, href: "/dashboard/logs" },
   { label: "API", icon: Code, href: "/dashboard/api" },
-  { label: "Configurações", icon: Settings, href: "/dashboard/settings" },
 ];
 
 export const DashboardLayout = ({ children }: { children: ReactNode }) => {
