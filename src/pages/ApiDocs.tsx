@@ -338,15 +338,15 @@ const ApiDocs = () => {
                 </p>
                 <pre className="rounded-lg bg-muted p-3 font-mono text-xs text-foreground overflow-x-auto">
 {`// Gere um nonce único por request
-string nonce = Guid.NewGuid().ToString();
+std::string nonce = "nonce-" + std::to_string(rand());
 
 // Envie no request
-{ "nonce": nonce, ... }
+json body = { {"nonce", nonce}, ... };
 
 // Verifique na resposta
-if (response.nonce != nonce) {
+if (res["nonce"] != nonce) {
     // RESPOSTA FAKE! Feche o programa.
-    Environment.Exit(0);
+    ExitProcess(0);
 }`}
                 </pre>
               </div>
