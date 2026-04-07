@@ -46,6 +46,9 @@ const Licenses = () => {
   const [showPassword, setShowPassword] = useState(false);
   const [selected, setSelected] = useState<Set<string>>(new Set());
   const [bulkLoading, setBulkLoading] = useState(false);
+  const [banReason, setBanReason] = useState("");
+  const [showBanDialog, setShowBanDialog] = useState(false);
+  const [banTargetId, setBanTargetId] = useState<string | null>(null);
 
   const fetchData = async () => {
     const [licRes, appRes, usersRes] = await Promise.all([
@@ -115,24 +118,65 @@ const Licenses = () => {
     setSelected(new Set()); fetchData(); setBulkLoading(false);
   };
 
+  const deactivateLicense = async (licenseId: string, reason: string) => {
+    // Find the license to calculate remaining time
+    const lic = licenses.find(l => l.id === licenseId);
+    if (!lic) return;
+
+    const updates: Record<string, unknown> = {
+      status: "banned" as const,
+      ban_reason: reason || null,
+    };
+
+    // If it has an expiration, pause the timer by saving remaining seconds
+    if (lic.expires_at) {
+      const remaining = Math.max(0, Math.floor((new Date(lic.expires_at).getTime() - Date.now()) / 1000));
+      updates.remaining_seconds = remaining;
+    }
+
+    const { error } = await supabase.from("licenses").update(updates).eq("id", licenseId);
+    if (error) toast.error(error.message);
+    else { toast.success("Licença desativada"); fetchData(); }
+  };
+
+  const activateLicense = async (licenseId: string) => {
+    const lic = licenses.find(l => l.id === licenseId);
+    if (!lic) return;
+
+    const updates: Record<string, unknown> = {
+      status: "active" as const,
+      ban_reason: null,
+    };
+
+    // If it had remaining time saved, resume the timer
+    if ((lic as any).remaining_seconds && (lic as any).remaining_seconds > 0) {
+      updates.expires_at = new Date(Date.now() + (lic as any).remaining_seconds * 1000).toISOString();
+      updates.remaining_seconds = null;
+    }
+
+    const { error } = await supabase.from("licenses").update(updates).eq("id", licenseId);
+    if (error) toast.error(error.message);
+    else { toast.success("Licença ativada"); fetchData(); }
+  };
+
   const bulkBan = async () => {
     if (selected.size === 0) return;
     setBulkLoading(true);
     const ids = Array.from(selected);
-    const { error } = await supabase.from("licenses").update({ status: "banned" as const }).in("id", ids);
-    if (error) toast.error(error.message);
-    else { toast.success(`${ids.length} banida(s)`); setSelected(new Set()); fetchData(); }
-    setBulkLoading(false);
+    for (const id of ids) {
+      await deactivateLicense(id, "Banimento em massa");
+    }
+    setSelected(new Set()); fetchData(); setBulkLoading(false);
   };
 
   const bulkActivate = async () => {
     if (selected.size === 0) return;
     setBulkLoading(true);
     const ids = Array.from(selected);
-    const { error } = await supabase.from("licenses").update({ status: "active" as const }).in("id", ids);
-    if (error) toast.error(error.message);
-    else { toast.success(`${ids.length} ativada(s)`); setSelected(new Set()); fetchData(); }
-    setBulkLoading(false);
+    for (const id of ids) {
+      await activateLicense(id);
+    }
+    setSelected(new Set()); fetchData(); setBulkLoading(false);
   };
 
   const copyKey = (text: string) => { navigator.clipboard.writeText(text); toast.success("Copiado!"); };
