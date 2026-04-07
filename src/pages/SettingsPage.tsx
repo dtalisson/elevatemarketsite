@@ -1,6 +1,5 @@
 import { useState, useEffect } from "react";
 import { DashboardLayout } from "@/components/DashboardLayout";
-import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -26,7 +25,7 @@ const SettingsPage = () => {
     setLoading(true);
     const { error } = await supabase.from("profiles").update({ display_name: displayName }).eq("user_id", user.id);
     if (error) toast.error(error.message);
-    else toast.success("Perfil atualizado!");
+    else toast.success("Salvo!");
     setLoading(false);
   };
 
@@ -34,28 +33,24 @@ const SettingsPage = () => {
     <DashboardLayout>
       <div className="mb-6">
         <h1 className="text-2xl font-heading font-bold text-foreground tracking-tight">Configurações</h1>
-        <p className="text-sm text-muted-foreground">Gerencie seu perfil e preferências</p>
+        <p className="text-sm text-muted-foreground mt-1">Perfil e preferências</p>
       </div>
 
-      <div className="max-w-lg space-y-6">
-        <Card className="glass">
-          <CardHeader>
-            <CardTitle className="text-base font-heading font-semibold">Perfil</CardTitle>
-          </CardHeader>
-          <CardContent>
-            <form onSubmit={updateProfile} className="space-y-4">
-              <div className="space-y-2">
-                <Label>Email</Label>
-                <Input value={user?.email || ""} disabled className="opacity-60" />
-              </div>
-              <div className="space-y-2">
-                <Label>Nome</Label>
-                <Input value={displayName} onChange={(e) => setDisplayName(e.target.value)} />
-              </div>
-              <Button type="submit" disabled={loading}>{loading ? "Salvando..." : "Salvar"}</Button>
-            </form>
-          </CardContent>
-        </Card>
+      <div className="max-w-lg">
+        <div className="rounded-lg border border-border bg-card p-5">
+          <h2 className="text-sm font-heading font-semibold text-foreground mb-4">Perfil</h2>
+          <form onSubmit={updateProfile} className="space-y-4">
+            <div className="space-y-2">
+              <Label>Email</Label>
+              <Input value={user?.email || ""} disabled className="opacity-60" />
+            </div>
+            <div className="space-y-2">
+              <Label>Nome</Label>
+              <Input value={displayName} onChange={(e) => setDisplayName(e.target.value)} />
+            </div>
+            <Button type="submit" disabled={loading}>{loading ? "Salvando..." : "Salvar"}</Button>
+          </form>
+        </div>
       </div>
     </DashboardLayout>
   );

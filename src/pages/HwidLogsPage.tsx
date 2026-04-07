@@ -1,12 +1,11 @@
 import { useEffect, useState } from "react";
 import { DashboardLayout } from "@/components/DashboardLayout";
-import { Card, CardContent } from "@/components/ui/card";
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/contexts/AuthContext";
 import { Badge } from "@/components/ui/badge";
 import { Input } from "@/components/ui/input";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
-import { ShieldAlert, Search, Clock, Globe, Monitor, User, AlertTriangle } from "lucide-react";
+import { Search, Clock, Globe, Monitor, User, AlertTriangle } from "lucide-react";
 
 interface AuthLog { id: string; application_id: string; license_id: string | null; event_type: string; username: string | null; ip_address: string | null; hwid: string | null; success: boolean; details: string | null; created_at: string; }
 interface AppInfo { id: string; name: string; }
@@ -56,64 +55,56 @@ const HwidLogsPage = () => {
   return (
     <DashboardLayout>
       <div className="mb-6">
-        <div className="flex items-center gap-2 mb-1">
-          <ShieldAlert className="h-5 w-5 text-warning" />
-          <h1 className="text-2xl font-heading font-bold text-foreground tracking-tight">HWID Logs</h1>
-        </div>
-        <p className="text-sm text-muted-foreground">Tentativas de acesso com HWID diferente do registrado</p>
+        <h1 className="text-2xl font-heading font-bold text-foreground tracking-tight">HWID Logs</h1>
+        <p className="text-sm text-muted-foreground mt-1">Tentativas com HWID diferente</p>
       </div>
 
       <div className="mb-4 flex flex-wrap gap-3">
         <div className="relative flex-1 min-w-[200px] max-w-sm">
           <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
-          <Input placeholder="Buscar por username, IP ou HWID..." value={search} onChange={(e) => setSearch(e.target.value)} className="pl-9" />
+          <Input placeholder="Username, IP ou HWID..." value={search} onChange={(e) => setSearch(e.target.value)} className="pl-9" />
         </div>
         <Select value={selectedApp} onValueChange={setSelectedApp}>
-          <SelectTrigger className="w-48"><SelectValue placeholder="Todas" /></SelectTrigger>
+          <SelectTrigger className="w-44"><SelectValue placeholder="Todas" /></SelectTrigger>
           <SelectContent>
-            <SelectItem value="all">Todas as aplicações</SelectItem>
+            <SelectItem value="all">Todas apps</SelectItem>
             {apps.map((app) => <SelectItem key={app.id} value={app.id}>{app.name}</SelectItem>)}
           </SelectContent>
         </Select>
       </div>
 
       {loading ? (
-        <div className="space-y-2">{[1, 2, 3, 4, 5].map((i) => (<Card key={i} className="glass animate-pulse"><CardContent className="p-3 h-14" /></Card>))}</div>
+        <div className="space-y-1.5">{[1, 2, 3].map((i) => <div key={i} className="h-12 rounded-lg border border-border bg-card animate-pulse" />)}</div>
       ) : filtered.length === 0 ? (
-        <Card className="glass animate-fade-in-up">
-          <CardContent className="flex flex-col items-center justify-center py-16">
-            <div className="p-4 rounded-2xl bg-warning/10 border border-warning/15 mb-4"><ShieldAlert className="h-10 w-10 text-warning" /></div>
-            <p className="text-muted-foreground font-heading font-medium">Nenhuma tentativa de HWID diferente</p>
-            <p className="text-sm text-muted-foreground/70 mt-1">Os logs aparecerão em tempo real</p>
-          </CardContent>
-        </Card>
+        <div className="rounded-lg border border-border bg-card flex flex-col items-center justify-center py-16">
+          <p className="text-muted-foreground font-heading font-medium">Nenhum log de HWID</p>
+          <p className="text-xs text-muted-foreground/60 mt-1">Aparecerão em tempo real</p>
+        </div>
       ) : (
-        <div className="space-y-1.5">
-          {filtered.map((log, index) => {
+        <div className="space-y-1">
+          {filtered.map((log) => {
             const app = appsMap[log.application_id];
             return (
-              <Card key={log.id} className="glass border-warning/15 hover:border-warning/30 transition-all animate-fade-in-up" style={{ animationDelay: `${Math.min(0.02 * (index + 1), 0.5)}s` }}>
-                <CardContent className="p-3">
-                  <div className="flex items-center gap-3">
-                    <div className="flex-shrink-0 h-8 w-8 rounded-lg flex items-center justify-center bg-warning/10"><AlertTriangle className="h-4 w-4 text-warning" /></div>
-                    <div className="flex-1 min-w-0">
-                      <div className="flex items-center gap-2 flex-wrap">
-                        <Badge variant="outline" className="bg-warning/15 text-warning border-warning/25 text-[10px]">HWID Mismatch</Badge>
-                        {log.username && <span className="flex items-center gap-1 text-xs text-foreground font-medium"><User className="h-3 w-3 text-muted-foreground" />{log.username}</span>}
-                        {app && <span className="text-[10px] text-muted-foreground">· {app.name}</span>}
-                      </div>
-                      {log.details && <div className="mt-1"><span className="text-[11px] text-muted-foreground/80">{log.details}</span></div>}
-                    </div>
-                    <div className="flex-shrink-0 flex flex-col items-end gap-1">
-                      <span className="flex items-center gap-1 text-[10px] text-muted-foreground"><Clock className="h-2.5 w-2.5" />{formatDate(log.created_at)}</span>
-                      <div className="flex items-center gap-2">
-                        {log.ip_address && <span className="flex items-center gap-1 text-[10px] text-muted-foreground font-mono"><Globe className="h-2.5 w-2.5" />{log.ip_address}</span>}
-                        {log.hwid && <span className="flex items-center gap-1 text-[10px] text-warning/80 font-mono font-bold"><Monitor className="h-2.5 w-2.5" />{log.hwid.substring(0, 16)}</span>}
-                      </div>
-                    </div>
+              <div key={log.id} className="rounded-lg border border-border bg-card p-3 flex items-center gap-3">
+                <div className="flex-shrink-0 h-7 w-7 rounded-md flex items-center justify-center bg-warning/10">
+                  <AlertTriangle className="h-3.5 w-3.5 text-warning" />
+                </div>
+                <div className="flex-1 min-w-0">
+                  <div className="flex items-center gap-2 flex-wrap">
+                    <Badge variant="outline" className="bg-warning/10 text-warning text-[10px] border-0">HWID Mismatch</Badge>
+                    {log.username && <span className="flex items-center gap-1 text-xs text-foreground"><User className="h-3 w-3 text-muted-foreground" />{log.username}</span>}
+                    {app && <span className="text-[10px] text-muted-foreground">· {app.name}</span>}
                   </div>
-                </CardContent>
-              </Card>
+                  {log.details && <p className="text-[11px] text-muted-foreground/80 mt-0.5">{log.details}</p>}
+                </div>
+                <div className="flex-shrink-0 flex flex-col items-end gap-0.5">
+                  <span className="flex items-center gap-1 text-[10px] text-muted-foreground"><Clock className="h-2.5 w-2.5" />{formatDate(log.created_at)}</span>
+                  <div className="flex items-center gap-2">
+                    {log.ip_address && <span className="text-[10px] font-mono text-muted-foreground flex items-center gap-1"><Globe className="h-2.5 w-2.5" />{log.ip_address}</span>}
+                    {log.hwid && <span className="text-[10px] font-mono text-warning flex items-center gap-1"><Monitor className="h-2.5 w-2.5" />{log.hwid.substring(0, 16)}</span>}
+                  </div>
+                </div>
+              </div>
             );
           })}
         </div>
