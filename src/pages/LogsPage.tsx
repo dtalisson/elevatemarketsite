@@ -155,9 +155,16 @@ const LogsPage = () => {
 
   return (
     <DashboardLayout>
-      <div className="mb-6">
-        <h1 className="text-2xl font-heading font-bold text-foreground tracking-tight">Logs</h1>
-        <p className="text-sm text-muted-foreground mt-1">Histórico de autenticação</p>
+      <div className="mb-6 flex items-center justify-between">
+        <div>
+          <h1 className="text-2xl font-heading font-bold text-foreground tracking-tight">Logs</h1>
+          <p className="text-sm text-muted-foreground mt-1">Histórico de autenticação · limpeza automática a cada 2 dias</p>
+        </div>
+        {logs.length > 0 && (
+          <Button variant="outline" size="sm" className="gap-1.5 text-destructive border-destructive/30 hover:bg-destructive/10" onClick={() => setShowCleanup(true)}>
+            <Trash2 className="h-3.5 w-3.5" />Limpar Logs
+          </Button>
+        )}
       </div>
 
       <div className="mb-4 flex flex-wrap gap-3">
