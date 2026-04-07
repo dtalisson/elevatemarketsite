@@ -14,6 +14,7 @@ import Applications from "./pages/Applications";
 import Licenses from "./pages/Licenses";
 import UsersPage from "./pages/UsersPage";
 import LogsPage from "./pages/LogsPage";
+import HwidLogsPage from "./pages/HwidLogsPage";
 import ApiDocs from "./pages/ApiDocs";
 import OnlinePage from "./pages/OnlinePage";
 
@@ -35,6 +36,7 @@ const App = () => (
             <Route path="/dashboard/licenses" element={<ProtectedRoute><Licenses /></ProtectedRoute>} />
             <Route path="/dashboard/users" element={<ProtectedRoute><UsersPage /></ProtectedRoute>} />
             <Route path="/dashboard/logs" element={<ProtectedRoute><LogsPage /></ProtectedRoute>} />
+            <Route path="/dashboard/hwid-logs" element={<ProtectedRoute><HwidLogsPage /></ProtectedRoute>} />
             <Route path="/dashboard/online" element={<ProtectedRoute><OnlinePage /></ProtectedRoute>} />
             <Route path="/dashboard/docs" element={<ProtectedRoute><ApiDocs /></ProtectedRoute>} />
             <Route path="*" element={<NotFound />} />
