@@ -123,12 +123,11 @@ const Licenses = () => {
     const lic = licenses.find(l => l.id === licenseId);
     if (!lic) return;
 
-    const updates: Record<string, unknown> = {
-      status: "banned" as const,
+    const updates: { status: "banned"; ban_reason: string | null; remaining_seconds?: number | null } = {
+      status: "banned",
       ban_reason: reason || null,
     };
 
-    // If it has an expiration, pause the timer by saving remaining seconds
     if (lic.expires_at) {
       const remaining = Math.max(0, Math.floor((new Date(lic.expires_at).getTime() - Date.now()) / 1000));
       updates.remaining_seconds = remaining;
@@ -143,12 +142,11 @@ const Licenses = () => {
     const lic = licenses.find(l => l.id === licenseId);
     if (!lic) return;
 
-    const updates: Record<string, unknown> = {
-      status: "active" as const,
+    const updates: { status: "active"; ban_reason: null; expires_at?: string; remaining_seconds?: null } = {
+      status: "active",
       ban_reason: null,
     };
 
-    // If it had remaining time saved, resume the timer
     if ((lic as any).remaining_seconds && (lic as any).remaining_seconds > 0) {
       updates.expires_at = new Date(Date.now() + (lic as any).remaining_seconds * 1000).toISOString();
       updates.remaining_seconds = null;
