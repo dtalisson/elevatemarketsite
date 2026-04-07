@@ -397,23 +397,32 @@ const Licenses = () => {
                     <InfoRow label="Criada" value={formatDate(selectedLicense.created_at)} />
                     <InfoRow label="Ativada" value={selectedLicense.activated_at ? formatDate(selectedLicense.activated_at) : null} />
                     <InfoRow label="Expira" value={selectedLicense.expires_at ? formatDate(selectedLicense.expires_at) : "Sem expiração"} />
+                    {(selectedLicense as any).remaining_seconds > 0 && selectedLicense.status === "banned" && (
+                      <InfoRow label="Tempo restante" value={`${Math.floor((selectedLicense as any).remaining_seconds / 3600)}h ${Math.floor(((selectedLicense as any).remaining_seconds % 3600) / 60)}m`} />
+                    )}
                   </div>
                 </div>
 
+                {(selectedLicense as any).ban_reason && (
+                  <div className="rounded-lg border border-destructive/20 bg-destructive/5 px-3 py-2">
+                    <p className="text-[10px] uppercase tracking-wider text-destructive/60 mb-0.5 font-semibold">Motivo da desativação</p>
+                    <p className="text-xs text-destructive">{(selectedLicense as any).ban_reason}</p>
+                  </div>
+                )}
+
                 <div className="flex gap-2">
                   {selectedLicense.status === "active" || selectedLicense.status === "unused" ? (
-                    <Button variant="outline" className="flex-1 text-warning border-warning/30 hover:bg-warning/10" size="sm"
-                      onClick={async () => {
-                        const { error } = await supabase.from("licenses").update({ status: "banned" as const }).eq("id", selectedLicense.id);
-                        if (error) toast.error(error.message);
-                        else { toast.success("Licença desativada"); setSelectedLicense((p) => p ? { ...p, status: "banned" } : null); fetchData(); }
-                      }}><Ban className="mr-1.5 h-3.5 w-3.5" />Desativar</Button>
+                    <>
+                      <Button variant="outline" className="flex-1 text-warning border-warning/30 hover:bg-warning/10" size="sm"
+                        onClick={() => { setBanTargetId(selectedLicense.id); setBanReason(""); setShowBanDialog(true); }}>
+                        <Ban className="mr-1.5 h-3.5 w-3.5" />Desativar
+                      </Button>
+                    </>
                   ) : (
                     <Button variant="outline" className="flex-1 text-primary border-primary/30 hover:bg-primary/10" size="sm"
                       onClick={async () => {
-                        const { error } = await supabase.from("licenses").update({ status: "active" as const }).eq("id", selectedLicense.id);
-                        if (error) toast.error(error.message);
-                        else { toast.success("Licença ativada"); setSelectedLicense((p) => p ? { ...p, status: "active" } : null); fetchData(); }
+                        await activateLicense(selectedLicense.id);
+                        setSelectedLicense(null);
                       }}><CheckCircle2 className="mr-1.5 h-3.5 w-3.5" />Ativar</Button>
                   )}
                   {selectedLicense.hwid && (
