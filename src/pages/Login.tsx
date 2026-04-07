@@ -1,10 +1,8 @@
 import { useState } from "react";
 import { useNavigate } from "react-router-dom";
 import { supabase } from "@/integrations/supabase/client";
-import { Button } from "@/components/ui/button";
-import { Input } from "@/components/ui/input";
 import { toast } from "sonner";
-import { Lock, User } from "lucide-react";
+import { Lock, User, ArrowRight } from "lucide-react";
 import ParticleBackground from "@/components/ParticleBackground";
 
 const Login = () => {
@@ -29,55 +27,58 @@ const Login = () => {
   };
 
   return (
-    <div className="dark flex min-h-screen items-center justify-center p-4 relative overflow-hidden" style={{ background: "#050508" }}>
+    <div className="dark flex min-h-screen items-center justify-center p-4 relative overflow-hidden bg-background">
       <ParticleBackground />
 
-      {/* Subtle center glow */}
-      <div className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-[600px] h-[600px] rounded-full opacity-[0.03]" style={{ background: "radial-gradient(circle, hsl(210 60% 50%) 0%, transparent 70%)" }} />
+      {/* Large ambient glow */}
+      <div
+        className="absolute top-1/3 left-1/2 -translate-x-1/2 -translate-y-1/2 w-[800px] h-[500px] rounded-full pointer-events-none"
+        style={{ background: "radial-gradient(ellipse, hsl(210 70% 45% / 0.06) 0%, transparent 65%)" }}
+      />
 
-      <div className="w-full max-w-sm relative z-10">
-        {/* Title */}
-        <div className="mb-10 text-center">
-          <h1 className="text-2xl font-medium tracking-[0.2em] uppercase" style={{ color: "hsl(210 20% 75%)", fontFamily: "'Inter', sans-serif", letterSpacing: "0.25em" }}>
+      <div className="w-full max-w-[380px] relative z-10">
+        {/* Logo */}
+        <div className="mb-12 text-center">
+          <div className="inline-flex items-center justify-center w-12 h-12 rounded-2xl bg-primary/10 border border-primary/20 mb-5">
+            <Lock className="h-5 w-5 text-primary" />
+          </div>
+          <h1 className="text-[22px] font-heading font-semibold tracking-tight text-foreground">
             Elevate Auth
           </h1>
-          <div className="mt-3 mx-auto w-12 h-px" style={{ background: "linear-gradient(90deg, transparent, hsl(210 50% 40%), transparent)" }} />
+          <p className="mt-1.5 text-[13px] text-muted-foreground">
+            Painel de controle
+          </p>
         </div>
 
         {/* Login card */}
-        <div className="rounded-xl border p-6" style={{ background: "rgba(12, 14, 20, 0.7)", borderColor: "rgba(255,255,255,0.06)", backdropFilter: "blur(20px)" }}>
+        <div
+          className="rounded-2xl p-7 glass"
+          style={{ boxShadow: "0 8px 32px -8px rgba(0,0,0,0.4)" }}
+        >
           <form onSubmit={handleLogin} className="space-y-5">
-            <div className="space-y-1.5">
-              <label htmlFor="username" className="block text-[11px] uppercase tracking-[0.15em] font-medium" style={{ color: "hsl(210 15% 45%)" }}>
+            <div className="space-y-2">
+              <label htmlFor="username" className="block text-[12px] font-medium text-muted-foreground">
                 Usuário
               </label>
               <div className="relative">
-                <User className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4" style={{ color: "hsl(210 15% 30%)" }} />
+                <User className="absolute left-3.5 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground/60" />
                 <input
                   id="username"
                   placeholder="seu_usuario"
                   value={username}
                   onChange={(e) => setUsername(e.target.value)}
                   required
-                  className="w-full h-11 pl-10 pr-4 rounded-lg text-sm outline-none transition-colors"
-                  style={{
-                    background: "rgba(255,255,255,0.03)",
-                    border: "1px solid rgba(255,255,255,0.07)",
-                    color: "hsl(210 20% 85%)",
-                    fontFamily: "'Inter', sans-serif",
-                  }}
-                  onFocus={(e) => e.target.style.borderColor = "rgba(100,140,200,0.3)"}
-                  onBlur={(e) => e.target.style.borderColor = "rgba(255,255,255,0.07)"}
+                  className="w-full h-11 pl-11 pr-4 rounded-xl text-sm outline-none transition-all duration-200 bg-muted/50 border border-border text-foreground placeholder:text-muted-foreground/40 focus:border-primary/40 focus:ring-2 focus:ring-primary/10"
                 />
               </div>
             </div>
 
-            <div className="space-y-1.5">
-              <label htmlFor="password" className="block text-[11px] uppercase tracking-[0.15em] font-medium" style={{ color: "hsl(210 15% 45%)" }}>
+            <div className="space-y-2">
+              <label htmlFor="password" className="block text-[12px] font-medium text-muted-foreground">
                 Senha
               </label>
               <div className="relative">
-                <Lock className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4" style={{ color: "hsl(210 15% 30%)" }} />
+                <Lock className="absolute left-3.5 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground/60" />
                 <input
                   id="password"
                   type="password"
@@ -85,15 +86,7 @@ const Login = () => {
                   value={password}
                   onChange={(e) => setPassword(e.target.value)}
                   required
-                  className="w-full h-11 pl-10 pr-4 rounded-lg text-sm outline-none transition-colors"
-                  style={{
-                    background: "rgba(255,255,255,0.03)",
-                    border: "1px solid rgba(255,255,255,0.07)",
-                    color: "hsl(210 20% 85%)",
-                    fontFamily: "'Inter', sans-serif",
-                  }}
-                  onFocus={(e) => e.target.style.borderColor = "rgba(100,140,200,0.3)"}
-                  onBlur={(e) => e.target.style.borderColor = "rgba(255,255,255,0.07)"}
+                  className="w-full h-11 pl-11 pr-4 rounded-xl text-sm outline-none transition-all duration-200 bg-muted/50 border border-border text-foreground placeholder:text-muted-foreground/40 focus:border-primary/40 focus:ring-2 focus:ring-primary/10"
                 />
               </div>
             </div>
@@ -101,34 +94,25 @@ const Login = () => {
             <button
               type="submit"
               disabled={loading}
-              className="w-full h-11 rounded-lg text-sm font-medium tracking-wide uppercase transition-all duration-300 disabled:opacity-50"
-              style={{
-                background: "linear-gradient(135deg, hsl(210 40% 25%) 0%, hsl(210 50% 18%) 100%)",
-                border: "1px solid rgba(100,140,200,0.15)",
-                color: "hsl(210 30% 80%)",
-                letterSpacing: "0.1em",
-              }}
-              onMouseEnter={(e) => {
-                e.currentTarget.style.background = "linear-gradient(135deg, hsl(210 45% 30%) 0%, hsl(210 50% 22%) 100%)";
-                e.currentTarget.style.borderColor = "rgba(100,140,200,0.3)";
-              }}
-              onMouseLeave={(e) => {
-                e.currentTarget.style.background = "linear-gradient(135deg, hsl(210 40% 25%) 0%, hsl(210 50% 18%) 100%)";
-                e.currentTarget.style.borderColor = "rgba(100,140,200,0.15)";
-              }}
+              className="w-full h-11 rounded-xl text-sm font-medium transition-all duration-300 disabled:opacity-50 bg-primary hover:bg-primary/90 text-primary-foreground flex items-center justify-center gap-2 glow-sm hover:glow-md"
             >
               {loading ? (
                 <span className="flex items-center justify-center gap-2">
-                  <span className="h-4 w-4 animate-spin rounded-full border-2 border-current/30 border-t-current" />
+                  <span className="h-4 w-4 animate-spin rounded-full border-2 border-primary-foreground/30 border-t-primary-foreground" />
                   Entrando...
                 </span>
-              ) : "Entrar"}
+              ) : (
+                <>
+                  Entrar
+                  <ArrowRight className="h-4 w-4" />
+                </>
+              )}
             </button>
           </form>
         </div>
 
-        <p className="mt-8 text-center text-[10px] uppercase tracking-[0.2em]" style={{ color: "hsl(210 10% 25%)" }}>
-          Acesso restrito
+        <p className="mt-8 text-center text-[11px] text-muted-foreground/50">
+          Acesso restrito · Elevate Auth
         </p>
       </div>
     </div>

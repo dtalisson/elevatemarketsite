@@ -12,10 +12,10 @@ import {
   Code,
   Menu,
   X,
-  ChevronRight,
   Wifi,
   ShieldAlert,
   ShieldX,
+  Lock,
 } from "lucide-react";
 import { cn } from "@/lib/utils";
 
@@ -37,7 +37,7 @@ export const DashboardLayout = ({ children }: { children: ReactNode }) => {
   const [sidebarOpen, setSidebarOpen] = useState(false);
 
   return (
-    <div className="dark flex min-h-screen relative" style={{ background: "#050508" }}>
+    <div className="dark flex min-h-screen relative bg-background">
       <ParticleBackground />
 
       {/* Mobile overlay */}
@@ -48,27 +48,35 @@ export const DashboardLayout = ({ children }: { children: ReactNode }) => {
       {/* Sidebar */}
       <aside
         className={cn(
-          "fixed inset-y-0 left-0 z-50 flex w-60 flex-col transition-transform duration-300 lg:static lg:translate-x-0",
+          "fixed inset-y-0 left-0 z-50 flex w-[240px] flex-col transition-transform duration-300 lg:static lg:translate-x-0",
           sidebarOpen ? "translate-x-0" : "-translate-x-full"
         )}
         style={{
-          background: "rgba(8, 10, 16, 0.85)",
-          borderRight: "1px solid rgba(255,255,255,0.04)",
+          background: "hsl(220 20% 5% / 0.92)",
+          borderRight: "1px solid hsl(220 13% 12%)",
           backdropFilter: "blur(24px)",
         }}
       >
         {/* Logo */}
-        <div className="flex h-14 items-center gap-2.5 px-5" style={{ borderBottom: "1px solid rgba(255,255,255,0.04)" }}>
-          <span className="text-xs font-medium tracking-[0.2em] uppercase" style={{ color: "hsl(210 20% 65%)", fontFamily: "'Inter', sans-serif" }}>
-            Elevate Auth
-          </span>
-          <button className="ml-auto lg:hidden" onClick={() => setSidebarOpen(false)}>
-            <X className="h-4 w-4" style={{ color: "hsl(210 15% 35%)" }} />
+        <div className="flex h-16 items-center gap-3 px-5 border-b border-border/50">
+          <div className="flex h-8 w-8 items-center justify-center rounded-lg bg-primary/10 border border-primary/20">
+            <Lock className="h-3.5 w-3.5 text-primary" />
+          </div>
+          <div>
+            <span className="text-[13px] font-heading font-semibold text-foreground tracking-tight">
+              Elevate Auth
+            </span>
+          </div>
+          <button className="ml-auto lg:hidden text-muted-foreground hover:text-foreground transition-colors" onClick={() => setSidebarOpen(false)}>
+            <X className="h-4 w-4" />
           </button>
         </div>
 
         {/* Nav */}
-        <nav className="flex-1 space-y-0.5 px-3 mt-4">
+        <nav className="flex-1 space-y-1 px-3 mt-5">
+          <p className="px-3 mb-2 text-[10px] uppercase tracking-[0.12em] font-medium text-muted-foreground/60">
+            Menu
+          </p>
           {navItems.map((item) => {
             const active = location.pathname === item.href;
             return (
@@ -76,42 +84,35 @@ export const DashboardLayout = ({ children }: { children: ReactNode }) => {
                 key={item.href}
                 to={item.href}
                 onClick={() => setSidebarOpen(false)}
-                className="group flex items-center gap-2.5 rounded-md px-3 py-2 text-[13px] font-medium transition-all duration-200"
-                style={{
-                  color: active ? "hsl(210 20% 85%)" : "hsl(210 15% 40%)",
-                  background: active ? "rgba(255,255,255,0.04)" : "transparent",
-                  border: active ? "1px solid rgba(255,255,255,0.06)" : "1px solid transparent",
-                }}
+                className={cn(
+                  "group flex items-center gap-3 rounded-lg px-3 py-2.5 text-[13px] font-medium transition-all duration-200",
+                  active
+                    ? "bg-primary/10 text-foreground border border-primary/15"
+                    : "text-muted-foreground hover:text-foreground hover:bg-muted/50 border border-transparent"
+                )}
               >
-                <item.icon className="h-4 w-4" style={{ color: active ? "hsl(210 40% 60%)" : "hsl(210 15% 30%)" }} />
+                <item.icon className={cn("h-4 w-4 transition-colors", active ? "text-primary" : "text-muted-foreground/70 group-hover:text-foreground")} />
                 {item.label}
-                {active && <ChevronRight className="ml-auto h-3 w-3" style={{ color: "hsl(210 30% 45%)" }} />}
               </Link>
             );
           })}
         </nav>
 
         {/* User section */}
-        <div className="px-3 pb-4 pt-3" style={{ borderTop: "1px solid rgba(255,255,255,0.04)" }}>
-          <div className="mb-2 flex items-center gap-2 px-3 py-2">
-            <div
-              className="flex h-6 w-6 items-center justify-center rounded-full text-[10px] font-bold"
-              style={{ background: "rgba(100,140,200,0.12)", color: "hsl(210 40% 60%)" }}
-            >
+        <div className="px-3 pb-4 pt-3 border-t border-border/50">
+          <div className="mb-2 flex items-center gap-3 px-3 py-2.5">
+            <div className="flex h-8 w-8 items-center justify-center rounded-lg bg-primary/10 text-[11px] font-bold text-primary border border-primary/15">
               {(user?.user_metadata?.username || "U")[0].toUpperCase()}
             </div>
             <div className="flex-1 min-w-0">
-              <p className="truncate text-[11px] font-medium" style={{ color: "hsl(210 20% 70%)" }}>
+              <p className="truncate text-[12px] font-medium text-foreground">
                 {user?.user_metadata?.username || user?.email}
               </p>
-              <p className="text-[9px]" style={{ color: "hsl(210 10% 30%)" }}>Administrador</p>
+              <p className="text-[10px] text-muted-foreground">Administrador</p>
             </div>
           </div>
           <button
-            className="flex w-full items-center gap-2.5 rounded-md px-3 py-2 text-[12px] font-medium transition-all duration-200"
-            style={{ color: "hsl(210 15% 35%)" }}
-            onMouseEnter={(e) => { e.currentTarget.style.color = "hsl(0 60% 55%)"; e.currentTarget.style.background = "rgba(200,60,60,0.06)"; }}
-            onMouseLeave={(e) => { e.currentTarget.style.color = "hsl(210 15% 35%)"; e.currentTarget.style.background = "transparent"; }}
+            className="flex w-full items-center gap-3 rounded-lg px-3 py-2.5 text-[12px] font-medium text-muted-foreground transition-all duration-200 hover:text-destructive hover:bg-destructive/5 border border-transparent"
             onClick={signOut}
           >
             <LogOut className="h-3.5 w-3.5" />
@@ -122,17 +123,17 @@ export const DashboardLayout = ({ children }: { children: ReactNode }) => {
 
       {/* Main content */}
       <div className="flex flex-1 flex-col relative z-10">
-        <header
-          className="flex h-14 items-center gap-4 px-6 lg:hidden"
-          style={{ background: "rgba(8,10,16,0.7)", borderBottom: "1px solid rgba(255,255,255,0.04)", backdropFilter: "blur(20px)" }}
-        >
-          <button onClick={() => setSidebarOpen(true)} className="rounded-md p-1.5 transition-colors" style={{ color: "hsl(210 20% 70%)" }}>
+        <header className="flex h-16 items-center gap-4 px-6 lg:hidden border-b border-border/50 bg-background/80 backdrop-blur-xl">
+          <button onClick={() => setSidebarOpen(true)} className="rounded-lg p-2 text-muted-foreground hover:text-foreground hover:bg-muted/50 transition-colors">
             <Menu className="h-5 w-5" />
           </button>
-          <span className="text-xs font-medium tracking-[0.15em] uppercase" style={{ color: "hsl(210 20% 65%)" }}>Elevate Auth</span>
+          <div className="flex items-center gap-2">
+            <Lock className="h-3.5 w-3.5 text-primary" />
+            <span className="text-[13px] font-heading font-semibold text-foreground">Elevate Auth</span>
+          </div>
         </header>
 
-        <main className="flex-1 overflow-auto p-6">{children}</main>
+        <main className="flex-1 overflow-auto p-6 lg:p-8">{children}</main>
       </div>
     </div>
   );

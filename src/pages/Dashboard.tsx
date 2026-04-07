@@ -35,37 +35,29 @@ const Dashboard = () => {
       title: "Aplicações",
       value: stats.apps,
       icon: AppWindow,
-      gradient: "from-primary/20 to-primary/5",
-      iconBg: "bg-primary/15",
       iconColor: "text-primary",
-      borderColor: "border-primary/20",
+      iconBg: "bg-primary/10 border-primary/15",
     },
     {
       title: "Total de Licenças",
       value: stats.licenses,
       icon: Key,
-      gradient: "from-accent/20 to-accent/5",
-      iconBg: "bg-accent/15",
       iconColor: "text-accent",
-      borderColor: "border-accent/20",
+      iconBg: "bg-accent/10 border-accent/15",
     },
     {
       title: "Licenças Ativas",
       value: stats.active,
       icon: Activity,
-      gradient: "from-success/20 to-success/5",
-      iconBg: "bg-success/15",
       iconColor: "text-success",
-      borderColor: "border-success/20",
+      iconBg: "bg-success/10 border-success/15",
     },
     {
       title: "Expiradas",
       value: stats.expired,
       icon: ShieldOff,
-      gradient: "from-destructive/20 to-destructive/5",
-      iconBg: "bg-destructive/15",
       iconColor: "text-destructive",
-      borderColor: "border-destructive/20",
+      iconBg: "bg-destructive/10 border-destructive/15",
     },
   ];
 
@@ -73,7 +65,7 @@ const Dashboard = () => {
     <DashboardLayout>
       <div className="mb-8">
         <div className="flex items-center gap-3 mb-1">
-          <h1 className="text-3xl font-extrabold text-foreground tracking-tight">Dashboard</h1>
+          <h1 className="text-2xl font-heading font-bold text-foreground tracking-tight">Dashboard</h1>
           <span className="flex h-2 w-2 rounded-full bg-success animate-glow-pulse" />
         </div>
         <p className="text-sm text-muted-foreground">Visão geral do seu sistema de licenciamento</p>
@@ -83,57 +75,56 @@ const Dashboard = () => {
         {cards.map((card, i) => (
           <Card
             key={card.title}
-            className={`glass glass-hover overflow-hidden animate-fade-in-up`}
-            style={{ animationDelay: `${i * 100}ms`, animationFillMode: "backwards" }}
+            className="glass glass-hover overflow-hidden animate-fade-in-up relative"
+            style={{ animationDelay: `${i * 80}ms`, animationFillMode: "backwards" }}
           >
-            <div className={`absolute inset-0 bg-gradient-to-br ${card.gradient} opacity-50`} />
             <CardHeader className="relative flex flex-row items-center justify-between pb-2">
-              <CardTitle className="text-xs font-medium uppercase tracking-wider text-muted-foreground">{card.title}</CardTitle>
-              <div className={`flex h-8 w-8 items-center justify-center rounded-lg ${card.iconBg}`}>
+              <CardTitle className="text-[11px] font-medium uppercase tracking-wider text-muted-foreground">{card.title}</CardTitle>
+              <div className={`flex h-9 w-9 items-center justify-center rounded-xl border ${card.iconBg}`}>
                 <card.icon className={`h-4 w-4 ${card.iconColor}`} />
               </div>
             </CardHeader>
             <CardContent className="relative">
-              <div className="text-4xl font-extrabold text-foreground animate-count-up">{card.value}</div>
+              <div className="text-3xl font-heading font-bold text-foreground animate-count-up">{card.value}</div>
             </CardContent>
           </Card>
         ))}
       </div>
 
       <div className="mt-8 grid gap-4 lg:grid-cols-2">
-        <Card className="glass glass-hover animate-fade-in-up" style={{ animationDelay: "400ms", animationFillMode: "backwards" }}>
-          <CardHeader className="flex flex-row items-center gap-2">
-            <div className="flex h-8 w-8 items-center justify-center rounded-lg bg-primary/15">
+        <Card className="glass glass-hover animate-fade-in-up" style={{ animationDelay: "320ms", animationFillMode: "backwards" }}>
+          <CardHeader className="flex flex-row items-center gap-3">
+            <div className="flex h-9 w-9 items-center justify-center rounded-xl bg-primary/10 border border-primary/15">
               <TrendingUp className="h-4 w-4 text-primary" />
             </div>
-            <CardTitle className="text-base">Atividade Recente</CardTitle>
+            <CardTitle className="text-base font-heading font-semibold">Atividade Recente</CardTitle>
           </CardHeader>
           <CardContent>
-            <div className="flex flex-col items-center justify-center py-8 text-center">
-              <div className="mb-3 rounded-full bg-muted p-3">
+            <div className="flex flex-col items-center justify-center py-10 text-center">
+              <div className="mb-3 rounded-xl bg-muted/50 border border-border/50 p-3.5">
                 <Activity className="h-5 w-5 text-muted-foreground" />
               </div>
-              <p className="text-sm text-muted-foreground">Nenhuma atividade recente</p>
+              <p className="text-sm font-medium text-muted-foreground">Nenhuma atividade recente</p>
               <p className="text-xs text-muted-foreground/60 mt-1">As validações de licença aparecerão aqui</p>
             </div>
           </CardContent>
         </Card>
 
-        <Card className="glass glass-hover animate-fade-in-up" style={{ animationDelay: "500ms", animationFillMode: "backwards" }}>
-          <CardHeader className="flex flex-row items-center gap-2">
-            <div className="flex h-8 w-8 items-center justify-center rounded-lg bg-accent/15">
+        <Card className="glass glass-hover animate-fade-in-up" style={{ animationDelay: "400ms", animationFillMode: "backwards" }}>
+          <CardHeader className="flex flex-row items-center gap-3">
+            <div className="flex h-9 w-9 items-center justify-center rounded-xl bg-accent/10 border border-accent/15">
               <Zap className="h-4 w-4 text-accent" />
             </div>
-            <CardTitle className="text-base">Início Rápido</CardTitle>
+            <CardTitle className="text-base font-heading font-semibold">Início Rápido</CardTitle>
           </CardHeader>
-          <CardContent className="space-y-4">
+          <CardContent className="space-y-3">
             {[
-              { step: "1", text: "Crie uma Aplicação para começar", color: "bg-primary/15 text-primary" },
-              { step: "2", text: "Gere Licenças para seus usuários", color: "bg-accent/15 text-accent" },
-              { step: "3", text: "Use a API para validar no seu software", color: "bg-success/15 text-success" },
+              { step: "1", text: "Crie uma Aplicação para começar", color: "bg-primary/10 text-primary border-primary/15" },
+              { step: "2", text: "Gere Licenças para seus usuários", color: "bg-accent/10 text-accent border-accent/15" },
+              { step: "3", text: "Use a API para validar no seu software", color: "bg-success/10 text-success border-success/15" },
             ].map((item) => (
-              <div key={item.step} className="flex items-center gap-3 rounded-lg bg-muted/50 border border-border/50 px-4 py-3 transition-colors hover:bg-muted">
-                <div className={`flex h-7 w-7 shrink-0 items-center justify-center rounded-lg text-xs font-bold ${item.color}`}>
+              <div key={item.step} className="flex items-center gap-3 rounded-xl bg-muted/30 border border-border/50 px-4 py-3.5 transition-colors hover:bg-muted/50">
+                <div className={`flex h-8 w-8 shrink-0 items-center justify-center rounded-lg text-xs font-bold border ${item.color}`}>
                   {item.step}
                 </div>
                 <p className="text-sm text-foreground/80">{item.text}</p>
