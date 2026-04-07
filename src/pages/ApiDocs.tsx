@@ -318,11 +318,11 @@ const ApiDocs = () => {
                   Um cracker <strong>não pode</strong> falsificar essa assinatura sem a chave.
                 </p>
                 <pre className="rounded-lg bg-muted p-3 font-mono text-xs text-foreground overflow-x-auto">
-{`# O servidor assina: {"session":"token","username":"user","status":"active","timestamp":123,"nonce":"abc"}
-# O cliente deve verificar que:
-# 1. A signature NÃO é vazia
-# 2. O nonce retornado é o MESMO que você enviou
-# 3. O timestamp é recente (< 30 segundos)`}
+{`// O servidor assina: {"session":"token","username":"user","status":"active","timestamp":123,"nonce":"abc"}
+// O cliente deve verificar que:
+// 1. A signature NÃO é vazia
+// 2. O nonce retornado é o MESMO que você enviou
+// 3. O timestamp é recente (< 30 segundos)`}
                 </pre>
               </div>
 
@@ -423,7 +423,7 @@ void ProtectLoop() {
                   <p>✅ <strong className="text-foreground">Use HWID</strong> — trava a licença no hardware do cliente</p>
                   <p>✅ <strong className="text-foreground">Cheque app-status</strong> antes do login para poder desabilitar remotamente</p>
                   <p>✅ <strong className="text-foreground">Anti-debug</strong> — rode verificações em loop, não apenas no início</p>
-                  <p>✅ <strong className="text-foreground">Ofusque seu código</strong> — use Obfuscar (.NET), VMProtect, Themida (C++)</p>
+                  <p>✅ <strong className="text-foreground">Ofusque seu código</strong> — use VMProtect, Themida (C++)</p>
                   <p>✅ <strong className="text-foreground">String encryption</strong> — não deixe URLs e secrets em plaintext no binário</p>
                   <p>✅ <strong className="text-foreground">Integrity check</strong> — verifique o hash do próprio executável em runtime</p>
                 </div>
@@ -432,11 +432,11 @@ void ProtectLoop() {
           </CardContent>
         </Card>
 
-        {/* Integration Examples */}
+        {/* Integration Example - C++ Only */}
         <Card className="border-border/50 bg-card">
           <CardHeader>
-            <CardTitle className="text-base">📦 Exemplo Completo de Integração</CardTitle>
-            <p className="text-xs text-muted-foreground mt-1">Inclui app-status + registro + login + anti-debug em C++</p>
+            <CardTitle className="text-base">📦 Exemplo Completo de Integração (C++)</CardTitle>
+            <p className="text-xs text-muted-foreground mt-1">Inclui app-status + registro + login + anti-debug</p>
           </CardHeader>
           <CardContent>
             <pre className="rounded-lg bg-muted p-3 font-mono text-xs text-foreground overflow-x-auto">
@@ -528,347 +528,6 @@ bool login(const std::string& user, const std::string& pass) {
 // if (login("usuario", "senha"))                 // próximas vezes
 //     std::cout << "Programa liberado!" << std::endl;`}
             </pre>
-          </CardContent>
-        </Card>
-
-
-BASE_URL = "${baseUrl}"
-APP_SECRET = "coloque-seu-app-secret-aqui"
-
-def get_hwid():
-    return hashlib.md5(str(uuid.getnode()).encode()).hexdigest()
-
-def gen_nonce():
-    return str(uuid.uuid4())
-
-# ── ANTI-DEBUG ────────────────────────────────────
-def check_debug():
-    if sys.gettrace() is not None:
-        os._exit(0)
-    try:
-        import psutil
-        bad = ["x64dbg","x32dbg","ollydbg","ida","cheatengine","dnspy","fiddler"]
-        for p in psutil.process_iter(['name']):
-            if any(b in p.info['name'].lower() for b in bad):
-                os._exit(0)
-    except: pass
-
-# ── APP STATUS ────────────────────────────────────
-def check_app_status():
-    check_debug()
-    nonce = gen_nonce()
-    r = requests.post(f"{BASE_URL}/app-status", json={
-        "app_secret": APP_SECRET,
-        "version": "1.0.0",
-        "nonce": nonce
-    })
-    data = r.json()
-    
-    # Validações anti-crack
-    if data.get("nonce") != nonce:
-        print("⚠️ Resposta adulterada!")
-        os._exit(0)
-    if abs(time.time() * 1000 - data.get("timestamp", 0)) > 30000:
-        print("⚠️ Resposta expirada!")
-        os._exit(0)
-    if not data.get("signature"):
-        os._exit(0)
-    
-    if data["status"] == "disabled":
-        print(f"🔴 {data['message']}")
-        return False
-    if data["status"] == "outdated":
-        print(f"🟡 {data['message']}")
-        return False
-    
-    print(f"🟢 App online! Versão atual: {data['app']['current_version']}")
-    if data['app'].get('update_available'):
-        print(f"📦 Nova versão disponível: {data['app']['current_version']}")
-    return True
-
-# ── REGISTRO (primeira vez) ───────────────────────
-def register(license_key, username, password):
-    r = requests.post(f"{BASE_URL}/register-with-license", json={
-        "license_key": license_key,
-        "app_secret": APP_SECRET,
-        "username": username,
-        "password": password,
-        "hwid": get_hwid()
-    })
-    data = r.json()
-    print("✅ Conta criada!" if data["success"] else f"❌ {data['message']}")
-    return data
-
-# ── LOGIN ─────────────────────────────────────────
-def login(username, password):
-    check_debug()
-    nonce = gen_nonce()
-    r = requests.post(f"{BASE_URL}/login", json={
-        "app_secret": APP_SECRET,
-        "username": username,
-        "password": password,
-        "hwid": get_hwid(),
-        "nonce": nonce
-    })
-    data = r.json()
-    
-    if data.get("success"):
-        # Validações anti-crack
-        if data.get("nonce") != nonce:
-            os._exit(0)
-        if not data.get("signature") or len(data["signature"]) != 64:
-            os._exit(0)
-        if abs(time.time() * 1000 - data.get("timestamp", 0)) > 30000:
-            os._exit(0)
-        
-        print(f"✅ Logado! Token: {data['session_token'][:16]}...")
-        return True
-    else:
-        print(f"❌ {data['message']}")
-        return False
-
-# ── USO ───────────────────────────────────────────
-# if not check_app_status():
-#     sys.exit(1)
-# register("SUA-KEY", "usuario", "senha")     # primeira vez
-# if login("usuario", "senha"):               # próximas vezes
-#     print("Programa liberado!")
-`}
-                </pre>
-              </TabsContent>
-
-              <TabsContent value="csharp">
-                <pre className="rounded-lg bg-muted p-3 font-mono text-xs text-foreground overflow-x-auto">
-{`using System.Net.Http;
-using System.Text;
-using System.Text.Json;
-using System.Management;
-using System.Diagnostics;
-using System.Runtime.InteropServices;
-
-class ElevateAuth
-{
-    static readonly HttpClient client = new();
-    static readonly string BASE_URL = "${baseUrl}";
-    static readonly string APP_SECRET = "coloque-seu-app-secret-aqui";
-
-    [DllImport("kernel32.dll")]
-    static extern bool IsDebuggerPresent();
-
-    static string GetHWID() {
-        var s = new ManagementObjectSearcher("SELECT ProcessorId FROM Win32_Processor");
-        foreach (var o in s.Get()) return o["ProcessorId"]?.ToString() ?? "unknown";
-        return "unknown";
-    }
-
-    static void AntiDebug() {
-        if (IsDebuggerPresent() || Debugger.IsAttached)
-            Environment.Exit(0);
-        string[] bad = {"x64dbg","x32dbg","ollydbg","ida","cheatengine","dnspy","fiddler"};
-        foreach (var p in Process.GetProcesses())
-            foreach (var b in bad)
-                if (p.ProcessName.ToLower().Contains(b)) Environment.Exit(0);
-    }
-
-    // APP STATUS
-    public static async Task<bool> CheckStatus(string version = "1.0.0") {
-        AntiDebug();
-        string nonce = Guid.NewGuid().ToString();
-        var body = JsonSerializer.Serialize(new { app_secret = APP_SECRET, version, nonce });
-        var res = await client.PostAsync($"{BASE_URL}/app-status",
-            new StringContent(body, Encoding.UTF8, "application/json"));
-        var json = JsonDocument.Parse(await res.Content.ReadAsStringAsync());
-        var root = json.RootElement;
-
-        if (root.GetProperty("nonce").GetString() != nonce) Environment.Exit(0);
-        if (string.IsNullOrEmpty(root.GetProperty("signature").GetString())) Environment.Exit(0);
-
-        string status = root.GetProperty("status").GetString()!;
-        if (status == "disabled" || status == "outdated") {
-            Console.WriteLine(root.GetProperty("message").GetString());
-            return false;
-        }
-        return true;
-    }
-
-    // REGISTER
-    public static async Task<bool> Register(string licenseKey, string user, string pass) {
-        var body = JsonSerializer.Serialize(new {
-            license_key = licenseKey, app_secret = APP_SECRET,
-            username = user, password = pass, hwid = GetHWID()
-        });
-        var res = await client.PostAsync($"{BASE_URL}/register-with-license",
-            new StringContent(body, Encoding.UTF8, "application/json"));
-        var json = JsonDocument.Parse(await res.Content.ReadAsStringAsync());
-        return json.RootElement.GetProperty("success").GetBoolean();
-    }
-
-    // LOGIN
-    public static async Task<bool> Login(string user, string pass) {
-        AntiDebug();
-        string nonce = Guid.NewGuid().ToString();
-        var body = JsonSerializer.Serialize(new {
-            app_secret = APP_SECRET, username = user, password = pass,
-            hwid = GetHWID(), nonce
-        });
-        var res = await client.PostAsync($"{BASE_URL}/login",
-            new StringContent(body, Encoding.UTF8, "application/json"));
-        var json = JsonDocument.Parse(await res.Content.ReadAsStringAsync());
-        var root = json.RootElement;
-
-        if (!root.GetProperty("success").GetBoolean()) return false;
-        if (root.GetProperty("nonce").GetString() != nonce) Environment.Exit(0);
-        if (root.GetProperty("signature").GetString()?.Length != 64) Environment.Exit(0);
-
-        Console.WriteLine($"Session: {root.GetProperty("session_token").GetString()}");
-        return true;
-    }
-}`}
-                </pre>
-              </TabsContent>
-
-              <TabsContent value="cpp">
-                <pre className="rounded-lg bg-muted p-3 font-mono text-xs text-foreground overflow-x-auto">
-{`#include <iostream>
-#include <string>
-#include <curl/curl.h>
-#include <nlohmann/json.hpp>
-#include <windows.h>
-
-using json = nlohmann::json;
-
-const std::string BASE_URL = "${baseUrl}";
-const std::string APP_SECRET = "coloque-seu-app-secret-aqui";
-
-void anti_debug() {
-    if (IsDebuggerPresent()) ExitProcess(0);
-    BOOL remote = FALSE;
-    CheckRemoteDebuggerPresent(GetCurrentProcess(), &remote);
-    if (remote) ExitProcess(0);
-}
-
-size_t WriteCallback(void* c, size_t s, size_t n, std::string* o) {
-    o->append((char*)c, s * n); return s * n;
-}
-
-json post(const std::string& endpoint, const json& body) {
-    CURL* curl = curl_easy_init();
-    std::string response;
-    if (curl) {
-        std::string url = BASE_URL + "/" + endpoint;
-        std::string payload = body.dump();
-        struct curl_slist* h = nullptr;
-        h = curl_slist_append(h, "Content-Type: application/json");
-        curl_easy_setopt(curl, CURLOPT_URL, url.c_str());
-        curl_easy_setopt(curl, CURLOPT_POSTFIELDS, payload.c_str());
-        curl_easy_setopt(curl, CURLOPT_HTTPHEADER, h);
-        curl_easy_setopt(curl, CURLOPT_WRITEFUNCTION, WriteCallback);
-        curl_easy_setopt(curl, CURLOPT_WRITEDATA, &response);
-        curl_easy_perform(curl);
-        curl_slist_free_all(h);
-        curl_easy_cleanup(curl);
-    }
-    return json::parse(response);
-}
-
-bool check_status(const std::string& version = "1.0.0") {
-    anti_debug();
-    std::string nonce = "nonce-" + std::to_string(rand());
-    auto res = post("app-status", {
-        {"app_secret", APP_SECRET}, {"version", version}, {"nonce", nonce}
-    });
-    if (res["nonce"] != nonce) ExitProcess(0);
-    if (res["status"] == "disabled" || res["status"] == "outdated") {
-        std::cout << res["message"] << std::endl;
-        return false;
-    }
-    return true;
-}
-
-bool login(const std::string& user, const std::string& pass) {
-    anti_debug();
-    std::string nonce = "nonce-" + std::to_string(rand());
-    auto res = post("login", {
-        {"app_secret", APP_SECRET}, {"username", user},
-        {"password", pass}, {"nonce", nonce}
-    });
-    if (!res["success"]) return false;
-    if (res["nonce"] != nonce) ExitProcess(0);
-    std::string sig = res["signature"];
-    if (sig.length() != 64) ExitProcess(0);
-    std::cout << "Session: " << res["session_token"] << std::endl;
-    return true;
-}
-
-// Dependências: libcurl, nlohmann/json
-// Compilar: g++ -o app main.cpp -lcurl`}
-                </pre>
-              </TabsContent>
-
-              <TabsContent value="nodejs">
-                <pre className="rounded-lg bg-muted p-3 font-mono text-xs text-foreground overflow-x-auto">
-{`import crypto from "crypto";
-
-const BASE_URL = "${baseUrl}";
-const APP_SECRET = "coloque-seu-app-secret-aqui";
-
-function genNonce() { return crypto.randomUUID(); }
-
-async function checkAppStatus(version = "1.0.0") {
-  const nonce = genNonce();
-  const res = await fetch(\`\${BASE_URL}/app-status\`, {
-    method: "POST",
-    headers: { "Content-Type": "application/json" },
-    body: JSON.stringify({ app_secret: APP_SECRET, version, nonce }),
-  });
-  const data = await res.json();
-
-  if (data.nonce !== nonce) throw new Error("Tampered response");
-  if (!data.signature) throw new Error("Missing signature");
-  if (Math.abs(Date.now() - data.timestamp) > 30000) throw new Error("Expired");
-
-  console.log(\`Status: \${data.status} - \${data.message}\`);
-  return data.status === "online";
-}
-
-async function register(licenseKey, username, password) {
-  const res = await fetch(\`\${BASE_URL}/register-with-license\`, {
-    method: "POST",
-    headers: { "Content-Type": "application/json" },
-    body: JSON.stringify({
-      license_key: licenseKey, app_secret: APP_SECRET, username, password
-    }),
-  });
-  return (await res.json()).success;
-}
-
-async function login(username, password) {
-  const nonce = genNonce();
-  const res = await fetch(\`\${BASE_URL}/login\`, {
-    method: "POST",
-    headers: { "Content-Type": "application/json" },
-    body: JSON.stringify({
-      app_secret: APP_SECRET, username, password, nonce
-    }),
-  });
-  const data = await res.json();
-  if (!data.success) return false;
-
-  if (data.nonce !== nonce) throw new Error("Tampered");
-  if (!data.signature || data.signature.length !== 64) throw new Error("Invalid sig");
-
-  console.log(\`Session: \${data.session_token}\`);
-  return true;
-}
-
-// USO:
-// if (await checkAppStatus("1.0.0")) {
-//   await register("SUA-KEY", "user", "pass");
-//   await login("user", "pass");
-// }`}
-                </pre>
-              </TabsContent>
-            </Tabs>
           </CardContent>
         </Card>
 
