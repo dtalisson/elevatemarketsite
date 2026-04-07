@@ -185,7 +185,7 @@ const SecurityLogsPage = () => {
             </DialogTitle>
           </DialogHeader>
           {selectedLog && (() => {
-            const cfg = eventConfig[selectedLog.event_type] || { label: selectedLog.event_type, icon: AlertTriangle, color: "", description: "Evento de segurança desconhecido." };
+            const cfg = eventConfig[selectedLog.event_type] || { label: selectedLog.event_type, color: "", description: "Evento de segurança desconhecido." };
             const app = appsMap[selectedLog.application_id];
             return (
               <div className="space-y-3">
