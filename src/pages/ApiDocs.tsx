@@ -31,11 +31,19 @@ const ApiDocs = () => {
             </div>
             <div className="flex items-start gap-3">
               <Badge variant="outline" className="shrink-0 mt-0.5">3</Badge>
-              <span>Nos próximos acessos, o cliente usa <strong className="text-foreground">usuário e senha</strong> para entrar via <code className="text-primary">/login</code></span>
+              <span>Antes de logar, chame <code className="text-primary">/pre-auth</code> para obter um <strong className="text-foreground">challenge token</strong> (handshake seguro)</span>
             </div>
             <div className="flex items-start gap-3">
               <Badge variant="outline" className="shrink-0 mt-0.5">4</Badge>
-              <span>Valide o <code className="text-primary">session_token</code> e <code className="text-primary">signature</code> retornados para proteger contra <strong className="text-foreground">bypass de auth</strong></span>
+              <span>Faça login via <code className="text-primary">/login</code> enviando o <code className="text-primary">challenge_token</code> junto com credenciais</span>
+            </div>
+            <div className="flex items-start gap-3">
+              <Badge variant="outline" className="shrink-0 mt-0.5">5</Badge>
+              <span>Durante a sessão, envie <code className="text-primary">/heartbeat</code> a cada 30s para manter a sessão e detectar <strong className="text-foreground">bans em tempo real</strong></span>
+            </div>
+            <div className="flex items-start gap-3">
+              <Badge variant="outline" className="shrink-0 mt-0.5">6</Badge>
+              <span>Se detectar debugger/dump, envie <code className="text-primary">/security-log</code> para alertar o painel</span>
             </div>
           </div>
         </CardContent>
