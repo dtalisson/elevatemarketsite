@@ -24,15 +24,31 @@ function getClientIp(req: Request): string {
     || "unknown";
 }
 
+async function hmacSign(message: string, secret: string): Promise<string> {
+  const encoder = new TextEncoder();
+  const key = await crypto.subtle.importKey(
+    "raw", encoder.encode(secret), { name: "HMAC", hash: "SHA-256" }, false, ["sign"]
+  );
+  const sig = await crypto.subtle.sign("HMAC", key, encoder.encode(message));
+  return Array.from(new Uint8Array(sig)).map(b => b.toString(16).padStart(2, "0")).join("");
+}
+
+function generateSessionToken(): string {
+  const bytes = new Uint8Array(32);
+  crypto.getRandomValues(bytes);
+  return Array.from(bytes).map(b => b.toString(16).padStart(2, "0")).join("");
+}
+
 Deno.serve(async (req) => {
   if (req.method === "OPTIONS") {
     return new Response("ok", { headers: corsHeaders });
   }
 
   const ip = getClientIp(req);
+  const requestStart = Date.now();
 
   try {
-    const { app_secret, username, password, hwid, version } = await req.json();
+    const { app_secret, username, password, hwid, version, nonce } = await req.json();
 
     if (!app_secret || !username || !password) {
       return new Response(
@@ -107,14 +123,21 @@ Deno.serve(async (req) => {
       );
     }
 
-    // Verify password
+    // Verify password with constant-time comparison
     const encoder = new TextEncoder();
     const data = encoder.encode(password);
     const hashBuffer = await crypto.subtle.digest("SHA-256", data);
     const hashArray = Array.from(new Uint8Array(hashBuffer));
     const passwordHash = hashArray.map(b => b.toString(16).padStart(2, "0")).join("");
 
-    if (user.password_hash !== passwordHash) {
+    // Constant-time string comparison to prevent timing attacks
+    const storedHash = user.password_hash;
+    let mismatch = passwordHash.length !== storedHash.length ? 1 : 0;
+    for (let i = 0; i < Math.max(passwordHash.length, storedHash.length); i++) {
+      mismatch |= (passwordHash.charCodeAt(i) || 0) ^ (storedHash.charCodeAt(i) || 0);
+    }
+
+    if (mismatch !== 0) {
       await supabase.from("auth_logs").insert({
         application_id: app.id, event_type: "login_failed", username: username.toLowerCase(),
         ip_address: ip, hwid, success: false, details: "Wrong password", license_id: user.license_id,
@@ -181,6 +204,18 @@ Deno.serve(async (req) => {
     if (hwid && !user.hwid) userUpdates.hwid = hwid;
     await supabase.from("software_users").update(userUpdates).eq("id", user.id);
 
+    // Generate session token and sign the response
+    const sessionToken = generateSessionToken();
+    const timestamp = Date.now();
+    const signPayload = JSON.stringify({
+      session: sessionToken,
+      username: user.username,
+      status: license.status,
+      timestamp,
+      nonce: nonce || "",
+    });
+    const signature = await hmacSign(signPayload, supabaseKey);
+
     // Log success
     await supabase.from("auth_logs").insert({
       application_id: app.id, event_type: "login_success", username: username.toLowerCase(),
@@ -191,6 +226,10 @@ Deno.serve(async (req) => {
       JSON.stringify({
         success: true,
         message: "Login successful",
+        session_token: sessionToken,
+        signature,
+        timestamp,
+        nonce: nonce || null,
         user: {
           username: user.username,
           license: {

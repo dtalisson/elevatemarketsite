@@ -24,7 +24,7 @@ const navItems = [
   { label: "Usuários", icon: Users, href: "/dashboard/users" },
   { label: "Online", icon: Wifi, href: "/dashboard/online" },
   { label: "Logs", icon: ScrollText, href: "/dashboard/logs" },
-  { label: "API", icon: Code, href: "/dashboard/api" },
+  { label: "Documentação", icon: Code, href: "/dashboard/docs" },
 ];
 
 export const DashboardLayout = ({ children }: { children: ReactNode }) => {
