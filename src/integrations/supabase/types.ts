@@ -175,6 +175,47 @@ export type Database = {
           },
         ]
       }
+      pre_auth_tokens: {
+        Row: {
+          application_id: string
+          created_at: string
+          expires_at: string
+          hwid: string | null
+          id: string
+          token: string
+          used: boolean
+          username: string
+        }
+        Insert: {
+          application_id: string
+          created_at?: string
+          expires_at: string
+          hwid?: string | null
+          id?: string
+          token: string
+          used?: boolean
+          username: string
+        }
+        Update: {
+          application_id?: string
+          created_at?: string
+          expires_at?: string
+          hwid?: string | null
+          id?: string
+          token?: string
+          used?: boolean
+          username?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "pre_auth_tokens_application_id_fkey"
+            columns: ["application_id"]
+            isOneToOne: false
+            referencedRelation: "applications"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       profiles: {
         Row: {
           avatar_url: string | null
@@ -204,6 +245,50 @@ export type Database = {
           username?: string | null
         }
         Relationships: []
+      }
+      security_logs: {
+        Row: {
+          application_id: string
+          client_timestamp: number | null
+          created_at: string
+          details: string | null
+          event_type: string
+          hwid: string | null
+          id: string
+          ip_address: string | null
+          username: string | null
+        }
+        Insert: {
+          application_id: string
+          client_timestamp?: number | null
+          created_at?: string
+          details?: string | null
+          event_type: string
+          hwid?: string | null
+          id?: string
+          ip_address?: string | null
+          username?: string | null
+        }
+        Update: {
+          application_id?: string
+          client_timestamp?: number | null
+          created_at?: string
+          details?: string | null
+          event_type?: string
+          hwid?: string | null
+          id?: string
+          ip_address?: string | null
+          username?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "security_logs_application_id_fkey"
+            columns: ["application_id"]
+            isOneToOne: false
+            referencedRelation: "applications"
+            referencedColumns: ["id"]
+          },
+        ]
       }
       software_users: {
         Row: {
