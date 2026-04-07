@@ -353,6 +353,33 @@ const Licenses = () => {
                   <InfoRow label="Expira" value={selectedLicense.expires_at ? formatDate(selectedLicense.expires_at) : "Sem expiração"} />
                 </div>
                 <div className="space-y-2">
+                  {selectedLicense.status === "active" || selectedLicense.status === "unused" ? (
+                    <Button
+                      variant="outline"
+                      className="w-full text-warning border-warning/30 hover:bg-warning/10"
+                      size="sm"
+                      onClick={async () => {
+                        const { error } = await supabase.from("licenses").update({ status: "banned" as const }).eq("id", selectedLicense.id);
+                        if (error) toast.error(error.message);
+                        else { toast.success("Licença desativada"); setSelectedLicense((p) => p ? { ...p, status: "banned" } : null); fetchData(); }
+                      }}
+                    >
+                      <Ban className="mr-2 h-3.5 w-3.5" />Desativar
+                    </Button>
+                  ) : (
+                    <Button
+                      variant="outline"
+                      className="w-full text-primary border-primary/30 hover:bg-primary/10"
+                      size="sm"
+                      onClick={async () => {
+                        const { error } = await supabase.from("licenses").update({ status: "active" as const }).eq("id", selectedLicense.id);
+                        if (error) toast.error(error.message);
+                        else { toast.success("Licença ativada"); setSelectedLicense((p) => p ? { ...p, status: "active" } : null); fetchData(); }
+                      }}
+                    >
+                      <CheckCircle2 className="mr-2 h-3.5 w-3.5" />Ativar
+                    </Button>
+                  )}
                   {selectedLicense.hwid && (
                     <AlertDialog>
                       <AlertDialogTrigger asChild>
