@@ -49,6 +49,50 @@ const LogsPage = () => {
   const [filterSuccess, setFilterSuccess] = useState("all");
   const [selectedApp, setSelectedApp] = useState("all");
   const [selectedLog, setSelectedLog] = useState<AuthLog | null>(null);
+  const [cleanupPeriod, setCleanupPeriod] = useState("1d");
+  const [showCleanup, setShowCleanup] = useState(false);
+  const [cleanupLoading, setCleanupLoading] = useState(false);
+
+  const cleanupLabels: Record<string, string> = {
+    "1d": "Últimas 24 horas",
+    "3d": "Últimos 3 dias",
+    "1w": "Última semana",
+    "1m": "Último mês",
+    "all": "Todos os logs",
+  };
+
+  const getCleanupDate = (period: string): string | null => {
+    const now = Date.now();
+    switch (period) {
+      case "1d": return new Date(now - 1 * 86400000).toISOString();
+      case "3d": return new Date(now - 3 * 86400000).toISOString();
+      case "1w": return new Date(now - 7 * 86400000).toISOString();
+      case "1m": return new Date(now - 30 * 86400000).toISOString();
+      case "all": return null;
+      default: return null;
+    }
+  };
+
+  const cleanupLogs = async () => {
+    setCleanupLoading(true);
+    const appIds = apps.map(a => a.id);
+    if (appIds.length === 0) { setCleanupLoading(false); return; }
+
+    const cutoff = getCleanupDate(cleanupPeriod);
+    let query = supabase.from("auth_logs").delete().in("application_id", appIds);
+    if (cutoff) {
+      query = query.lt("created_at", cutoff);
+    }
+
+    const { error } = await query;
+    if (error) toast.error(error.message);
+    else {
+      toast.success(`Logs ${cutoff ? "anteriores a " + new Date(cutoff).toLocaleDateString("pt-BR") : ""} apagados`);
+      fetchData();
+    }
+    setCleanupLoading(false);
+    setShowCleanup(false);
+  };
 
   const fetchData = async () => {
     if (!user) return;
