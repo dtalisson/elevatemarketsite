@@ -318,11 +318,11 @@ const ApiDocs = () => {
                   Um cracker <strong>não pode</strong> falsificar essa assinatura sem a chave.
                 </p>
                 <pre className="rounded-lg bg-muted p-3 font-mono text-xs text-foreground overflow-x-auto">
-{`# O servidor assina: {"session":"token","username":"user","status":"active","timestamp":123,"nonce":"abc"}
-# O cliente deve verificar que:
-# 1. A signature NÃO é vazia
-# 2. O nonce retornado é o MESMO que você enviou
-# 3. O timestamp é recente (< 30 segundos)`}
+{`// O servidor assina: {"session":"token","username":"user","status":"active","timestamp":123,"nonce":"abc"}
+// O cliente deve verificar que:
+// 1. A signature NÃO é vazia
+// 2. O nonce retornado é o MESMO que você enviou
+// 3. O timestamp é recente (< 30 segundos)`}
                 </pre>
               </div>
 
@@ -338,15 +338,15 @@ const ApiDocs = () => {
                 </p>
                 <pre className="rounded-lg bg-muted p-3 font-mono text-xs text-foreground overflow-x-auto">
 {`// Gere um nonce único por request
-string nonce = Guid.NewGuid().ToString();
+std::string nonce = "nonce-" + std::to_string(rand());
 
 // Envie no request
-{ "nonce": nonce, ... }
+json body = { {"nonce", nonce}, ... };
 
 // Verifique na resposta
-if (response.nonce != nonce) {
+if (res["nonce"] != nonce) {
     // RESPOSTA FAKE! Feche o programa.
-    Environment.Exit(0);
+    ExitProcess(0);
 }`}
                 </pre>
               </div>
@@ -359,67 +359,7 @@ if (response.nonce != nonce) {
                 <p className="text-xs text-muted-foreground mb-2">
                   Adicione verificações anti-debug no lado do cliente para detectar x64dbg, OllyDbg, Cheat Engine e similares.
                 </p>
-                <Tabs defaultValue="csharp_anti" className="w-full">
-                  <TabsList className="mb-2">
-                    <TabsTrigger value="csharp_anti">C#</TabsTrigger>
-                    <TabsTrigger value="cpp_anti">C++</TabsTrigger>
-                    <TabsTrigger value="python_anti">Python</TabsTrigger>
-                  </TabsList>
-                  <TabsContent value="csharp_anti">
-                    <pre className="rounded-lg bg-muted p-3 font-mono text-xs text-foreground overflow-x-auto">
-{`using System.Diagnostics;
-using System.Runtime.InteropServices;
-
-class AntiDebug
-{
-    [DllImport("kernel32.dll")]
-    static extern bool IsDebuggerPresent();
-
-    [DllImport("kernel32.dll")]
-    static extern bool CheckRemoteDebuggerPresent(IntPtr hProcess, ref bool isDebuggerPresent);
-
-    public static bool IsBeingDebugged()
-    {
-        // Método 1: API do Windows
-        if (IsDebuggerPresent()) return true;
-
-        // Método 2: Debugger remoto
-        bool remoteDebugger = false;
-        CheckRemoteDebuggerPresent(Process.GetCurrentProcess().Handle, ref remoteDebugger);
-        if (remoteDebugger) return true;
-
-        // Método 3: .NET Debugger
-        if (Debugger.IsAttached) return true;
-
-        // Método 4: Processos suspeitos
-        string[] badProcesses = {
-            "x64dbg", "x32dbg", "ollydbg", "ida", "ida64",
-            "cheatengine", "dnspy", "de4dot", "httpdebugger",
-            "fiddler", "wireshark", "processhacker"
-        };
-        foreach (var proc in Process.GetProcesses())
-        {
-            string name = proc.ProcessName.ToLower();
-            foreach (var bad in badProcesses)
-                if (name.Contains(bad)) return true;
-        }
-        return false;
-    }
-
-    // Chame no início do programa e periodicamente
-    public static void Protect()
-    {
-        if (IsBeingDebugged())
-        {
-            // Feche silenciosamente
-            Environment.Exit(0);
-        }
-    }
-}`}
-                    </pre>
-                  </TabsContent>
-                  <TabsContent value="cpp_anti">
-                    <pre className="rounded-lg bg-muted p-3 font-mono text-xs text-foreground overflow-x-auto">
+                <pre className="rounded-lg bg-muted p-3 font-mono text-xs text-foreground overflow-x-auto">
 {`#include <windows.h>
 #include <tlhelp32.h>
 #include <string>
@@ -468,37 +408,7 @@ void ProtectLoop() {
         Sleep(5000);
     }
 }`}
-                    </pre>
-                  </TabsContent>
-                  <TabsContent value="python_anti">
-                    <pre className="rounded-lg bg-muted p-3 font-mono text-xs text-foreground overflow-x-auto">
-{`import sys, os, ctypes, psutil
-
-def is_debugged():
-    # Método 1: sys.gettrace
-    if sys.gettrace() is not None:
-        return True
-
-    # Método 2: Windows API
-    if os.name == "nt":
-        if ctypes.windll.kernel32.IsDebuggerPresent():
-            return True
-
-    # Método 3: Processos suspeitos
-    bad = ["x64dbg", "x32dbg", "ollydbg", "ida", "ida64",
-           "cheatengine", "dnspy", "fiddler", "wireshark"]
-    for proc in psutil.process_iter(['name']):
-        name = proc.info['name'].lower()
-        if any(b in name for b in bad):
-            return True
-    return False
-
-# No início do programa:
-if is_debugged():
-    os._exit(0)`}
-                    </pre>
-                  </TabsContent>
-                </Tabs>
+                </pre>
               </div>
 
               <div>
@@ -513,7 +423,7 @@ if is_debugged():
                   <p>✅ <strong className="text-foreground">Use HWID</strong> — trava a licença no hardware do cliente</p>
                   <p>✅ <strong className="text-foreground">Cheque app-status</strong> antes do login para poder desabilitar remotamente</p>
                   <p>✅ <strong className="text-foreground">Anti-debug</strong> — rode verificações em loop, não apenas no início</p>
-                  <p>✅ <strong className="text-foreground">Ofusque seu código</strong> — use Obfuscar (.NET), VMProtect, Themida (C++)</p>
+                  <p>✅ <strong className="text-foreground">Ofusque seu código</strong> — use VMProtect, Themida (C++)</p>
                   <p>✅ <strong className="text-foreground">String encryption</strong> — não deixe URLs e secrets em plaintext no binário</p>
                   <p>✅ <strong className="text-foreground">Integrity check</strong> — verifique o hash do próprio executável em runtime</p>
                 </div>
@@ -522,222 +432,14 @@ if is_debugged():
           </CardContent>
         </Card>
 
-        {/* Integration Examples */}
+        {/* Integration Example - C++ Only */}
         <Card className="border-border/50 bg-card">
           <CardHeader>
-            <CardTitle className="text-base">📦 Exemplo Completo de Integração</CardTitle>
+            <CardTitle className="text-base">📦 Exemplo Completo de Integração (C++)</CardTitle>
             <p className="text-xs text-muted-foreground mt-1">Inclui app-status + registro + login + anti-debug</p>
           </CardHeader>
           <CardContent>
-            <Tabs defaultValue="python" className="w-full">
-              <TabsList className="mb-3">
-                <TabsTrigger value="python">Python</TabsTrigger>
-                <TabsTrigger value="csharp">C#</TabsTrigger>
-                <TabsTrigger value="cpp">C++</TabsTrigger>
-                <TabsTrigger value="nodejs">Node.js</TabsTrigger>
-              </TabsList>
-
-              <TabsContent value="python">
-                <pre className="rounded-lg bg-muted p-3 font-mono text-xs text-foreground overflow-x-auto">
-{`import requests, hashlib, uuid, sys, os, time
-
-BASE_URL = "${baseUrl}"
-APP_SECRET = "coloque-seu-app-secret-aqui"
-
-def get_hwid():
-    return hashlib.md5(str(uuid.getnode()).encode()).hexdigest()
-
-def gen_nonce():
-    return str(uuid.uuid4())
-
-# ── ANTI-DEBUG ────────────────────────────────────
-def check_debug():
-    if sys.gettrace() is not None:
-        os._exit(0)
-    try:
-        import psutil
-        bad = ["x64dbg","x32dbg","ollydbg","ida","cheatengine","dnspy","fiddler"]
-        for p in psutil.process_iter(['name']):
-            if any(b in p.info['name'].lower() for b in bad):
-                os._exit(0)
-    except: pass
-
-# ── APP STATUS ────────────────────────────────────
-def check_app_status():
-    check_debug()
-    nonce = gen_nonce()
-    r = requests.post(f"{BASE_URL}/app-status", json={
-        "app_secret": APP_SECRET,
-        "version": "1.0.0",
-        "nonce": nonce
-    })
-    data = r.json()
-    
-    # Validações anti-crack
-    if data.get("nonce") != nonce:
-        print("⚠️ Resposta adulterada!")
-        os._exit(0)
-    if abs(time.time() * 1000 - data.get("timestamp", 0)) > 30000:
-        print("⚠️ Resposta expirada!")
-        os._exit(0)
-    if not data.get("signature"):
-        os._exit(0)
-    
-    if data["status"] == "disabled":
-        print(f"🔴 {data['message']}")
-        return False
-    if data["status"] == "outdated":
-        print(f"🟡 {data['message']}")
-        return False
-    
-    print(f"🟢 App online! Versão atual: {data['app']['current_version']}")
-    if data['app'].get('update_available'):
-        print(f"📦 Nova versão disponível: {data['app']['current_version']}")
-    return True
-
-# ── REGISTRO (primeira vez) ───────────────────────
-def register(license_key, username, password):
-    r = requests.post(f"{BASE_URL}/register-with-license", json={
-        "license_key": license_key,
-        "app_secret": APP_SECRET,
-        "username": username,
-        "password": password,
-        "hwid": get_hwid()
-    })
-    data = r.json()
-    print("✅ Conta criada!" if data["success"] else f"❌ {data['message']}")
-    return data
-
-# ── LOGIN ─────────────────────────────────────────
-def login(username, password):
-    check_debug()
-    nonce = gen_nonce()
-    r = requests.post(f"{BASE_URL}/login", json={
-        "app_secret": APP_SECRET,
-        "username": username,
-        "password": password,
-        "hwid": get_hwid(),
-        "nonce": nonce
-    })
-    data = r.json()
-    
-    if data.get("success"):
-        # Validações anti-crack
-        if data.get("nonce") != nonce:
-            os._exit(0)
-        if not data.get("signature") or len(data["signature"]) != 64:
-            os._exit(0)
-        if abs(time.time() * 1000 - data.get("timestamp", 0)) > 30000:
-            os._exit(0)
-        
-        print(f"✅ Logado! Token: {data['session_token'][:16]}...")
-        return True
-    else:
-        print(f"❌ {data['message']}")
-        return False
-
-# ── USO ───────────────────────────────────────────
-# if not check_app_status():
-#     sys.exit(1)
-# register("SUA-KEY", "usuario", "senha")     # primeira vez
-# if login("usuario", "senha"):               # próximas vezes
-#     print("Programa liberado!")
-`}
-                </pre>
-              </TabsContent>
-
-              <TabsContent value="csharp">
-                <pre className="rounded-lg bg-muted p-3 font-mono text-xs text-foreground overflow-x-auto">
-{`using System.Net.Http;
-using System.Text;
-using System.Text.Json;
-using System.Management;
-using System.Diagnostics;
-using System.Runtime.InteropServices;
-
-class ElevateAuth
-{
-    static readonly HttpClient client = new();
-    static readonly string BASE_URL = "${baseUrl}";
-    static readonly string APP_SECRET = "coloque-seu-app-secret-aqui";
-
-    [DllImport("kernel32.dll")]
-    static extern bool IsDebuggerPresent();
-
-    static string GetHWID() {
-        var s = new ManagementObjectSearcher("SELECT ProcessorId FROM Win32_Processor");
-        foreach (var o in s.Get()) return o["ProcessorId"]?.ToString() ?? "unknown";
-        return "unknown";
-    }
-
-    static void AntiDebug() {
-        if (IsDebuggerPresent() || Debugger.IsAttached)
-            Environment.Exit(0);
-        string[] bad = {"x64dbg","x32dbg","ollydbg","ida","cheatengine","dnspy","fiddler"};
-        foreach (var p in Process.GetProcesses())
-            foreach (var b in bad)
-                if (p.ProcessName.ToLower().Contains(b)) Environment.Exit(0);
-    }
-
-    // APP STATUS
-    public static async Task<bool> CheckStatus(string version = "1.0.0") {
-        AntiDebug();
-        string nonce = Guid.NewGuid().ToString();
-        var body = JsonSerializer.Serialize(new { app_secret = APP_SECRET, version, nonce });
-        var res = await client.PostAsync($"{BASE_URL}/app-status",
-            new StringContent(body, Encoding.UTF8, "application/json"));
-        var json = JsonDocument.Parse(await res.Content.ReadAsStringAsync());
-        var root = json.RootElement;
-
-        if (root.GetProperty("nonce").GetString() != nonce) Environment.Exit(0);
-        if (string.IsNullOrEmpty(root.GetProperty("signature").GetString())) Environment.Exit(0);
-
-        string status = root.GetProperty("status").GetString()!;
-        if (status == "disabled" || status == "outdated") {
-            Console.WriteLine(root.GetProperty("message").GetString());
-            return false;
-        }
-        return true;
-    }
-
-    // REGISTER
-    public static async Task<bool> Register(string licenseKey, string user, string pass) {
-        var body = JsonSerializer.Serialize(new {
-            license_key = licenseKey, app_secret = APP_SECRET,
-            username = user, password = pass, hwid = GetHWID()
-        });
-        var res = await client.PostAsync($"{BASE_URL}/register-with-license",
-            new StringContent(body, Encoding.UTF8, "application/json"));
-        var json = JsonDocument.Parse(await res.Content.ReadAsStringAsync());
-        return json.RootElement.GetProperty("success").GetBoolean();
-    }
-
-    // LOGIN
-    public static async Task<bool> Login(string user, string pass) {
-        AntiDebug();
-        string nonce = Guid.NewGuid().ToString();
-        var body = JsonSerializer.Serialize(new {
-            app_secret = APP_SECRET, username = user, password = pass,
-            hwid = GetHWID(), nonce
-        });
-        var res = await client.PostAsync($"{BASE_URL}/login",
-            new StringContent(body, Encoding.UTF8, "application/json"));
-        var json = JsonDocument.Parse(await res.Content.ReadAsStringAsync());
-        var root = json.RootElement;
-
-        if (!root.GetProperty("success").GetBoolean()) return false;
-        if (root.GetProperty("nonce").GetString() != nonce) Environment.Exit(0);
-        if (root.GetProperty("signature").GetString()?.Length != 64) Environment.Exit(0);
-
-        Console.WriteLine($"Session: {root.GetProperty("session_token").GetString()}");
-        return true;
-    }
-}`}
-                </pre>
-              </TabsContent>
-
-              <TabsContent value="cpp">
-                <pre className="rounded-lg bg-muted p-3 font-mono text-xs text-foreground overflow-x-auto">
+            <pre className="rounded-lg bg-muted p-3 font-mono text-xs text-foreground overflow-x-auto">
 {`#include <iostream>
 #include <string>
 #include <curl/curl.h>
@@ -794,6 +496,14 @@ bool check_status(const std::string& version = "1.0.0") {
     return true;
 }
 
+bool do_register(const std::string& key, const std::string& user, const std::string& pass) {
+    auto res = post("register-with-license", {
+        {"license_key", key}, {"app_secret", APP_SECRET},
+        {"username", user}, {"password", pass}
+    });
+    return res["success"];
+}
+
 bool login(const std::string& user, const std::string& pass) {
     anti_debug();
     std::string nonce = "nonce-" + std::to_string(rand());
@@ -810,74 +520,14 @@ bool login(const std::string& user, const std::string& pass) {
 }
 
 // Dependências: libcurl, nlohmann/json
-// Compilar: g++ -o app main.cpp -lcurl`}
-                </pre>
-              </TabsContent>
-
-              <TabsContent value="nodejs">
-                <pre className="rounded-lg bg-muted p-3 font-mono text-xs text-foreground overflow-x-auto">
-{`import crypto from "crypto";
-
-const BASE_URL = "${baseUrl}";
-const APP_SECRET = "coloque-seu-app-secret-aqui";
-
-function genNonce() { return crypto.randomUUID(); }
-
-async function checkAppStatus(version = "1.0.0") {
-  const nonce = genNonce();
-  const res = await fetch(\`\${BASE_URL}/app-status\`, {
-    method: "POST",
-    headers: { "Content-Type": "application/json" },
-    body: JSON.stringify({ app_secret: APP_SECRET, version, nonce }),
-  });
-  const data = await res.json();
-
-  if (data.nonce !== nonce) throw new Error("Tampered response");
-  if (!data.signature) throw new Error("Missing signature");
-  if (Math.abs(Date.now() - data.timestamp) > 30000) throw new Error("Expired");
-
-  console.log(\`Status: \${data.status} - \${data.message}\`);
-  return data.status === "online";
-}
-
-async function register(licenseKey, username, password) {
-  const res = await fetch(\`\${BASE_URL}/register-with-license\`, {
-    method: "POST",
-    headers: { "Content-Type": "application/json" },
-    body: JSON.stringify({
-      license_key: licenseKey, app_secret: APP_SECRET, username, password
-    }),
-  });
-  return (await res.json()).success;
-}
-
-async function login(username, password) {
-  const nonce = genNonce();
-  const res = await fetch(\`\${BASE_URL}/login\`, {
-    method: "POST",
-    headers: { "Content-Type": "application/json" },
-    body: JSON.stringify({
-      app_secret: APP_SECRET, username, password, nonce
-    }),
-  });
-  const data = await res.json();
-  if (!data.success) return false;
-
-  if (data.nonce !== nonce) throw new Error("Tampered");
-  if (!data.signature || data.signature.length !== 64) throw new Error("Invalid sig");
-
-  console.log(\`Session: \${data.session_token}\`);
-  return true;
-}
+// Compilar: g++ -o app main.cpp -lcurl
 
 // USO:
-// if (await checkAppStatus("1.0.0")) {
-//   await register("SUA-KEY", "user", "pass");
-//   await login("user", "pass");
-// }`}
-                </pre>
-              </TabsContent>
-            </Tabs>
+// if (!check_status("1.0.0")) return 1;
+// do_register("SUA-KEY", "usuario", "senha");   // primeira vez
+// if (login("usuario", "senha"))                 // próximas vezes
+//     std::cout << "Programa liberado!" << std::endl;`}
+            </pre>
           </CardContent>
         </Card>
 
