@@ -436,16 +436,98 @@ void ProtectLoop() {
         <Card className="border-border/50 bg-card">
           <CardHeader>
             <CardTitle className="text-base">📦 Exemplo Completo de Integração</CardTitle>
-            <p className="text-xs text-muted-foreground mt-1">Inclui app-status + registro + login + anti-debug</p>
+            <p className="text-xs text-muted-foreground mt-1">Inclui app-status + registro + login + anti-debug em C++</p>
           </CardHeader>
           <CardContent>
-            <Tabs defaultValue="python" className="w-full">
-              <TabsList className="mb-3">
-                <TabsTrigger value="python">Python</TabsTrigger>
-                <TabsTrigger value="csharp">C#</TabsTrigger>
-                <TabsTrigger value="cpp">C++</TabsTrigger>
-                <TabsTrigger value="nodejs">Node.js</TabsTrigger>
-              </TabsList>
+            <pre className="rounded-lg bg-muted p-3 font-mono text-xs text-foreground overflow-x-auto">
+{`#include <iostream>
+#include <string>
+#include <curl/curl.h>
+#include <nlohmann/json.hpp>
+#include <windows.h>
+
+using json = nlohmann::json;
+
+const std::string BASE_URL = "${baseUrl}";
+const std::string APP_SECRET = "coloque-seu-app-secret-aqui";
+
+void anti_debug() {
+    if (IsDebuggerPresent()) ExitProcess(0);
+    BOOL remote = FALSE;
+    CheckRemoteDebuggerPresent(GetCurrentProcess(), &remote);
+    if (remote) ExitProcess(0);
+}
+
+size_t WriteCallback(void* c, size_t s, size_t n, std::string* o) {
+    o->append((char*)c, s * n); return s * n;
+}
+
+json post(const std::string& endpoint, const json& body) {
+    CURL* curl = curl_easy_init();
+    std::string response;
+    if (curl) {
+        std::string url = BASE_URL + "/" + endpoint;
+        std::string payload = body.dump();
+        struct curl_slist* h = nullptr;
+        h = curl_slist_append(h, "Content-Type: application/json");
+        curl_easy_setopt(curl, CURLOPT_URL, url.c_str());
+        curl_easy_setopt(curl, CURLOPT_POSTFIELDS, payload.c_str());
+        curl_easy_setopt(curl, CURLOPT_HTTPHEADER, h);
+        curl_easy_setopt(curl, CURLOPT_WRITEFUNCTION, WriteCallback);
+        curl_easy_setopt(curl, CURLOPT_WRITEDATA, &response);
+        curl_easy_perform(curl);
+        curl_slist_free_all(h);
+        curl_easy_cleanup(curl);
+    }
+    return json::parse(response);
+}
+
+bool check_status(const std::string& version = "1.0.0") {
+    anti_debug();
+    std::string nonce = "nonce-" + std::to_string(rand());
+    auto res = post("app-status", {
+        {"app_secret", APP_SECRET}, {"version", version}, {"nonce", nonce}
+    });
+    if (res["nonce"] != nonce) ExitProcess(0);
+    if (res["status"] == "disabled" || res["status"] == "outdated") {
+        std::cout << res["message"] << std::endl;
+        return false;
+    }
+    return true;
+}
+
+bool do_register(const std::string& key, const std::string& user, const std::string& pass) {
+    auto res = post("register-with-license", {
+        {"license_key", key}, {"app_secret", APP_SECRET},
+        {"username", user}, {"password", pass}
+    });
+    return res["success"];
+}
+
+bool login(const std::string& user, const std::string& pass) {
+    anti_debug();
+    std::string nonce = "nonce-" + std::to_string(rand());
+    auto res = post("login", {
+        {"app_secret", APP_SECRET}, {"username", user},
+        {"password", pass}, {"nonce", nonce}
+    });
+    if (!res["success"]) return false;
+    if (res["nonce"] != nonce) ExitProcess(0);
+    std::string sig = res["signature"];
+    if (sig.length() != 64) ExitProcess(0);
+    std::cout << "Session: " << res["session_token"] << std::endl;
+    return true;
+}
+
+// Dependências: libcurl, nlohmann/json
+// Compilar: g++ -o app main.cpp -lcurl
+
+// USO:
+// if (!check_status("1.0.0")) return 1;
+// do_register("SUA-KEY", "usuario", "senha");   // primeira vez
+// if (login("usuario", "senha"))                 // próximas vezes
+//     std::cout << "Programa liberado!" << std::endl;`}
+            </pre>
 
               <TabsContent value="python">
                 <pre className="rounded-lg bg-muted p-3 font-mono text-xs text-foreground overflow-x-auto">
