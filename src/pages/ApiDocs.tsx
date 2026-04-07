@@ -539,6 +539,95 @@ bool login(const std::string& user, const std::string& pass) {
           </CardContent>
         </Card>
 
+        {/* PRE-AUTH */}
+        <Card className="border-border/50 bg-card">
+          <CardHeader>
+            <div className="flex items-center gap-2">
+              <Shield className="h-4 w-4 text-yellow-400" />
+              <CardTitle className="text-base">4. Pre-Auth (Handshake)</CardTitle>
+              <Badge variant="outline" className="text-[10px]">POST</Badge>
+            </div>
+            <p className="text-xs text-muted-foreground mt-1">Gera um token temporário (60s) antes do login para handshake seguro</p>
+          </CardHeader>
+          <CardContent>
+            <p className="text-xs text-muted-foreground mb-2"><strong>URL:</strong> <code className="text-primary">{baseUrl}/pre-auth</code></p>
+            <pre className="text-xs bg-background/50 p-3 rounded-lg overflow-x-auto border border-border/30 text-muted-foreground">
+{`// Request
+{
+  "app_secret": "seu-app-secret",
+  "username": "usuario",
+  "hwid": "hardware-id"
+}
+
+// Response (200)
+{
+  "success": true,
+  "token": "challenge-token-hex-64-chars",
+  "message": "Challenge token generated"
+}`}
+            </pre>
+          </CardContent>
+        </Card>
+
+        {/* HEARTBEAT */}
+        <Card className="border-border/50 bg-card">
+          <CardHeader>
+            <div className="flex items-center gap-2">
+              <Wifi className="h-4 w-4 text-green-400" />
+              <CardTitle className="text-base">5. Heartbeat</CardTitle>
+              <Badge variant="outline" className="text-[10px]">POST</Badge>
+            </div>
+            <p className="text-xs text-muted-foreground mt-1">Envie a cada 30s para manter sessão ativa e checar bans em tempo real</p>
+          </CardHeader>
+          <CardContent>
+            <p className="text-xs text-muted-foreground mb-2"><strong>URL:</strong> <code className="text-primary">{baseUrl}/heartbeat</code></p>
+            <pre className="text-xs bg-background/50 p-3 rounded-lg overflow-x-auto border border-border/30 text-muted-foreground">
+{`// Request
+{
+  "app_secret": "seu-app-secret",
+  "username": "usuario",
+  "hwid": "hardware-id",
+  "status": "active"
+}
+
+// Response OK (200)
+{ "success": true, "message": "Heartbeat OK" }
+
+// Se banido/expirado (403) → fechar loader imediatamente
+{ "success": false, "message": "License banned", "action": "close", "status": "banned" }`}
+            </pre>
+          </CardContent>
+        </Card>
+
+        {/* SECURITY LOG */}
+        <Card className="border-border/50 bg-card">
+          <CardHeader>
+            <div className="flex items-center gap-2">
+              <AlertTriangle className="h-4 w-4 text-red-400" />
+              <CardTitle className="text-base">6. Security Log</CardTitle>
+              <Badge variant="outline" className="text-[10px]">POST</Badge>
+            </div>
+            <p className="text-xs text-muted-foreground mt-1">Reporta ameaças detectadas pelo loader (debugger, dump, tampering)</p>
+          </CardHeader>
+          <CardContent>
+            <p className="text-xs text-muted-foreground mb-2"><strong>URL:</strong> <code className="text-primary">{baseUrl}/security-log</code></p>
+            <pre className="text-xs bg-background/50 p-3 rounded-lg overflow-x-auto border border-border/30 text-muted-foreground">
+{`// Request
+{
+  "app_secret": "seu-app-secret",
+  "username": "usuario",
+  "hwid": "hardware-id",
+  "event_type": "DEBUGGER_DETECTED",  // ou DUMP_TOOL_DETECTED, HWID_ABUSE, SESSION_INVALIDATED, INTEGRITY_VIOLATION, MEMORY_TAMPERING
+  "details": "x64dbg.exe encontrado em processo ativo",
+  "timestamp": 1712457600000
+}
+
+// Response (200)
+{ "success": true, "message": "Security event logged" }`}
+            </pre>
+          </CardContent>
+        </Card>
+
       </div>
     </DashboardLayout>
   );
