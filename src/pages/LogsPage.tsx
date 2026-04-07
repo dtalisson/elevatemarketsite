@@ -181,7 +181,7 @@ const LogsPage = () => {
       )}
 
       <Dialog open={!!selectedLog} onOpenChange={(o) => !o && setSelectedLog(null)}>
-        <DialogContent className="max-w-2xl">
+        <DialogContent className="max-w-3xl">
           <DialogHeader>
             <DialogTitle className="font-heading flex items-center gap-2">
               Detalhes do Evento
@@ -196,43 +196,39 @@ const LogsPage = () => {
             const app = appsMap[selectedLog.application_id];
             const license = selectedLog.license_id ? licenses[selectedLog.license_id] : null;
             return (
-              <div className="space-y-4">
-                <div className={`rounded-lg border p-4 ${selectedLog.success ? "border-primary/20 bg-primary/5" : "border-destructive/20 bg-destructive/5"}`}>
-                  <p className={`text-[10px] uppercase tracking-wider mb-2 font-semibold ${selectedLog.success ? "text-primary" : "text-destructive"}`}>O que aconteceu</p>
-                  <p className="text-sm text-foreground leading-relaxed">{ev.description}</p>
-                </div>
+              <div className="space-y-3">
+                <p className={`text-xs leading-relaxed px-1 ${selectedLog.success ? "text-primary/80" : "text-destructive/80"}`}>{ev.description}</p>
 
-                {selectedLog.details && (
-                  <div className="rounded-lg border border-border p-3">
-                    <p className="text-[10px] uppercase tracking-wider text-muted-foreground mb-2 font-semibold">Detalhes</p>
-                    <p className="text-xs text-foreground font-mono bg-muted/50 rounded p-2 whitespace-pre-wrap break-all">{selectedLog.details}</p>
+                <div className="grid grid-cols-2 gap-3">
+                  <div className="rounded-lg border border-border/50 p-3 space-y-0">
+                    <p className="text-[10px] uppercase tracking-wider text-muted-foreground/60 mb-1 font-semibold">Usuário</p>
+                    <InfoRow label="Username" value={selectedLog.username} copyable mono />
+                    <InfoRow label="IP" value={selectedLog.ip_address} copyable mono />
+                    <InfoRow label="HWID" value={selectedLog.hwid} copyable mono />
                   </div>
-                )}
-
-                <div className="rounded-lg border border-border p-3">
-                  <p className="text-[10px] uppercase tracking-wider text-muted-foreground mb-2 font-semibold">Usuário</p>
-                  <InfoRow label="Username" value={selectedLog.username} copyable mono />
-                  <InfoRow label="IP" value={selectedLog.ip_address} copyable mono />
-                  <InfoRow label="HWID" value={selectedLog.hwid} copyable mono />
+                  <div className="rounded-lg border border-border/50 p-3 space-y-0">
+                    <p className="text-[10px] uppercase tracking-wider text-muted-foreground/60 mb-1 font-semibold">Contexto</p>
+                    <InfoRow label="Aplicação" value={app?.name} />
+                    <InfoRow label="Resultado" value={selectedLog.success ? "Sucesso" : "Falha"} />
+                    <InfoRow label="Horário" value={formatDate(selectedLog.created_at)} />
+                  </div>
                 </div>
 
                 {license && (
-                  <div className="rounded-lg border border-border p-3">
-                    <p className="text-[10px] uppercase tracking-wider text-muted-foreground mb-2 font-semibold">Licença</p>
-                    <InfoRow label="Key" value={license.license_key} copyable mono />
-                    <InfoRow label="Status" value={license.status} />
-                    <InfoRow label="HWID cadastrado" value={license.hwid} copyable mono />
-                    <InfoRow label="Expira" value={license.expires_at ? formatDate(license.expires_at) : "Sem expiração"} />
+                  <div className="rounded-lg border border-border/50 p-3 space-y-0">
+                    <p className="text-[10px] uppercase tracking-wider text-muted-foreground/60 mb-1 font-semibold">Licença</p>
+                    <div className="grid grid-cols-2 gap-x-4">
+                      <InfoRow label="Key" value={license.license_key} copyable mono />
+                      <InfoRow label="Status" value={license.status} />
+                      <InfoRow label="HWID cadastrado" value={license.hwid} copyable mono />
+                      <InfoRow label="Expira" value={license.expires_at ? formatDate(license.expires_at) : "Sem expiração"} />
+                    </div>
                   </div>
                 )}
 
-                <div className="rounded-lg border border-border p-3">
-                  <p className="text-[10px] uppercase tracking-wider text-muted-foreground mb-2 font-semibold">Contexto</p>
-                  <InfoRow label="Aplicação" value={app?.name} />
-                  <InfoRow label="Resultado" value={selectedLog.success ? "Sucesso" : "Falha"} />
-                  <InfoRow label="Evento" value={selectedLog.event_type} mono />
-                  <InfoRow label="Horário" value={formatDate(selectedLog.created_at)} />
-                </div>
+                {selectedLog.details && (
+                  <p className="text-[11px] font-mono text-muted-foreground/70 bg-muted/30 rounded-md px-3 py-2 break-all">{selectedLog.details}</p>
+                )}
               </div>
             );
           })()}

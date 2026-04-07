@@ -178,7 +178,7 @@ const SecurityLogsPage = () => {
       )}
 
       <Dialog open={!!selectedLog} onOpenChange={(o) => !o && setSelectedLog(null)}>
-        <DialogContent className="max-w-2xl">
+        <DialogContent className="max-w-3xl">
           <DialogHeader>
             <DialogTitle className="font-heading flex items-center gap-2">
               Detalhes do Alerta
@@ -192,33 +192,28 @@ const SecurityLogsPage = () => {
             const cfg = eventConfig[selectedLog.event_type] || { label: selectedLog.event_type, icon: AlertTriangle, color: "", description: "Evento de segurança desconhecido." };
             const app = appsMap[selectedLog.application_id];
             return (
-              <div className="space-y-4">
-                <div className="rounded-lg border border-destructive/20 bg-destructive/5 p-4">
-                  <p className="text-[10px] uppercase tracking-wider text-destructive mb-2 font-semibold">O que aconteceu</p>
-                  <p className="text-sm text-foreground leading-relaxed">{cfg.description}</p>
+              <div className="space-y-3">
+                <p className="text-xs leading-relaxed text-destructive/80 px-1">{cfg.description}</p>
+
+                <div className="grid grid-cols-2 gap-3">
+                  <div className="rounded-lg border border-border/50 p-3 space-y-0">
+                    <p className="text-[10px] uppercase tracking-wider text-muted-foreground/60 mb-1 font-semibold">Usuário</p>
+                    <InfoRow label="Username" value={selectedLog.username} copyable mono />
+                    <InfoRow label="IP" value={selectedLog.ip_address} copyable mono />
+                    <InfoRow label="HWID" value={selectedLog.hwid} copyable mono />
+                  </div>
+                  <div className="rounded-lg border border-border/50 p-3 space-y-0">
+                    <p className="text-[10px] uppercase tracking-wider text-muted-foreground/60 mb-1 font-semibold">Contexto</p>
+                    <InfoRow label="Aplicação" value={app?.name} />
+                    <InfoRow label="Tipo" value={selectedLog.event_type} mono />
+                    <InfoRow label="Horário" value={formatDate(selectedLog.created_at)} />
+                    <InfoRow label="Cliente" value={selectedLog.client_timestamp ? formatDate(new Date(selectedLog.client_timestamp).toISOString()) : null} />
+                  </div>
                 </div>
 
                 {selectedLog.details && (
-                  <div className="rounded-lg border border-border p-3">
-                    <p className="text-[10px] uppercase tracking-wider text-muted-foreground mb-2 font-semibold">Detalhes Técnicos</p>
-                    <p className="text-xs text-foreground font-mono bg-muted/50 rounded p-2 whitespace-pre-wrap break-all">{selectedLog.details}</p>
-                  </div>
+                  <p className="text-[11px] font-mono text-muted-foreground/70 bg-muted/30 rounded-md px-3 py-2 break-all">{selectedLog.details}</p>
                 )}
-
-                <div className="rounded-lg border border-border p-3">
-                  <p className="text-[10px] uppercase tracking-wider text-muted-foreground mb-2 font-semibold">Usuário</p>
-                  <InfoRow label="Username" value={selectedLog.username} copyable mono />
-                  <InfoRow label="IP" value={selectedLog.ip_address} copyable mono />
-                  <InfoRow label="HWID" value={selectedLog.hwid} copyable mono />
-                </div>
-
-                <div className="rounded-lg border border-border p-3">
-                  <p className="text-[10px] uppercase tracking-wider text-muted-foreground mb-2 font-semibold">Contexto</p>
-                  <InfoRow label="Aplicação" value={app?.name} />
-                  <InfoRow label="Tipo" value={selectedLog.event_type} mono />
-                  <InfoRow label="Horário (servidor)" value={formatDate(selectedLog.created_at)} />
-                  <InfoRow label="Horário (cliente)" value={selectedLog.client_timestamp ? new Date(selectedLog.client_timestamp).toLocaleDateString("pt-BR", { day: "2-digit", month: "2-digit", year: "numeric", hour: "2-digit", minute: "2-digit", second: "2-digit" }) : null} />
-                </div>
               </div>
             );
           })()}

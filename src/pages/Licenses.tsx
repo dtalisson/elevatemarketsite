@@ -307,7 +307,7 @@ const Licenses = () => {
       )}
 
       <Dialog open={!!selectedLicense} onOpenChange={(o) => { if (!o) { setSelectedLicense(null); setShowPassword(false); } }}>
-        <DialogContent className="max-w-2xl">
+        <DialogContent className="max-w-3xl">
           <DialogHeader>
             <DialogTitle className="font-heading flex items-center gap-2">
               Detalhes
@@ -317,73 +317,67 @@ const Licenses = () => {
           {selectedLicense && (() => {
             const su = softwareUsers[selectedLicense.id];
             return (
-              <div className="space-y-4">
-                <div className="rounded-lg border border-border p-3">
-                  <p className="text-[10px] uppercase tracking-wider text-muted-foreground mb-2 font-semibold">Chave</p>
-                  <InfoRow label="Key" value={selectedLicense.license_key} copyable mono />
-                  <InfoRow label="App" value={getAppName(selectedLicense.application_id)} />
-                  <InfoRow label="Nota" value={selectedLicense.note} />
-                </div>
-                <div className="rounded-lg border border-border p-3">
-                  <p className="text-[10px] uppercase tracking-wider text-muted-foreground mb-2 font-semibold">Usuário</p>
-                  {su ? (
-                    <>
-                      <InfoRow label="Username" value={su.username} copyable mono />
-                      <div className="flex items-center justify-between py-2 border-b border-border/50 last:border-0">
-                        <span className="text-xs text-muted-foreground">Senha</span>
-                        <div className="flex items-center gap-1.5">
-                          <span className="text-xs text-foreground font-mono max-w-[180px] truncate">{showPassword ? (su.password_plain || "N/A") : "••••••••"}</span>
-                          <button onClick={() => setShowPassword(!showPassword)} className="text-muted-foreground hover:text-primary transition-colors">{showPassword ? <EyeOff className="h-3 w-3" /> : <Eye className="h-3 w-3" />}</button>
-                          {su.password_plain && <button onClick={() => copyKey(su.password_plain!)} className="text-muted-foreground hover:text-primary transition-colors"><Copy className="h-3 w-3" /></button>}
+              <div className="space-y-3">
+                <div className="grid grid-cols-2 gap-3">
+                  <div className="rounded-lg border border-border/50 p-3 space-y-0">
+                    <p className="text-[10px] uppercase tracking-wider text-muted-foreground/60 mb-1 font-semibold">Chave</p>
+                    <InfoRow label="Key" value={selectedLicense.license_key} copyable mono />
+                    <InfoRow label="App" value={getAppName(selectedLicense.application_id)} />
+                    <InfoRow label="Nota" value={selectedLicense.note} />
+                  </div>
+                  <div className="rounded-lg border border-border/50 p-3 space-y-0">
+                    <p className="text-[10px] uppercase tracking-wider text-muted-foreground/60 mb-1 font-semibold">Usuário</p>
+                    {su ? (
+                      <>
+                        <InfoRow label="Username" value={su.username} copyable mono />
+                        <div className="flex items-center justify-between py-2 border-b border-border/50 last:border-0">
+                          <span className="text-xs text-muted-foreground">Senha</span>
+                          <div className="flex items-center gap-1.5">
+                            <span className="text-xs text-foreground font-mono max-w-[140px] truncate">{showPassword ? (su.password_plain || "N/A") : "••••••••"}</span>
+                            <button onClick={() => setShowPassword(!showPassword)} className="text-muted-foreground hover:text-primary transition-colors">{showPassword ? <EyeOff className="h-3 w-3" /> : <Eye className="h-3 w-3" />}</button>
+                            {su.password_plain && <button onClick={() => copyKey(su.password_plain!)} className="text-muted-foreground hover:text-primary transition-colors"><Copy className="h-3 w-3" /></button>}
+                          </div>
                         </div>
-                      </div>
-                    </>
-                  ) : <p className="text-xs text-muted-foreground/60 py-2">Nenhum usuário</p>}
+                      </>
+                    ) : <p className="text-xs text-muted-foreground/60 py-2">Nenhum usuário</p>}
+                  </div>
                 </div>
-                <div className="rounded-lg border border-border p-3">
-                  <p className="text-[10px] uppercase tracking-wider text-muted-foreground mb-2 font-semibold">Dispositivo</p>
-                  <InfoRow label="Status" value={selectedLicense.status} />
-                  <InfoRow label="Usado por" value={selectedLicense.claimed_by} />
-                  <InfoRow label="HWID" value={selectedLicense.hwid} copyable mono />
+
+                <div className="grid grid-cols-2 gap-3">
+                  <div className="rounded-lg border border-border/50 p-3 space-y-0">
+                    <p className="text-[10px] uppercase tracking-wider text-muted-foreground/60 mb-1 font-semibold">Dispositivo</p>
+                    <InfoRow label="Status" value={selectedLicense.status} />
+                    <InfoRow label="Usado por" value={selectedLicense.claimed_by} />
+                    <InfoRow label="HWID" value={selectedLicense.hwid} copyable mono />
+                  </div>
+                  <div className="rounded-lg border border-border/50 p-3 space-y-0">
+                    <p className="text-[10px] uppercase tracking-wider text-muted-foreground/60 mb-1 font-semibold">Datas</p>
+                    <InfoRow label="Criada" value={formatDate(selectedLicense.created_at)} />
+                    <InfoRow label="Ativada" value={selectedLicense.activated_at ? formatDate(selectedLicense.activated_at) : null} />
+                    <InfoRow label="Expira" value={selectedLicense.expires_at ? formatDate(selectedLicense.expires_at) : "Sem expiração"} />
+                  </div>
                 </div>
-                <div className="rounded-lg border border-border p-3">
-                  <p className="text-[10px] uppercase tracking-wider text-muted-foreground mb-2 font-semibold">Datas</p>
-                  <InfoRow label="Criada" value={formatDate(selectedLicense.created_at)} />
-                  <InfoRow label="Ativada" value={selectedLicense.activated_at ? formatDate(selectedLicense.activated_at) : null} />
-                  <InfoRow label="Expira" value={selectedLicense.expires_at ? formatDate(selectedLicense.expires_at) : "Sem expiração"} />
-                </div>
-                <div className="space-y-2">
+
+                <div className="flex gap-2">
                   {selectedLicense.status === "active" || selectedLicense.status === "unused" ? (
-                    <Button
-                      variant="outline"
-                      className="w-full text-warning border-warning/30 hover:bg-warning/10"
-                      size="sm"
+                    <Button variant="outline" className="flex-1 text-warning border-warning/30 hover:bg-warning/10" size="sm"
                       onClick={async () => {
                         const { error } = await supabase.from("licenses").update({ status: "banned" as const }).eq("id", selectedLicense.id);
                         if (error) toast.error(error.message);
                         else { toast.success("Licença desativada"); setSelectedLicense((p) => p ? { ...p, status: "banned" } : null); fetchData(); }
-                      }}
-                    >
-                      <Ban className="mr-2 h-3.5 w-3.5" />Desativar
-                    </Button>
+                      }}><Ban className="mr-1.5 h-3.5 w-3.5" />Desativar</Button>
                   ) : (
-                    <Button
-                      variant="outline"
-                      className="w-full text-primary border-primary/30 hover:bg-primary/10"
-                      size="sm"
+                    <Button variant="outline" className="flex-1 text-primary border-primary/30 hover:bg-primary/10" size="sm"
                       onClick={async () => {
                         const { error } = await supabase.from("licenses").update({ status: "active" as const }).eq("id", selectedLicense.id);
                         if (error) toast.error(error.message);
                         else { toast.success("Licença ativada"); setSelectedLicense((p) => p ? { ...p, status: "active" } : null); fetchData(); }
-                      }}
-                    >
-                      <CheckCircle2 className="mr-2 h-3.5 w-3.5" />Ativar
-                    </Button>
+                      }}><CheckCircle2 className="mr-1.5 h-3.5 w-3.5" />Ativar</Button>
                   )}
                   {selectedLicense.hwid && (
                     <AlertDialog>
                       <AlertDialogTrigger asChild>
-                        <Button variant="outline" className="w-full text-warning border-warning/30 hover:bg-warning/10" size="sm"><RotateCcw className="mr-2 h-3.5 w-3.5" />Resetar HWID</Button>
+                        <Button variant="outline" className="flex-1 text-warning border-warning/30 hover:bg-warning/10" size="sm"><RotateCcw className="mr-1.5 h-3.5 w-3.5" />HWID</Button>
                       </AlertDialogTrigger>
                       <AlertDialogContent>
                         <AlertDialogHeader><AlertDialogTitle className="font-heading">Resetar HWID?</AlertDialogTitle><AlertDialogDescription>Será travado no próximo login.</AlertDialogDescription></AlertDialogHeader>
@@ -393,7 +387,7 @@ const Licenses = () => {
                   )}
                   <AlertDialog>
                     <AlertDialogTrigger asChild>
-                      <Button variant="destructive" className="w-full" size="sm"><Trash2 className="mr-2 h-3.5 w-3.5" />Excluir</Button>
+                      <Button variant="destructive" className="flex-1" size="sm"><Trash2 className="mr-1.5 h-3.5 w-3.5" />Excluir</Button>
                     </AlertDialogTrigger>
                     <AlertDialogContent>
                       <AlertDialogHeader><AlertDialogTitle className="font-heading">Excluir licença?</AlertDialogTitle><AlertDialogDescription>Licença e usuário serão removidos.</AlertDialogDescription></AlertDialogHeader>

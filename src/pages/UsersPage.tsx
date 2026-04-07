@@ -151,7 +151,7 @@ const UsersPage = () => {
       )}
 
       <Dialog open={!!selectedUser} onOpenChange={(open) => !open && setSelectedUser(null)}>
-        <DialogContent className="max-w-2xl">
+        <DialogContent className="max-w-3xl">
           <DialogHeader>
             <DialogTitle className="font-heading flex items-center gap-2">
               {selectedUser?.username}
@@ -162,61 +162,54 @@ const UsersPage = () => {
             const license = licenses[selectedUser.license_id];
             const app = apps[selectedUser.application_id];
             return (
-              <div className="space-y-4">
-                <div className="rounded-lg border border-border p-3">
-                  <p className="text-[10px] uppercase tracking-wider text-muted-foreground mb-2 font-semibold">Credenciais</p>
-                  <InfoRow label="Username" value={selectedUser.username} copyable mono />
-                  <InfoRow label="Senha" value={selectedUser.password_plain || "N/A"} copyable mono />
+              <div className="space-y-3">
+                <div className="grid grid-cols-2 gap-3">
+                  <div className="rounded-lg border border-border/50 p-3 space-y-0">
+                    <p className="text-[10px] uppercase tracking-wider text-muted-foreground/60 mb-1 font-semibold">Credenciais</p>
+                    <InfoRow label="Username" value={selectedUser.username} copyable mono />
+                    <InfoRow label="Senha" value={selectedUser.password_plain || "N/A"} copyable mono />
+                    <InfoRow label="Aplicação" value={app?.name} />
+                    <InfoRow label="Registrado" value={formatDate(selectedUser.created_at)} />
+                  </div>
+                  <div className="rounded-lg border border-border/50 p-3 space-y-0">
+                    <p className="text-[10px] uppercase tracking-wider text-muted-foreground/60 mb-1 font-semibold">Dispositivo</p>
+                    <InfoRow label="HWID" value={selectedUser.hwid} copyable mono />
+                    <InfoRow label="IP Registro" value={selectedUser.ip_address} copyable mono />
+                    <InfoRow label="Último IP" value={selectedUser.last_ip} copyable mono />
+                    <InfoRow label="Último Login" value={selectedUser.last_login_at ? formatDate(selectedUser.last_login_at) : null} />
+                  </div>
                 </div>
-                <div className="rounded-lg border border-border p-3">
-                  <p className="text-[10px] uppercase tracking-wider text-muted-foreground mb-2 font-semibold">Dispositivo</p>
-                  <InfoRow label="HWID" value={selectedUser.hwid} copyable mono />
-                  <InfoRow label="IP Registro" value={selectedUser.ip_address} copyable mono />
-                  <InfoRow label="Último IP" value={selectedUser.last_ip} copyable mono />
-                  <InfoRow label="Último Login" value={selectedUser.last_login_at ? formatDate(selectedUser.last_login_at) : null} />
-                </div>
-                <div className="rounded-lg border border-border p-3">
-                  <p className="text-[10px] uppercase tracking-wider text-muted-foreground mb-2 font-semibold">Licença</p>
-                  <InfoRow label="Key" value={license?.license_key} copyable mono />
-                  <InfoRow label="Status" value={license?.status} />
-                  <InfoRow label="Expira" value={license?.expires_at ? formatDate(license.expires_at) : "Sem expiração"} />
-                </div>
-                <div className="rounded-lg border border-border p-3">
-                  <p className="text-[10px] uppercase tracking-wider text-muted-foreground mb-2 font-semibold">App</p>
-                  <InfoRow label="Aplicação" value={app?.name} />
-                  <InfoRow label="Registrado" value={formatDate(selectedUser.created_at)} />
-                </div>
-                <div className="space-y-2">
+
+                {license && (
+                  <div className="rounded-lg border border-border/50 p-3 space-y-0">
+                    <p className="text-[10px] uppercase tracking-wider text-muted-foreground/60 mb-1 font-semibold">Licença</p>
+                    <div className="grid grid-cols-3 gap-x-4">
+                      <InfoRow label="Key" value={license.license_key} copyable mono />
+                      <InfoRow label="Status" value={license.status} />
+                      <InfoRow label="Expira" value={license.expires_at ? formatDate(license.expires_at) : "Sem expiração"} />
+                    </div>
+                  </div>
+                )}
+
+                <div className="flex gap-2">
                   {license && (license.status === "active" || license.status === "unused") ? (
-                    <Button
-                      variant="outline"
-                      className="w-full text-warning border-warning/30 hover:bg-warning/10 gap-2"
-                      size="sm"
+                    <Button variant="outline" className="flex-1 text-warning border-warning/30 hover:bg-warning/10 gap-2" size="sm"
                       onClick={async () => {
                         const { error } = await supabase.from("licenses").update({ status: "banned" as const }).eq("id", selectedUser.license_id);
                         if (error) toast.error(error.message);
                         else { toast.success("Licença desativada"); fetchData(); }
-                      }}
-                    >
-                      <Ban className="h-3.5 w-3.5" />Desativar Licença
-                    </Button>
+                      }}><Ban className="h-3.5 w-3.5" />Desativar</Button>
                   ) : license ? (
-                    <Button
-                      variant="outline"
-                      className="w-full text-primary border-primary/30 hover:bg-primary/10 gap-2"
-                      size="sm"
+                    <Button variant="outline" className="flex-1 text-primary border-primary/30 hover:bg-primary/10 gap-2" size="sm"
                       onClick={async () => {
                         const { error } = await supabase.from("licenses").update({ status: "active" as const }).eq("id", selectedUser.license_id);
                         if (error) toast.error(error.message);
                         else { toast.success("Licença ativada"); fetchData(); }
-                      }}
-                    >
-                      <CheckCircle2 className="h-3.5 w-3.5" />Ativar Licença
-                    </Button>
+                      }}><CheckCircle2 className="h-3.5 w-3.5" />Ativar</Button>
                   ) : null}
                   <AlertDialog>
                     <AlertDialogTrigger asChild>
-                      <Button variant="destructive" className="w-full gap-2" size="sm"><Trash2 className="h-3.5 w-3.5" />Excluir Usuário</Button>
+                      <Button variant="destructive" className="flex-1 gap-2" size="sm"><Trash2 className="h-3.5 w-3.5" />Excluir</Button>
                     </AlertDialogTrigger>
                     <AlertDialogContent>
                       <AlertDialogHeader>

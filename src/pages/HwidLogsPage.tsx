@@ -169,56 +169,51 @@ const HwidLogsPage = () => {
       )}
 
       <Dialog open={!!selectedLog} onOpenChange={(o) => !o && setSelectedLog(null)}>
-        <DialogContent className="max-w-2xl">
+        <DialogContent className="max-w-3xl">
           <DialogHeader>
             <DialogTitle className="font-heading flex items-center gap-2">
-              Detalhes do HWID Mismatch
-              <Badge variant="outline" className="bg-warning/10 text-warning text-[10px] border-0">HWID Mismatch</Badge>
+              HWID Mismatch
+              <Badge variant="outline" className="bg-warning/10 text-warning text-[10px] border-0">Mismatch</Badge>
             </DialogTitle>
           </DialogHeader>
           {selectedLog && (() => {
             const app = appsMap[selectedLog.application_id];
             const license = selectedLog.license_id ? licenses[selectedLog.license_id] : null;
             return (
-              <div className="space-y-4">
-                <div className="rounded-lg border border-warning/20 bg-warning/5 p-4">
-                  <p className="text-[10px] uppercase tracking-wider text-warning mb-2 font-semibold">O que aconteceu</p>
-                  <p className="text-sm text-foreground leading-relaxed">
-                    O usuário <strong>{selectedLog.username || "desconhecido"}</strong> tentou fazer login com um HWID diferente do que está registrado na licença.
-                    {license?.hwid && <> O HWID cadastrado é <code className="text-xs font-mono bg-muted px-1 rounded">{license.hwid.substring(0, 20)}...</code>.</>}
-                    {selectedLog.hwid && <> O HWID da tentativa foi <code className="text-xs font-mono bg-muted px-1 rounded">{selectedLog.hwid.substring(0, 20)}...</code>.</>}
-                  </p>
-                </div>
+              <div className="space-y-3">
+                <p className="text-xs leading-relaxed text-warning/80 px-1">
+                  <strong>{selectedLog.username || "Desconhecido"}</strong> tentou login com HWID diferente do cadastrado.
+                </p>
 
-                {selectedLog.details && (
-                  <div className="rounded-lg border border-border p-3">
-                    <p className="text-[10px] uppercase tracking-wider text-muted-foreground mb-2 font-semibold">Detalhes</p>
-                    <p className="text-xs text-foreground font-mono bg-muted/50 rounded p-2 whitespace-pre-wrap break-all">{selectedLog.details}</p>
+                <div className="grid grid-cols-2 gap-3">
+                  <div className="rounded-lg border border-border/50 p-3 space-y-0">
+                    <p className="text-[10px] uppercase tracking-wider text-muted-foreground/60 mb-1 font-semibold">Quem tentou</p>
+                    <InfoRow label="Username" value={selectedLog.username} copyable mono />
+                    <InfoRow label="HWID usado" value={selectedLog.hwid} copyable mono />
+                    <InfoRow label="IP" value={selectedLog.ip_address} copyable mono />
                   </div>
-                )}
-
-                <div className="rounded-lg border border-border p-3">
-                  <p className="text-[10px] uppercase tracking-wider text-muted-foreground mb-2 font-semibold">Quem tentou</p>
-                  <InfoRow label="Username" value={selectedLog.username} copyable mono />
-                  <InfoRow label="HWID usado" value={selectedLog.hwid} copyable mono />
-                  <InfoRow label="IP" value={selectedLog.ip_address} copyable mono />
+                  <div className="rounded-lg border border-border/50 p-3 space-y-0">
+                    <p className="text-[10px] uppercase tracking-wider text-muted-foreground/60 mb-1 font-semibold">Contexto</p>
+                    <InfoRow label="Aplicação" value={app?.name} />
+                    <InfoRow label="Evento" value={selectedLog.event_type === "login_hwid_mismatch" ? "Login" : "Validação"} />
+                    <InfoRow label="Horário" value={formatDate(selectedLog.created_at)} />
+                  </div>
                 </div>
 
                 {license && (
-                  <div className="rounded-lg border border-border p-3">
-                    <p className="text-[10px] uppercase tracking-wider text-muted-foreground mb-2 font-semibold">Licença Original</p>
-                    <InfoRow label="Key" value={license.license_key} copyable mono />
-                    <InfoRow label="HWID cadastrado" value={license.hwid} copyable mono />
-                    <InfoRow label="Claimed by" value={license.claimed_by} mono />
+                  <div className="rounded-lg border border-border/50 p-3 space-y-0">
+                    <p className="text-[10px] uppercase tracking-wider text-muted-foreground/60 mb-1 font-semibold">Licença Original</p>
+                    <div className="grid grid-cols-2 gap-x-4">
+                      <InfoRow label="Key" value={license.license_key} copyable mono />
+                      <InfoRow label="HWID cadastrado" value={license.hwid} copyable mono />
+                      <InfoRow label="Claimed by" value={license.claimed_by} mono />
+                    </div>
                   </div>
                 )}
 
-                <div className="rounded-lg border border-border p-3">
-                  <p className="text-[10px] uppercase tracking-wider text-muted-foreground mb-2 font-semibold">Contexto</p>
-                  <InfoRow label="Aplicação" value={app?.name} />
-                  <InfoRow label="Evento" value={selectedLog.event_type === "login_hwid_mismatch" ? "Login HWID Mismatch" : "Validate HWID Mismatch"} />
-                  <InfoRow label="Horário" value={formatDate(selectedLog.created_at)} />
-                </div>
+                {selectedLog.details && (
+                  <p className="text-[11px] font-mono text-muted-foreground/70 bg-muted/30 rounded-md px-3 py-2 break-all">{selectedLog.details}</p>
+                )}
               </div>
             );
           })()}
