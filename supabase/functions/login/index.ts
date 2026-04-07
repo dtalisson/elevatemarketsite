@@ -158,7 +158,7 @@ Deno.serve(async (req) => {
     // Find user
     const { data: user, error: userError } = await supabase
       .from("software_users")
-      .select("*, licenses(*)")
+      .select("*, licenses(*, ban_reason)")
       .eq("application_id", app.id)
       .eq("username", username.toLowerCase())
       .single();
