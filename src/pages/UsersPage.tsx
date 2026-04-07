@@ -15,31 +15,13 @@ import {
 } from "@/components/ui/alert-dialog";
 
 interface SoftwareUser {
-  id: string;
-  username: string;
-  password_hash: string;
-  password_plain: string | null;
-  hwid: string | null;
-  ip_address: string | null;
-  last_ip: string | null;
-  last_login_at: string | null;
-  created_at: string;
-  application_id: string;
-  license_id: string;
+  id: string; username: string; password_hash: string; password_plain: string | null;
+  hwid: string | null; ip_address: string | null; last_ip: string | null;
+  last_login_at: string | null; created_at: string; application_id: string; license_id: string;
 }
 
-interface LicenseInfo {
-  id: string;
-  license_key: string;
-  status: string;
-  expires_at: string | null;
-  activated_at: string | null;
-}
-
-interface AppInfo {
-  id: string;
-  name: string;
-}
+interface LicenseInfo { id: string; license_key: string; status: string; expires_at: string | null; activated_at: string | null; }
+interface AppInfo { id: string; name: string; }
 
 const UsersPage = () => {
   const { user } = useAuth();
@@ -54,23 +36,13 @@ const UsersPage = () => {
   const fetchData = async () => {
     if (!user) return;
     setLoading(true);
-
     const [usersRes, licensesRes, appsRes] = await Promise.all([
       supabase.from("software_users").select("*").order("created_at", { ascending: false }),
       supabase.from("licenses").select("id, license_key, status, expires_at, activated_at"),
       supabase.from("applications").select("id, name").eq("owner_id", user.id),
     ]);
-
-    if (appsRes.data) {
-      const appMap: Record<string, AppInfo> = {};
-      appsRes.data.forEach((a) => (appMap[a.id] = a));
-      setApps(appMap);
-    }
-    if (licensesRes.data) {
-      const licMap: Record<string, LicenseInfo> = {};
-      licensesRes.data.forEach((l) => (licMap[l.id] = l));
-      setLicenses(licMap);
-    }
+    if (appsRes.data) { const m: Record<string, AppInfo> = {}; appsRes.data.forEach((a) => (m[a.id] = a)); setApps(m); }
+    if (licensesRes.data) { const m: Record<string, LicenseInfo> = {}; licensesRes.data.forEach((l) => (m[l.id] = l)); setLicenses(m); }
     if (usersRes.data) setSoftwareUsers(usersRes.data as SoftwareUser[]);
     setLoading(false);
   };
@@ -83,17 +55,14 @@ const UsersPage = () => {
     else { toast.success("Usuário excluído"); setSelectedUser(null); fetchData(); }
   };
 
-  const copyText = (text: string) => {
-    navigator.clipboard.writeText(text);
-    toast.success("Copiado!");
-  };
+  const copyText = (text: string) => { navigator.clipboard.writeText(text); toast.success("Copiado!"); };
 
   const getStatusBadge = (license?: LicenseInfo) => {
     if (!license) return <Badge variant="outline" className="border-muted-foreground/30 text-muted-foreground text-[10px]">Sem licença</Badge>;
     const isExpired = license.expires_at && new Date(license.expires_at) < new Date();
-    if (license.status === "banned") return <Badge className="bg-red-500/20 text-red-400 border-red-500/30 text-[10px]">Banido</Badge>;
-    if (isExpired || license.status === "expired") return <Badge className="bg-yellow-500/20 text-yellow-400 border-yellow-500/30 text-[10px]">Expirado</Badge>;
-    return <Badge className="bg-emerald-500/20 text-emerald-400 border-emerald-500/30 text-[10px]">Ativo</Badge>;
+    if (license.status === "banned") return <Badge className="bg-destructive/15 text-destructive border-destructive/25 text-[10px]">Banido</Badge>;
+    if (isExpired || license.status === "expired") return <Badge className="bg-warning/15 text-warning border-warning/25 text-[10px]">Expirado</Badge>;
+    return <Badge className="bg-success/15 text-success border-success/25 text-[10px]">Ativo</Badge>;
   };
 
   const formatDate = (date: string) =>
@@ -107,9 +76,7 @@ const UsersPage = () => {
       <div className="flex items-center gap-1.5">
         <span className={`text-xs text-foreground ${mono ? "font-mono" : ""}`}>{value || "—"}</span>
         {copyable && value && (
-          <button onClick={() => copyText(value)} className="text-muted-foreground hover:text-primary transition-colors">
-            <Copy className="h-3 w-3" />
-          </button>
+          <button onClick={() => copyText(value)} className="text-muted-foreground hover:text-primary transition-colors"><Copy className="h-3 w-3" /></button>
         )}
       </div>
     </div>
@@ -117,29 +84,25 @@ const UsersPage = () => {
 
   return (
     <DashboardLayout>
-      <div className="mb-6 animate-fade-in-up">
-        <h1 className="text-2xl font-bold text-foreground">Usuários</h1>
+      <div className="mb-6">
+        <h1 className="text-2xl font-heading font-bold text-foreground tracking-tight">Usuários</h1>
         <p className="text-sm text-muted-foreground">Usuários registrados nas suas aplicações</p>
       </div>
 
-      <div className="mb-4 animate-fade-in-up" style={{ animationDelay: "0.05s" }}>
+      <div className="mb-4">
         <div className="relative max-w-sm">
           <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
-          <Input placeholder="Buscar por username..." value={search} onChange={(e) => setSearch(e.target.value)} className="pl-9 bg-card/50 border-border/50" />
+          <Input placeholder="Buscar por username..." value={search} onChange={(e) => setSearch(e.target.value)} className="pl-9" />
         </div>
       </div>
 
       {loading ? (
-        <div className="grid gap-3">
-          {[1, 2, 3].map((i) => (
-            <Card key={i} className="glass border-border/30 animate-pulse"><CardContent className="p-4 h-20" /></Card>
-          ))}
-        </div>
+        <div className="grid gap-3">{[1, 2, 3].map((i) => (<Card key={i} className="glass animate-pulse"><CardContent className="p-4 h-20" /></Card>))}</div>
       ) : filtered.length === 0 ? (
-        <Card className="glass border-border/30 animate-fade-in-up" style={{ animationDelay: "0.1s" }}>
+        <Card className="glass animate-fade-in-up">
           <CardContent className="flex flex-col items-center justify-center py-16">
-            <div className="p-4 rounded-2xl bg-primary/10 mb-4"><Users className="h-10 w-10 text-primary" /></div>
-            <p className="text-muted-foreground font-medium">{search ? "Nenhum usuário encontrado" : "Nenhum usuário registrado"}</p>
+            <div className="p-4 rounded-2xl bg-primary/10 border border-primary/15 mb-4"><Users className="h-10 w-10 text-primary" /></div>
+            <p className="text-muted-foreground font-heading font-medium">{search ? "Nenhum usuário encontrado" : "Nenhum usuário registrado"}</p>
             <p className="text-sm text-muted-foreground/70 mt-1">{search ? "Tente outro nome" : "Aparecerão aqui quando se registrarem via API"}</p>
           </CardContent>
         </Card>
@@ -152,19 +115,19 @@ const UsersPage = () => {
             return (
               <Card
                 key={su.id}
-                className="glass border-border/30 hover:border-primary/30 transition-all duration-300 cursor-pointer animate-fade-in-up"
+                className="glass glass-hover cursor-pointer animate-fade-in-up"
                 style={{ animationDelay: `${0.04 * (index + 1)}s` }}
                 onClick={() => setSelectedUser(su)}
               >
                 <CardContent className="p-4">
                   <div className="flex items-center justify-between">
                     <div className="flex items-center gap-4">
-                      <div className="h-10 w-10 rounded-xl bg-gradient-to-br from-primary/20 to-primary/5 flex items-center justify-center border border-primary/20">
+                      <div className="h-10 w-10 rounded-xl bg-primary/10 border border-primary/15 flex items-center justify-center">
                         <Shield className="h-5 w-5 text-primary" />
                       </div>
                       <div>
                         <div className="flex items-center gap-2">
-                          <span className="font-semibold text-foreground">{su.username}</span>
+                          <span className="font-heading font-semibold text-foreground">{su.username}</span>
                           {getStatusBadge(license)}
                         </div>
                         <div className="flex items-center gap-3 mt-1 flex-wrap">
@@ -172,40 +135,28 @@ const UsersPage = () => {
                             <Key className="h-3 w-3" />
                             <code className="font-mono text-[10px]">{su.username}:</code>
                             <code className="font-mono text-[10px]">{showPw ? (su.password_plain || su.password_hash.substring(0, 12) + "...") : "••••••••"}</code>
-                            <button
-                              onClick={(e) => { e.stopPropagation(); setShowPasswords(p => ({ ...p, [su.id]: !p[su.id] })); }}
-                              className="text-muted-foreground hover:text-primary transition-colors"
-                            >
+                            <button onClick={(e) => { e.stopPropagation(); setShowPasswords(p => ({ ...p, [su.id]: !p[su.id] })); }} className="text-muted-foreground hover:text-primary transition-colors">
                               {showPw ? <EyeOff className="h-3 w-3" /> : <Eye className="h-3 w-3" />}
                             </button>
                           </span>
                           {app && <span className="text-xs text-muted-foreground">App: <span className="text-foreground/70">{app.name}</span></span>}
-                          {su.last_ip && (
-                            <span className="flex items-center gap-1 text-xs text-muted-foreground">
-                              <Globe className="h-3 w-3" />{su.last_ip}
-                            </span>
-                          )}
-                          <span className="flex items-center gap-1 text-xs text-muted-foreground">
-                            <Clock className="h-3 w-3" />{formatDate(su.created_at)}
-                          </span>
+                          {su.last_ip && <span className="flex items-center gap-1 text-xs text-muted-foreground"><Globe className="h-3 w-3" />{su.last_ip}</span>}
+                          <span className="flex items-center gap-1 text-xs text-muted-foreground"><Clock className="h-3 w-3" />{formatDate(su.created_at)}</span>
                         </div>
                       </div>
                     </div>
-
                     <AlertDialog>
                       <AlertDialogTrigger asChild>
-                        <Button variant="ghost" size="icon" className="text-muted-foreground hover:text-red-400 hover:bg-red-500/10" onClick={(e) => e.stopPropagation()}>
-                          <Trash2 className="h-4 w-4" />
-                        </Button>
+                        <Button variant="ghost" size="icon" className="text-muted-foreground hover:text-destructive hover:bg-destructive/10" onClick={(e) => e.stopPropagation()}><Trash2 className="h-4 w-4" /></Button>
                       </AlertDialogTrigger>
-                      <AlertDialogContent className="glass border-border/30">
+                      <AlertDialogContent className="glass">
                         <AlertDialogHeader>
-                          <AlertDialogTitle>Excluir usuário</AlertDialogTitle>
+                          <AlertDialogTitle className="font-heading">Excluir usuário</AlertDialogTitle>
                           <AlertDialogDescription>Excluir <strong>{su.username}</strong>? Essa ação não pode ser desfeita.</AlertDialogDescription>
                         </AlertDialogHeader>
                         <AlertDialogFooter>
                           <AlertDialogCancel>Cancelar</AlertDialogCancel>
-                          <AlertDialogAction onClick={() => handleDelete(su.id)} className="bg-red-500 hover:bg-red-600">Excluir</AlertDialogAction>
+                          <AlertDialogAction onClick={() => handleDelete(su.id)} className="bg-destructive hover:bg-destructive/90">Excluir</AlertDialogAction>
                         </AlertDialogFooter>
                       </AlertDialogContent>
                     </AlertDialog>
@@ -219,68 +170,57 @@ const UsersPage = () => {
 
       {/* User detail modal */}
       <Dialog open={!!selectedUser} onOpenChange={(open) => !open && setSelectedUser(null)}>
-        <DialogContent className="glass border-border/30 max-w-md">
+        <DialogContent className="glass max-w-md">
           <DialogHeader>
-            <DialogTitle className="flex items-center gap-2">
-              <div className="h-8 w-8 rounded-lg bg-primary/15 flex items-center justify-center">
+            <DialogTitle className="flex items-center gap-2 font-heading">
+              <div className="h-8 w-8 rounded-lg bg-primary/10 border border-primary/15 flex items-center justify-center">
                 <Shield className="h-4 w-4 text-primary" />
               </div>
               {selectedUser?.username}
               {selectedUser && getStatusBadge(licenses[selectedUser.license_id])}
             </DialogTitle>
           </DialogHeader>
-
           {selectedUser && (() => {
             const license = licenses[selectedUser.license_id];
             const app = apps[selectedUser.application_id];
             return (
               <div className="space-y-4">
-                {/* Credentials */}
-                <div className="rounded-lg bg-background/50 border border-border/30 p-3">
+                <div className="rounded-xl bg-muted/30 border border-border/50 p-3">
                   <p className="text-[10px] uppercase tracking-wider text-muted-foreground mb-2 font-semibold">Credenciais</p>
                   <InfoRow label="Username" value={selectedUser.username} copyable mono />
-                  <InfoRow label="Senha" value={selectedUser.password_plain || "Não disponível (registrado antes da atualização)"} copyable mono />
+                  <InfoRow label="Senha" value={selectedUser.password_plain || "Não disponível"} copyable mono />
                 </div>
-
-                {/* Device & Network */}
-                <div className="rounded-lg bg-background/50 border border-border/30 p-3">
+                <div className="rounded-xl bg-muted/30 border border-border/50 p-3">
                   <p className="text-[10px] uppercase tracking-wider text-muted-foreground mb-2 font-semibold">Dispositivo & Rede</p>
                   <InfoRow label="HWID" value={selectedUser.hwid} copyable mono />
                   <InfoRow label="IP de Registro" value={selectedUser.ip_address} copyable mono />
                   <InfoRow label="Último IP" value={selectedUser.last_ip} copyable mono />
                   <InfoRow label="Último Login" value={selectedUser.last_login_at ? formatDate(selectedUser.last_login_at) : null} />
                 </div>
-
-                {/* License */}
-                <div className="rounded-lg bg-background/50 border border-border/30 p-3">
+                <div className="rounded-xl bg-muted/30 border border-border/50 p-3">
                   <p className="text-[10px] uppercase tracking-wider text-muted-foreground mb-2 font-semibold">Licença</p>
                   <InfoRow label="License Key" value={license?.license_key} copyable mono />
                   <InfoRow label="Status" value={license?.status} />
                   <InfoRow label="Ativada em" value={license?.activated_at ? formatDate(license.activated_at) : null} />
                   <InfoRow label="Expira em" value={license?.expires_at ? formatDate(license.expires_at) : "Sem expiração"} />
                 </div>
-
-                {/* App & Dates */}
-                <div className="rounded-lg bg-background/50 border border-border/30 p-3">
+                <div className="rounded-xl bg-muted/30 border border-border/50 p-3">
                   <p className="text-[10px] uppercase tracking-wider text-muted-foreground mb-2 font-semibold">Aplicação</p>
                   <InfoRow label="App" value={app?.name} />
                   <InfoRow label="Registrado em" value={formatDate(selectedUser.created_at)} />
                 </div>
-
                 <AlertDialog>
                   <AlertDialogTrigger asChild>
-                    <Button variant="destructive" className="w-full" size="sm">
-                      <Trash2 className="mr-2 h-3.5 w-3.5" />Excluir Usuário
-                    </Button>
+                    <Button variant="destructive" className="w-full gap-2" size="sm"><Trash2 className="h-3.5 w-3.5" />Excluir Usuário</Button>
                   </AlertDialogTrigger>
-                  <AlertDialogContent className="glass border-border/30">
+                  <AlertDialogContent className="glass">
                     <AlertDialogHeader>
-                      <AlertDialogTitle>Excluir usuário</AlertDialogTitle>
+                      <AlertDialogTitle className="font-heading">Excluir usuário</AlertDialogTitle>
                       <AlertDialogDescription>Excluir <strong>{selectedUser.username}</strong>? Essa ação não pode ser desfeita.</AlertDialogDescription>
                     </AlertDialogHeader>
                     <AlertDialogFooter>
                       <AlertDialogCancel>Cancelar</AlertDialogCancel>
-                      <AlertDialogAction onClick={() => handleDelete(selectedUser.id)} className="bg-red-500 hover:bg-red-600">Excluir</AlertDialogAction>
+                      <AlertDialogAction onClick={() => handleDelete(selectedUser.id)} className="bg-destructive hover:bg-destructive/90">Excluir</AlertDialogAction>
                     </AlertDialogFooter>
                   </AlertDialogContent>
                 </AlertDialog>
