@@ -3,20 +3,27 @@ import { DashboardLayout } from "@/components/DashboardLayout";
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/contexts/AuthContext";
 import { Badge } from "@/components/ui/badge";
+import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
-import { Search, Clock, Globe, Monitor, User, Bug, Cpu, AlertTriangle, Zap, ShieldX } from "lucide-react";
+import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
+import {
+  AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent,
+  AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle, AlertDialogTrigger,
+} from "@/components/ui/alert-dialog";
+import { Search, Clock, Globe, Monitor, User, Bug, Cpu, AlertTriangle, Zap, ShieldX, Trash2, Copy } from "lucide-react";
+import { toast } from "sonner";
 
 interface SecurityLog { id: string; application_id: string; username: string | null; hwid: string | null; event_type: string; details: string | null; client_timestamp: number | null; ip_address: string | null; created_at: string; }
 interface AppInfo { id: string; name: string; }
 
-const eventConfig: Record<string, { label: string; icon: typeof Bug; color: string }> = {
-  DEBUGGER_DETECTED: { label: "Debugger", icon: Bug, color: "bg-destructive/10 text-destructive" },
-  DUMP_TOOL_DETECTED: { label: "Dump Tool", icon: Cpu, color: "bg-destructive/10 text-destructive" },
-  HWID_ABUSE: { label: "HWID Abuse", icon: AlertTriangle, color: "bg-warning/10 text-warning" },
-  SESSION_INVALIDATED: { label: "Sessão Inv.", icon: Zap, color: "bg-warning/10 text-warning" },
-  INTEGRITY_VIOLATION: { label: "Integridade", icon: ShieldX, color: "bg-destructive/10 text-destructive" },
-  MEMORY_TAMPERING: { label: "Memória", icon: Cpu, color: "bg-destructive/10 text-destructive" },
+const eventConfig: Record<string, { label: string; icon: typeof Bug; color: string; description: string }> = {
+  DEBUGGER_DETECTED: { label: "Debugger", icon: Bug, color: "bg-destructive/10 text-destructive", description: "Um debugger foi detectado anexado ao processo da aplicação. Isso indica que alguém está tentando analisar ou modificar o comportamento do software em tempo real." },
+  DUMP_TOOL_DETECTED: { label: "Dump Tool", icon: Cpu, color: "bg-destructive/10 text-destructive", description: "Uma ferramenta de dump de memória foi detectada. O usuário pode estar tentando extrair o código ou dados sensíveis da aplicação da memória RAM." },
+  HWID_ABUSE: { label: "HWID Abuse", icon: AlertTriangle, color: "bg-warning/10 text-warning", description: "Abuso de HWID detectado. Múltiplas tentativas de uso com hardware IDs diferentes, indicando possível compartilhamento ou clonagem de licença." },
+  SESSION_INVALIDATED: { label: "Sessão Inv.", icon: Zap, color: "bg-warning/10 text-warning", description: "A sessão do usuário foi invalidada por atividade suspeita, como tentativa de login simultâneo ou manipulação de token de sessão." },
+  INTEGRITY_VIOLATION: { label: "Integridade", icon: ShieldX, color: "bg-destructive/10 text-destructive", description: "Violação de integridade detectada. Os arquivos ou o código da aplicação foram modificados, indicando possível crack ou patch não autorizado." },
+  MEMORY_TAMPERING: { label: "Memória", icon: Cpu, color: "bg-destructive/10 text-destructive", description: "Manipulação de memória detectada. Alguém está usando ferramentas como Cheat Engine ou similares para modificar valores na memória do processo." },
 };
 
 const SecurityLogsPage = () => {
@@ -27,6 +34,7 @@ const SecurityLogsPage = () => {
   const [search, setSearch] = useState("");
   const [selectedApp, setSelectedApp] = useState("all");
   const [filterEvent, setFilterEvent] = useState("all");
+  const [selectedLog, setSelectedLog] = useState<SecurityLog | null>(null);
 
   const fetchData = async () => {
     if (!user) return;
@@ -54,7 +62,16 @@ const SecurityLogsPage = () => {
     return () => { supabase.removeChannel(channel); };
   }, [selectedApp, filterEvent]);
 
+  const clearAllLogs = async () => {
+    const appIds = apps.map(a => a.id);
+    if (appIds.length === 0) return;
+    const { error } = await supabase.from("security_logs").delete().in("application_id", appIds);
+    if (error) toast.error(error.message);
+    else { toast.success("Logs limpos"); setLogs([]); }
+  };
+
   const formatDate = (date: string) => new Date(date).toLocaleDateString("pt-BR", { day: "2-digit", month: "2-digit", year: "numeric", hour: "2-digit", minute: "2-digit", second: "2-digit" });
+  const copyText = (text: string) => { navigator.clipboard.writeText(text); toast.success("Copiado!"); };
 
   const appsMap: Record<string, AppInfo> = {};
   apps.forEach((a) => (appsMap[a.id] = a));
@@ -64,11 +81,40 @@ const SecurityLogsPage = () => {
     return true;
   });
 
+  const InfoRow = ({ label, value, copyable, mono }: { label: string; value: string | null | undefined; copyable?: boolean; mono?: boolean }) => (
+    <div className="flex items-center justify-between py-2 border-b border-border/50 last:border-0">
+      <span className="text-xs text-muted-foreground">{label}</span>
+      <div className="flex items-center gap-1.5">
+        <span className={`text-xs text-foreground ${mono ? "font-mono" : ""} max-w-[280px] truncate`}>{value || "—"}</span>
+        {copyable && value && <button onClick={() => copyText(value)} className="text-muted-foreground hover:text-primary transition-colors"><Copy className="h-3 w-3" /></button>}
+      </div>
+    </div>
+  );
+
   return (
     <DashboardLayout>
-      <div className="mb-6">
-        <h1 className="text-2xl font-heading font-bold text-foreground tracking-tight">Segurança</h1>
-        <p className="text-sm text-muted-foreground mt-1">Tentativas de crack e invasão</p>
+      <div className="mb-6 flex items-center justify-between">
+        <div>
+          <h1 className="text-2xl font-heading font-bold text-foreground tracking-tight">Segurança</h1>
+          <p className="text-sm text-muted-foreground mt-1">Tentativas de crack e invasão</p>
+        </div>
+        {logs.length > 0 && (
+          <AlertDialog>
+            <AlertDialogTrigger asChild>
+              <Button variant="outline" size="sm" className="gap-1.5 text-destructive border-destructive/30 hover:bg-destructive/10"><Trash2 className="h-3.5 w-3.5" />Limpar Logs</Button>
+            </AlertDialogTrigger>
+            <AlertDialogContent>
+              <AlertDialogHeader>
+                <AlertDialogTitle className="font-heading">Limpar todos os logs de segurança?</AlertDialogTitle>
+                <AlertDialogDescription>Todos os registros serão apagados permanentemente.</AlertDialogDescription>
+              </AlertDialogHeader>
+              <AlertDialogFooter>
+                <AlertDialogCancel>Cancelar</AlertDialogCancel>
+                <AlertDialogAction onClick={clearAllLogs} className="bg-destructive hover:bg-destructive/90">Limpar</AlertDialogAction>
+              </AlertDialogFooter>
+            </AlertDialogContent>
+          </AlertDialog>
+        )}
       </div>
 
       <div className="mb-4 flex flex-wrap gap-3">
@@ -102,11 +148,11 @@ const SecurityLogsPage = () => {
       ) : (
         <div className="space-y-1">
           {filtered.map((log) => {
-            const cfg = eventConfig[log.event_type] || { label: log.event_type, icon: AlertTriangle, color: "bg-muted text-muted-foreground" };
+            const cfg = eventConfig[log.event_type] || { label: log.event_type, icon: AlertTriangle, color: "bg-muted text-muted-foreground", description: "" };
             const IconComponent = cfg.icon;
             const app = appsMap[log.application_id];
             return (
-              <div key={log.id} className="rounded-lg border border-border bg-card p-3 flex items-center gap-3">
+              <div key={log.id} className="rounded-lg border border-border bg-card p-3 flex items-center gap-3 cursor-pointer hover:border-primary/20 transition-colors" onClick={() => setSelectedLog(log)}>
                 <div className="flex-shrink-0 h-7 w-7 rounded-md flex items-center justify-center bg-destructive/10">
                   <IconComponent className="h-3.5 w-3.5 text-destructive" />
                 </div>
@@ -116,7 +162,7 @@ const SecurityLogsPage = () => {
                     {log.username && <span className="flex items-center gap-1 text-xs text-foreground"><User className="h-3 w-3 text-muted-foreground" />{log.username}</span>}
                     {app && <span className="text-[10px] text-muted-foreground">· {app.name}</span>}
                   </div>
-                  {log.details && <p className="text-[11px] text-muted-foreground/80 mt-0.5">{log.details}</p>}
+                  {log.details && <p className="text-[11px] text-muted-foreground/80 mt-0.5 truncate max-w-md">{log.details}</p>}
                 </div>
                 <div className="flex-shrink-0 flex flex-col items-end gap-0.5">
                   <span className="flex items-center gap-1 text-[10px] text-muted-foreground"><Clock className="h-2.5 w-2.5" />{formatDate(log.created_at)}</span>
@@ -130,6 +176,54 @@ const SecurityLogsPage = () => {
           })}
         </div>
       )}
+
+      <Dialog open={!!selectedLog} onOpenChange={(o) => !o && setSelectedLog(null)}>
+        <DialogContent className="max-w-2xl">
+          <DialogHeader>
+            <DialogTitle className="font-heading flex items-center gap-2">
+              Detalhes do Alerta
+              {selectedLog && (() => {
+                const cfg = eventConfig[selectedLog.event_type] || { label: selectedLog.event_type, color: "bg-muted text-muted-foreground" };
+                return <Badge variant="outline" className={`${cfg.color} text-[10px] border-0`}>{cfg.label}</Badge>;
+              })()}
+            </DialogTitle>
+          </DialogHeader>
+          {selectedLog && (() => {
+            const cfg = eventConfig[selectedLog.event_type] || { label: selectedLog.event_type, icon: AlertTriangle, color: "", description: "Evento de segurança desconhecido." };
+            const app = appsMap[selectedLog.application_id];
+            return (
+              <div className="space-y-4">
+                <div className="rounded-lg border border-destructive/20 bg-destructive/5 p-4">
+                  <p className="text-[10px] uppercase tracking-wider text-destructive mb-2 font-semibold">O que aconteceu</p>
+                  <p className="text-sm text-foreground leading-relaxed">{cfg.description}</p>
+                </div>
+
+                {selectedLog.details && (
+                  <div className="rounded-lg border border-border p-3">
+                    <p className="text-[10px] uppercase tracking-wider text-muted-foreground mb-2 font-semibold">Detalhes Técnicos</p>
+                    <p className="text-xs text-foreground font-mono bg-muted/50 rounded p-2 whitespace-pre-wrap break-all">{selectedLog.details}</p>
+                  </div>
+                )}
+
+                <div className="rounded-lg border border-border p-3">
+                  <p className="text-[10px] uppercase tracking-wider text-muted-foreground mb-2 font-semibold">Usuário</p>
+                  <InfoRow label="Username" value={selectedLog.username} copyable mono />
+                  <InfoRow label="IP" value={selectedLog.ip_address} copyable mono />
+                  <InfoRow label="HWID" value={selectedLog.hwid} copyable mono />
+                </div>
+
+                <div className="rounded-lg border border-border p-3">
+                  <p className="text-[10px] uppercase tracking-wider text-muted-foreground mb-2 font-semibold">Contexto</p>
+                  <InfoRow label="Aplicação" value={app?.name} />
+                  <InfoRow label="Tipo" value={selectedLog.event_type} mono />
+                  <InfoRow label="Horário (servidor)" value={formatDate(selectedLog.created_at)} />
+                  <InfoRow label="Horário (cliente)" value={selectedLog.client_timestamp ? new Date(selectedLog.client_timestamp).toLocaleDateString("pt-BR", { day: "2-digit", month: "2-digit", year: "numeric", hour: "2-digit", minute: "2-digit", second: "2-digit" }) : null} />
+                </div>
+              </div>
+            );
+          })()}
+        </DialogContent>
+      </Dialog>
     </DashboardLayout>
   );
 };
