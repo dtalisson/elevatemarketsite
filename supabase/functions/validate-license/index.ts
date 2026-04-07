@@ -76,12 +76,13 @@ Deno.serve(async (req) => {
     }
 
     if (license.status === "banned") {
+      const banReason = (license as any).ban_reason;
       await supabase.from("auth_logs").insert({
         application_id: app.id, event_type: "validate_banned",
-        ip_address: ip, hwid, success: false, details: "License is banned", license_id: license.id,
+        ip_address: ip, hwid, success: false, details: banReason ? `License paused: ${banReason}` : "License is paused", license_id: license.id,
       });
       return new Response(
-        JSON.stringify({ valid: false, message: "License is banned" }),
+        JSON.stringify({ valid: false, message: banReason ? `License paused: ${banReason}` : "License is currently paused" }),
         { status: 403, headers: { ...corsHeaders, "Content-Type": "application/json" } }
       );
     }
