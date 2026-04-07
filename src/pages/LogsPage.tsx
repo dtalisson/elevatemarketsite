@@ -3,10 +3,15 @@ import { DashboardLayout } from "@/components/DashboardLayout";
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/contexts/AuthContext";
 import { Badge } from "@/components/ui/badge";
+import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
-import { Search, Copy } from "lucide-react";
+import {
+  AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent,
+  AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle,
+} from "@/components/ui/alert-dialog";
+import { Search, Copy, Trash2 } from "lucide-react";
 import { toast } from "sonner";
 
 interface AuthLog {
@@ -44,6 +49,50 @@ const LogsPage = () => {
   const [filterSuccess, setFilterSuccess] = useState("all");
   const [selectedApp, setSelectedApp] = useState("all");
   const [selectedLog, setSelectedLog] = useState<AuthLog | null>(null);
+  const [cleanupPeriod, setCleanupPeriod] = useState("1d");
+  const [showCleanup, setShowCleanup] = useState(false);
+  const [cleanupLoading, setCleanupLoading] = useState(false);
+
+  const cleanupLabels: Record<string, string> = {
+    "1d": "Últimas 24 horas",
+    "3d": "Últimos 3 dias",
+    "1w": "Última semana",
+    "1m": "Último mês",
+    "all": "Todos os logs",
+  };
+
+  const getCleanupDate = (period: string): string | null => {
+    const now = Date.now();
+    switch (period) {
+      case "1d": return new Date(now - 1 * 86400000).toISOString();
+      case "3d": return new Date(now - 3 * 86400000).toISOString();
+      case "1w": return new Date(now - 7 * 86400000).toISOString();
+      case "1m": return new Date(now - 30 * 86400000).toISOString();
+      case "all": return null;
+      default: return null;
+    }
+  };
+
+  const cleanupLogs = async () => {
+    setCleanupLoading(true);
+    const appIds = apps.map(a => a.id);
+    if (appIds.length === 0) { setCleanupLoading(false); return; }
+
+    const cutoff = getCleanupDate(cleanupPeriod);
+    let query = supabase.from("auth_logs").delete().in("application_id", appIds);
+    if (cutoff) {
+      query = query.lt("created_at", cutoff);
+    }
+
+    const { error } = await query;
+    if (error) toast.error(error.message);
+    else {
+      toast.success(`Logs ${cutoff ? "anteriores a " + new Date(cutoff).toLocaleDateString("pt-BR") : ""} apagados`);
+      fetchData();
+    }
+    setCleanupLoading(false);
+    setShowCleanup(false);
+  };
 
   const fetchData = async () => {
     if (!user) return;
@@ -106,9 +155,16 @@ const LogsPage = () => {
 
   return (
     <DashboardLayout>
-      <div className="mb-6">
-        <h1 className="text-2xl font-heading font-bold text-foreground tracking-tight">Logs</h1>
-        <p className="text-sm text-muted-foreground mt-1">Histórico de autenticação</p>
+      <div className="mb-6 flex items-center justify-between">
+        <div>
+          <h1 className="text-2xl font-heading font-bold text-foreground tracking-tight">Logs</h1>
+          <p className="text-sm text-muted-foreground mt-1">Histórico de autenticação · limpeza automática a cada 2 dias</p>
+        </div>
+        {logs.length > 0 && (
+          <Button variant="outline" size="sm" className="gap-1.5 text-destructive border-destructive/30 hover:bg-destructive/10" onClick={() => setShowCleanup(true)}>
+            <Trash2 className="h-3.5 w-3.5" />Limpar Logs
+          </Button>
+        )}
       </div>
 
       <div className="mb-4 flex flex-wrap gap-3">
@@ -231,6 +287,32 @@ const LogsPage = () => {
           })()}
         </DialogContent>
       </Dialog>
+
+      {/* Cleanup dialog */}
+      <AlertDialog open={showCleanup} onOpenChange={setShowCleanup}>
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle className="font-heading">Limpar logs de autenticação</AlertDialogTitle>
+            <AlertDialogDescription>Selecione o período dos logs que deseja apagar. Esta ação é irreversível.</AlertDialogDescription>
+          </AlertDialogHeader>
+          <Select value={cleanupPeriod} onValueChange={setCleanupPeriod}>
+            <SelectTrigger><SelectValue /></SelectTrigger>
+            <SelectContent>
+              <SelectItem value="1d">Mais antigos que 1 dia</SelectItem>
+              <SelectItem value="3d">Mais antigos que 3 dias</SelectItem>
+              <SelectItem value="1w">Mais antigos que 1 semana</SelectItem>
+              <SelectItem value="1m">Mais antigos que 1 mês</SelectItem>
+              <SelectItem value="all">Todos os logs</SelectItem>
+            </SelectContent>
+          </Select>
+          <AlertDialogFooter>
+            <AlertDialogCancel>Cancelar</AlertDialogCancel>
+            <AlertDialogAction onClick={cleanupLogs} disabled={cleanupLoading} className="bg-destructive hover:bg-destructive/90">
+              {cleanupLoading ? "Limpando..." : "Limpar"}
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
     </DashboardLayout>
   );
 };
