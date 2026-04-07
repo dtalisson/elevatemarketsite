@@ -81,9 +81,14 @@ const LogsPage = () => {
     const channel = supabase
       .channel("auth_logs_realtime")
       .on("postgres_changes", { event: "INSERT", schema: "public", table: "auth_logs" }, (payload) => {
-        setLogs((prev) => [payload.new as AuthLog, ...prev].slice(0, 500));
+        const newLog = payload.new as AuthLog;
+        if (selectedApp === "all" || newLog.application_id === selectedApp) {
+          setLogs((prev) => [newLog, ...prev].slice(0, 500));
+        }
       })
       .subscribe();
+    return () => { supabase.removeChannel(channel); };
+  }, [selectedApp]);
     return () => { supabase.removeChannel(channel); };
   }, []);
 
