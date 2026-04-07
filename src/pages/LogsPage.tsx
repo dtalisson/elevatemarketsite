@@ -287,6 +287,32 @@ const LogsPage = () => {
           })()}
         </DialogContent>
       </Dialog>
+
+      {/* Cleanup dialog */}
+      <AlertDialog open={showCleanup} onOpenChange={setShowCleanup}>
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle className="font-heading">Limpar logs de autenticação</AlertDialogTitle>
+            <AlertDialogDescription>Selecione o período dos logs que deseja apagar. Esta ação é irreversível.</AlertDialogDescription>
+          </AlertDialogHeader>
+          <Select value={cleanupPeriod} onValueChange={setCleanupPeriod}>
+            <SelectTrigger><SelectValue /></SelectTrigger>
+            <SelectContent>
+              <SelectItem value="1d">Mais antigos que 1 dia</SelectItem>
+              <SelectItem value="3d">Mais antigos que 3 dias</SelectItem>
+              <SelectItem value="1w">Mais antigos que 1 semana</SelectItem>
+              <SelectItem value="1m">Mais antigos que 1 mês</SelectItem>
+              <SelectItem value="all">Todos os logs</SelectItem>
+            </SelectContent>
+          </Select>
+          <AlertDialogFooter>
+            <AlertDialogCancel>Cancelar</AlertDialogCancel>
+            <AlertDialogAction onClick={cleanupLogs} disabled={cleanupLoading} className="bg-destructive hover:bg-destructive/90">
+              {cleanupLoading ? "Limpando..." : "Limpar"}
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
     </DashboardLayout>
   );
 };
