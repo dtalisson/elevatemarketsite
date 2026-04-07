@@ -11,19 +11,19 @@ import {
   AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent,
   AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle, AlertDialogTrigger,
 } from "@/components/ui/alert-dialog";
-import { Search, Clock, Globe, Monitor, User, Bug, Cpu, AlertTriangle, Zap, ShieldX, Trash2, Copy } from "lucide-react";
+import { Search, Trash2, Copy } from "lucide-react";
 import { toast } from "sonner";
 
 interface SecurityLog { id: string; application_id: string; username: string | null; hwid: string | null; event_type: string; details: string | null; client_timestamp: number | null; ip_address: string | null; created_at: string; }
 interface AppInfo { id: string; name: string; }
 
-const eventConfig: Record<string, { label: string; icon: typeof Bug; color: string; description: string }> = {
-  DEBUGGER_DETECTED: { label: "Debugger", icon: Bug, color: "bg-destructive/10 text-destructive", description: "Um debugger foi detectado anexado ao processo da aplicação. Isso indica que alguém está tentando analisar ou modificar o comportamento do software em tempo real." },
-  DUMP_TOOL_DETECTED: { label: "Dump Tool", icon: Cpu, color: "bg-destructive/10 text-destructive", description: "Uma ferramenta de dump de memória foi detectada. O usuário pode estar tentando extrair o código ou dados sensíveis da aplicação da memória RAM." },
-  HWID_ABUSE: { label: "HWID Abuse", icon: AlertTriangle, color: "bg-warning/10 text-warning", description: "Abuso de HWID detectado. Múltiplas tentativas de uso com hardware IDs diferentes, indicando possível compartilhamento ou clonagem de licença." },
-  SESSION_INVALIDATED: { label: "Sessão Inv.", icon: Zap, color: "bg-warning/10 text-warning", description: "A sessão do usuário foi invalidada por atividade suspeita, como tentativa de login simultâneo ou manipulação de token de sessão." },
-  INTEGRITY_VIOLATION: { label: "Integridade", icon: ShieldX, color: "bg-destructive/10 text-destructive", description: "Violação de integridade detectada. Os arquivos ou o código da aplicação foram modificados, indicando possível crack ou patch não autorizado." },
-  MEMORY_TAMPERING: { label: "Memória", icon: Cpu, color: "bg-destructive/10 text-destructive", description: "Manipulação de memória detectada. Alguém está usando ferramentas como Cheat Engine ou similares para modificar valores na memória do processo." },
+const eventConfig: Record<string, { label: string; color: string; description: string }> = {
+  DEBUGGER_DETECTED: { label: "Debugger", color: "bg-destructive/10 text-destructive", description: "Um debugger foi detectado anexado ao processo da aplicação. Isso indica que alguém está tentando analisar ou modificar o comportamento do software em tempo real." },
+  DUMP_TOOL_DETECTED: { label: "Dump Tool", color: "bg-destructive/10 text-destructive", description: "Uma ferramenta de dump de memória foi detectada. O usuário pode estar tentando extrair o código ou dados sensíveis da aplicação da memória RAM." },
+  HWID_ABUSE: { label: "HWID Abuse", color: "bg-warning/10 text-warning", description: "Abuso de HWID detectado. Múltiplas tentativas de uso com hardware IDs diferentes, indicando possível compartilhamento ou clonagem de licença." },
+  SESSION_INVALIDATED: { label: "Sessão Inv.", color: "bg-warning/10 text-warning", description: "A sessão do usuário foi invalidada por atividade suspeita, como tentativa de login simultâneo ou manipulação de token de sessão." },
+  INTEGRITY_VIOLATION: { label: "Integridade", color: "bg-destructive/10 text-destructive", description: "Violação de integridade detectada. Os arquivos ou o código da aplicação foram modificados, indicando possível crack ou patch não autorizado." },
+  MEMORY_TAMPERING: { label: "Memória", color: "bg-destructive/10 text-destructive", description: "Manipulação de memória detectada. Alguém está usando ferramentas como Cheat Engine ou similares para modificar valores na memória do processo." },
 };
 
 const SecurityLogsPage = () => {
@@ -148,27 +148,23 @@ const SecurityLogsPage = () => {
       ) : (
         <div className="space-y-1">
           {filtered.map((log) => {
-            const cfg = eventConfig[log.event_type] || { label: log.event_type, icon: AlertTriangle, color: "bg-muted text-muted-foreground", description: "" };
-            const IconComponent = cfg.icon;
+            const cfg = eventConfig[log.event_type] || { label: log.event_type, color: "bg-muted text-muted-foreground", description: "" };
             const app = appsMap[log.application_id];
             return (
-              <div key={log.id} className="rounded-lg border border-border bg-card p-3 flex items-center gap-3 cursor-pointer hover:border-primary/20 transition-colors" onClick={() => setSelectedLog(log)}>
-                <div className="flex-shrink-0 h-7 w-7 rounded-md flex items-center justify-center bg-destructive/10">
-                  <IconComponent className="h-3.5 w-3.5 text-destructive" />
-                </div>
+              <div key={log.id} className="rounded-lg border border-border bg-card px-4 py-3 flex items-center gap-3 cursor-pointer hover:border-primary/20 transition-colors" onClick={() => setSelectedLog(log)}>
                 <div className="flex-1 min-w-0">
                   <div className="flex items-center gap-2 flex-wrap">
                     <Badge variant="outline" className={`${cfg.color} text-[10px] border-0`}>{cfg.label}</Badge>
-                    {log.username && <span className="flex items-center gap-1 text-xs text-foreground"><User className="h-3 w-3 text-muted-foreground" />{log.username}</span>}
+                    {log.username && <span className="text-xs font-medium text-foreground">{log.username}</span>}
                     {app && <span className="text-[10px] text-muted-foreground">· {app.name}</span>}
                   </div>
-                  {log.details && <p className="text-[11px] text-muted-foreground/80 mt-0.5 truncate max-w-md">{log.details}</p>}
+                  {log.details && <p className="text-[11px] text-muted-foreground/70 mt-0.5 truncate max-w-md">{log.details}</p>}
                 </div>
                 <div className="flex-shrink-0 flex flex-col items-end gap-0.5">
-                  <span className="flex items-center gap-1 text-[10px] text-muted-foreground"><Clock className="h-2.5 w-2.5" />{formatDate(log.created_at)}</span>
-                  <div className="flex items-center gap-2">
-                    {log.ip_address && <span className="text-[10px] font-mono text-muted-foreground flex items-center gap-1"><Globe className="h-2.5 w-2.5" />{log.ip_address}</span>}
-                    {log.hwid && <span className="text-[10px] font-mono text-destructive flex items-center gap-1"><Monitor className="h-2.5 w-2.5" />{log.hwid.substring(0, 16)}</span>}
+                  <span className="text-[10px] text-muted-foreground">{formatDate(log.created_at)}</span>
+                  <div className="flex items-center gap-3">
+                    {log.ip_address && <span className="text-[10px] font-mono text-muted-foreground">{log.ip_address}</span>}
+                    {log.hwid && <span className="text-[10px] font-mono text-destructive">{log.hwid.substring(0, 16)}</span>}
                   </div>
                 </div>
               </div>
@@ -189,7 +185,7 @@ const SecurityLogsPage = () => {
             </DialogTitle>
           </DialogHeader>
           {selectedLog && (() => {
-            const cfg = eventConfig[selectedLog.event_type] || { label: selectedLog.event_type, icon: AlertTriangle, color: "", description: "Evento de segurança desconhecido." };
+            const cfg = eventConfig[selectedLog.event_type] || { label: selectedLog.event_type, color: "", description: "Evento de segurança desconhecido." };
             const app = appsMap[selectedLog.application_id];
             return (
               <div className="space-y-3">
