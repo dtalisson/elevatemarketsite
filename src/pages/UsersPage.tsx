@@ -4,7 +4,7 @@ import { Button } from "@/components/ui/button";
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/contexts/AuthContext";
 import { toast } from "sonner";
-import { Trash2, Search, Key, Eye, EyeOff, Copy, Clock, Globe } from "lucide-react";
+import { Trash2, Search, Key, Eye, EyeOff, Copy, Clock, Globe, Ban, CheckCircle2 } from "lucide-react";
 import { Badge } from "@/components/ui/badge";
 import { Input } from "@/components/ui/input";
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
@@ -186,21 +186,50 @@ const UsersPage = () => {
                   <InfoRow label="Aplicação" value={app?.name} />
                   <InfoRow label="Registrado" value={formatDate(selectedUser.created_at)} />
                 </div>
-                <AlertDialog>
-                  <AlertDialogTrigger asChild>
-                    <Button variant="destructive" className="w-full gap-2" size="sm"><Trash2 className="h-3.5 w-3.5" />Excluir</Button>
-                  </AlertDialogTrigger>
-                  <AlertDialogContent>
-                    <AlertDialogHeader>
-                      <AlertDialogTitle className="font-heading">Excluir {selectedUser.username}?</AlertDialogTitle>
-                      <AlertDialogDescription>Ação irreversível.</AlertDialogDescription>
-                    </AlertDialogHeader>
-                    <AlertDialogFooter>
-                      <AlertDialogCancel>Cancelar</AlertDialogCancel>
-                      <AlertDialogAction onClick={() => handleDelete(selectedUser.id)} className="bg-destructive hover:bg-destructive/90">Excluir</AlertDialogAction>
-                    </AlertDialogFooter>
-                  </AlertDialogContent>
-                </AlertDialog>
+                <div className="space-y-2">
+                  {license && (license.status === "active" || license.status === "unused") ? (
+                    <Button
+                      variant="outline"
+                      className="w-full text-warning border-warning/30 hover:bg-warning/10 gap-2"
+                      size="sm"
+                      onClick={async () => {
+                        const { error } = await supabase.from("licenses").update({ status: "banned" as const }).eq("id", selectedUser.license_id);
+                        if (error) toast.error(error.message);
+                        else { toast.success("Licença desativada"); fetchData(); }
+                      }}
+                    >
+                      <Ban className="h-3.5 w-3.5" />Desativar Licença
+                    </Button>
+                  ) : license ? (
+                    <Button
+                      variant="outline"
+                      className="w-full text-primary border-primary/30 hover:bg-primary/10 gap-2"
+                      size="sm"
+                      onClick={async () => {
+                        const { error } = await supabase.from("licenses").update({ status: "active" as const }).eq("id", selectedUser.license_id);
+                        if (error) toast.error(error.message);
+                        else { toast.success("Licença ativada"); fetchData(); }
+                      }}
+                    >
+                      <CheckCircle2 className="h-3.5 w-3.5" />Ativar Licença
+                    </Button>
+                  ) : null}
+                  <AlertDialog>
+                    <AlertDialogTrigger asChild>
+                      <Button variant="destructive" className="w-full gap-2" size="sm"><Trash2 className="h-3.5 w-3.5" />Excluir Usuário</Button>
+                    </AlertDialogTrigger>
+                    <AlertDialogContent>
+                      <AlertDialogHeader>
+                        <AlertDialogTitle className="font-heading">Excluir {selectedUser.username}?</AlertDialogTitle>
+                        <AlertDialogDescription>Ação irreversível.</AlertDialogDescription>
+                      </AlertDialogHeader>
+                      <AlertDialogFooter>
+                        <AlertDialogCancel>Cancelar</AlertDialogCancel>
+                        <AlertDialogAction onClick={() => handleDelete(selectedUser.id)} className="bg-destructive hover:bg-destructive/90">Excluir</AlertDialogAction>
+                      </AlertDialogFooter>
+                    </AlertDialogContent>
+                  </AlertDialog>
+                </div>
               </div>
             );
           })()}

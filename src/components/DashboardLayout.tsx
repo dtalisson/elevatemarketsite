@@ -2,7 +2,7 @@ import { ReactNode, useState } from "react";
 import { Link, useLocation } from "react-router-dom";
 import { useAuth } from "@/contexts/AuthContext";
 import {
-  LayoutDashboard, ScrollText, Key, AppWindow, Users, LogOut, Code, Menu, X, Wifi, ShieldAlert, ShieldX, Settings,
+  LayoutDashboard, ScrollText, Key, AppWindow, Users, LogOut, Code, Menu, X, Wifi, ShieldAlert, ShieldX,
 } from "lucide-react";
 import { cn } from "@/lib/utils";
 
@@ -29,7 +29,6 @@ const navSections = [
     label: "FERRAMENTAS",
     items: [
       { label: "API Docs", icon: Code, href: "/dashboard/docs" },
-      { label: "Configurações", icon: Settings, href: "/dashboard/settings" },
     ],
   },
 ];
@@ -52,7 +51,7 @@ export const DashboardLayout = ({ children }: { children: ReactNode }) => {
         )}
       >
         <div className="flex h-14 items-center justify-between px-5 border-b border-border">
-          <span className="text-sm font-heading font-bold text-foreground tracking-tight">
+          <span className="text-lg font-heading font-bold text-foreground tracking-tight">
             Elevate<span className="text-primary">Auth</span>
           </span>
           <button className="lg:hidden text-muted-foreground hover:text-foreground" onClick={() => setSidebarOpen(false)}>
@@ -118,7 +117,7 @@ export const DashboardLayout = ({ children }: { children: ReactNode }) => {
           <button onClick={() => setSidebarOpen(true)} className="rounded-md p-2 text-muted-foreground hover:text-foreground hover:bg-muted">
             <Menu className="h-5 w-5" />
           </button>
-          <span className="text-sm font-heading font-bold text-foreground">
+          <span className="text-lg font-heading font-bold text-foreground">
             Elevate<span className="text-primary">Auth</span>
           </span>
         </header>
