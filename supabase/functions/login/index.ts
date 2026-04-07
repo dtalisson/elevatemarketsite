@@ -104,6 +104,57 @@ Deno.serve(async (req) => {
       );
     }
 
+    // Validate challenge token if provided
+    if (challenge_token) {
+      const { data: tokenData, error: tokenError } = await supabase
+        .from("pre_auth_tokens")
+        .select("*")
+        .eq("token", challenge_token)
+        .eq("application_id", app.id)
+        .eq("username", username.toLowerCase())
+        .single();
+
+      if (tokenError || !tokenData) {
+        await supabase.from("auth_logs").insert({
+          application_id: app.id, event_type: "login_failed", username: username.toLowerCase(),
+          ip_address: ip, hwid, success: false, details: "Invalid challenge token",
+        });
+        return new Response(
+          JSON.stringify({ success: false, message: "Invalid or expired challenge token" }),
+          { status: 401, headers: { ...corsHeaders, "Content-Type": "application/json" } }
+        );
+      }
+
+      // Check expiration
+      if (new Date(tokenData.expires_at) < new Date() || tokenData.used) {
+        await supabase.from("pre_auth_tokens").delete().eq("id", tokenData.id);
+        await supabase.from("auth_logs").insert({
+          application_id: app.id, event_type: "login_failed", username: username.toLowerCase(),
+          ip_address: ip, hwid, success: false, details: "Challenge token expired or already used",
+        });
+        return new Response(
+          JSON.stringify({ success: false, message: "Challenge token expired" }),
+          { status: 401, headers: { ...corsHeaders, "Content-Type": "application/json" } }
+        );
+      }
+
+      // Check HWID match with pre-auth
+      if (tokenData.hwid && hwid && tokenData.hwid !== hwid) {
+        await supabase.from("pre_auth_tokens").delete().eq("id", tokenData.id);
+        await supabase.from("auth_logs").insert({
+          application_id: app.id, event_type: "login_failed", username: username.toLowerCase(),
+          ip_address: ip, hwid, success: false, details: "HWID mismatch between pre-auth and login",
+        });
+        return new Response(
+          JSON.stringify({ success: false, message: "Device mismatch", status: "hwid_mismatch" }),
+          { status: 403, headers: { ...corsHeaders, "Content-Type": "application/json" } }
+        );
+      }
+
+      // Mark token as used
+      await supabase.from("pre_auth_tokens").update({ used: true }).eq("id", tokenData.id);
+    }
+
     // Find user
     const { data: user, error: userError } = await supabase
       .from("software_users")
