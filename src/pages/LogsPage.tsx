@@ -166,7 +166,7 @@ const LogsPage = () => {
         <div className="space-y-1.5">
           {filtered.map((log, index) => {
             const ev = eventLabels[log.event_type] || { label: log.event_type, color: "bg-muted text-muted-foreground border-border" };
-            const app = apps[log.application_id];
+            const app = appsMap[log.application_id];
             return (
               <Card
                 key={log.id}
