@@ -9,6 +9,7 @@ const Login = () => {
   const [password, setPassword] = useState("");
   const [loading, setLoading] = useState(false);
   const navigate = useNavigate();
+  const canvasRef = useRef<HTMLCanvasElement>(null);
 
   const handleLogin = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -19,9 +20,6 @@ const Login = () => {
     else navigate("/dashboard");
     setLoading(false);
   };
-
-  return (
-  const canvasRef = useRef<HTMLCanvasElement>(null);
 
   useEffect(() => {
     const canvas = canvasRef.current;
@@ -77,7 +75,6 @@ const Login = () => {
   return (
     <div className="dark flex min-h-screen items-center justify-center p-4 bg-background relative overflow-hidden">
       <canvas ref={canvasRef} className="fixed inset-0 z-0 pointer-events-none" />
-      {/* Ambient background blobs */}
       <div className="absolute top-[-20%] left-[-10%] w-[600px] h-[600px] rounded-full opacity-[0.04]" style={{ background: "radial-gradient(circle, hsl(160 80% 45%), transparent 70%)" }} />
       <div className="absolute bottom-[-20%] right-[-10%] w-[500px] h-[500px] rounded-full opacity-[0.03]" style={{ background: "radial-gradient(circle, hsl(160 80% 45%), transparent 70%)" }} />
 
