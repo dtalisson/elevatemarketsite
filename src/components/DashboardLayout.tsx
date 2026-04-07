@@ -2,20 +2,36 @@ import { ReactNode, useState } from "react";
 import { Link, useLocation } from "react-router-dom";
 import { useAuth } from "@/contexts/AuthContext";
 import {
-  LayoutDashboard, ScrollText, Key, AppWindow, Users, LogOut, Code, Menu, X, Wifi, ShieldAlert, ShieldX,
+  LayoutDashboard, ScrollText, Key, AppWindow, Users, LogOut, Code, Menu, X, Wifi, ShieldAlert, ShieldX, Settings,
 } from "lucide-react";
 import { cn } from "@/lib/utils";
 
-const navItems = [
-  { label: "Dashboard", icon: LayoutDashboard, href: "/dashboard" },
-  { label: "Aplicações", icon: AppWindow, href: "/dashboard/applications" },
-  { label: "Licenças", icon: Key, href: "/dashboard/licenses" },
-  { label: "Usuários", icon: Users, href: "/dashboard/users" },
-  { label: "Online", icon: Wifi, href: "/dashboard/online" },
-  { label: "Logs", icon: ScrollText, href: "/dashboard/logs" },
-  { label: "HWID Logs", icon: ShieldAlert, href: "/dashboard/hwid-logs" },
-  { label: "Segurança", icon: ShieldX, href: "/dashboard/security-logs" },
-  { label: "API Docs", icon: Code, href: "/dashboard/docs" },
+const navSections = [
+  {
+    label: "PRINCIPAL",
+    items: [
+      { label: "Dashboard", icon: LayoutDashboard, href: "/dashboard" },
+      { label: "Aplicações", icon: AppWindow, href: "/dashboard/applications" },
+      { label: "Licenças", icon: Key, href: "/dashboard/licenses" },
+      { label: "Usuários", icon: Users, href: "/dashboard/users" },
+      { label: "Online", icon: Wifi, href: "/dashboard/online" },
+    ],
+  },
+  {
+    label: "LOGS",
+    items: [
+      { label: "Autenticação", icon: ScrollText, href: "/dashboard/logs" },
+      { label: "HWID", icon: ShieldAlert, href: "/dashboard/hwid-logs" },
+      { label: "Segurança", icon: ShieldX, href: "/dashboard/security-logs" },
+    ],
+  },
+  {
+    label: "FERRAMENTAS",
+    items: [
+      { label: "API Docs", icon: Code, href: "/dashboard/docs" },
+      { label: "Configurações", icon: Settings, href: "/dashboard/settings" },
+    ],
+  },
 ];
 
 export const DashboardLayout = ({ children }: { children: ReactNode }) => {
@@ -35,35 +51,44 @@ export const DashboardLayout = ({ children }: { children: ReactNode }) => {
           sidebarOpen ? "translate-x-0" : "-translate-x-full"
         )}
       >
-        <div className="flex h-14 items-center px-5 border-b border-border">
+        <div className="flex h-14 items-center justify-between px-5 border-b border-border">
           <span className="text-sm font-heading font-bold text-foreground tracking-tight">
             Elevate<span className="text-primary">Auth</span>
           </span>
-          <button className="ml-auto lg:hidden text-muted-foreground hover:text-foreground" onClick={() => setSidebarOpen(false)}>
+          <button className="lg:hidden text-muted-foreground hover:text-foreground" onClick={() => setSidebarOpen(false)}>
             <X className="h-4 w-4" />
           </button>
         </div>
 
-        <nav className="flex-1 px-3 py-4 space-y-0.5">
-          {navItems.map((item) => {
-            const active = location.pathname === item.href;
-            return (
-              <Link
-                key={item.href}
-                to={item.href}
-                onClick={() => setSidebarOpen(false)}
-                className={cn(
-                  "flex items-center gap-2.5 rounded-md px-3 py-2 text-[13px] font-medium transition-colors",
-                  active
-                    ? "bg-primary/10 text-primary"
-                    : "text-muted-foreground hover:text-foreground hover:bg-muted"
-                )}
-              >
-                <item.icon className="h-4 w-4" />
-                {item.label}
-              </Link>
-            );
-          })}
+        <nav className="flex-1 overflow-y-auto px-3 py-4 space-y-5">
+          {navSections.map((section) => (
+            <div key={section.label}>
+              <p className="px-3 mb-1.5 text-[10px] uppercase tracking-[0.12em] font-semibold text-muted-foreground/50">
+                {section.label}
+              </p>
+              <div className="space-y-0.5">
+                {section.items.map((item) => {
+                  const active = location.pathname === item.href;
+                  return (
+                    <Link
+                      key={item.href}
+                      to={item.href}
+                      onClick={() => setSidebarOpen(false)}
+                      className={cn(
+                        "flex items-center gap-2.5 rounded-md px-3 py-2 text-[13px] font-medium transition-colors",
+                        active
+                          ? "bg-primary/10 text-primary"
+                          : "text-muted-foreground hover:text-foreground hover:bg-muted"
+                      )}
+                    >
+                      <item.icon className="h-4 w-4" />
+                      {item.label}
+                    </Link>
+                  );
+                })}
+              </div>
+            </div>
+          ))}
         </nav>
 
         <div className="px-3 pb-3 pt-2 border-t border-border">
