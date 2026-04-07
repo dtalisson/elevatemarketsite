@@ -17,13 +17,13 @@ import { toast } from "sonner";
 interface SecurityLog { id: string; application_id: string; username: string | null; hwid: string | null; event_type: string; details: string | null; client_timestamp: number | null; ip_address: string | null; created_at: string; }
 interface AppInfo { id: string; name: string; }
 
-const eventConfig: Record<string, { label: string; icon: typeof Bug; color: string; description: string }> = {
-  DEBUGGER_DETECTED: { label: "Debugger", icon: Bug, color: "bg-destructive/10 text-destructive", description: "Um debugger foi detectado anexado ao processo da aplicação. Isso indica que alguém está tentando analisar ou modificar o comportamento do software em tempo real." },
-  DUMP_TOOL_DETECTED: { label: "Dump Tool", icon: Cpu, color: "bg-destructive/10 text-destructive", description: "Uma ferramenta de dump de memória foi detectada. O usuário pode estar tentando extrair o código ou dados sensíveis da aplicação da memória RAM." },
-  HWID_ABUSE: { label: "HWID Abuse", icon: AlertTriangle, color: "bg-warning/10 text-warning", description: "Abuso de HWID detectado. Múltiplas tentativas de uso com hardware IDs diferentes, indicando possível compartilhamento ou clonagem de licença." },
-  SESSION_INVALIDATED: { label: "Sessão Inv.", icon: Zap, color: "bg-warning/10 text-warning", description: "A sessão do usuário foi invalidada por atividade suspeita, como tentativa de login simultâneo ou manipulação de token de sessão." },
-  INTEGRITY_VIOLATION: { label: "Integridade", icon: ShieldX, color: "bg-destructive/10 text-destructive", description: "Violação de integridade detectada. Os arquivos ou o código da aplicação foram modificados, indicando possível crack ou patch não autorizado." },
-  MEMORY_TAMPERING: { label: "Memória", icon: Cpu, color: "bg-destructive/10 text-destructive", description: "Manipulação de memória detectada. Alguém está usando ferramentas como Cheat Engine ou similares para modificar valores na memória do processo." },
+const eventConfig: Record<string, { label: string; color: string; description: string }> = {
+  DEBUGGER_DETECTED: { label: "Debugger", color: "bg-destructive/10 text-destructive", description: "Um debugger foi detectado anexado ao processo da aplicação. Isso indica que alguém está tentando analisar ou modificar o comportamento do software em tempo real." },
+  DUMP_TOOL_DETECTED: { label: "Dump Tool", color: "bg-destructive/10 text-destructive", description: "Uma ferramenta de dump de memória foi detectada. O usuário pode estar tentando extrair o código ou dados sensíveis da aplicação da memória RAM." },
+  HWID_ABUSE: { label: "HWID Abuse", color: "bg-warning/10 text-warning", description: "Abuso de HWID detectado. Múltiplas tentativas de uso com hardware IDs diferentes, indicando possível compartilhamento ou clonagem de licença." },
+  SESSION_INVALIDATED: { label: "Sessão Inv.", color: "bg-warning/10 text-warning", description: "A sessão do usuário foi invalidada por atividade suspeita, como tentativa de login simultâneo ou manipulação de token de sessão." },
+  INTEGRITY_VIOLATION: { label: "Integridade", color: "bg-destructive/10 text-destructive", description: "Violação de integridade detectada. Os arquivos ou o código da aplicação foram modificados, indicando possível crack ou patch não autorizado." },
+  MEMORY_TAMPERING: { label: "Memória", color: "bg-destructive/10 text-destructive", description: "Manipulação de memória detectada. Alguém está usando ferramentas como Cheat Engine ou similares para modificar valores na memória do processo." },
 };
 
 const SecurityLogsPage = () => {
