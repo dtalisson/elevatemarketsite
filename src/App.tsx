@@ -17,7 +17,7 @@ import LogsPage from "./pages/LogsPage";
 import HwidLogsPage from "./pages/HwidLogsPage";
 import SecurityLogsPage from "./pages/SecurityLogsPage";
 import ApiDocs from "./pages/ApiDocs";
-
+import OnlinePage from "./pages/OnlinePage";
 
 const queryClient = new QueryClient();
 
