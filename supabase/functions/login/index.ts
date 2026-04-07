@@ -48,7 +48,7 @@ Deno.serve(async (req) => {
   const requestStart = Date.now();
 
   try {
-    const { app_secret, username, password, hwid, version, nonce } = await req.json();
+    const { app_secret, username, password, hwid, version, nonce, challenge_token } = await req.json();
 
     if (!app_secret || !username || !password) {
       return new Response(
