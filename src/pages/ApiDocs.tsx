@@ -359,67 +359,7 @@ if (res["nonce"] != nonce) {
                 <p className="text-xs text-muted-foreground mb-2">
                   Adicione verificações anti-debug no lado do cliente para detectar x64dbg, OllyDbg, Cheat Engine e similares.
                 </p>
-                <Tabs defaultValue="csharp_anti" className="w-full">
-                  <TabsList className="mb-2">
-                    <TabsTrigger value="csharp_anti">C#</TabsTrigger>
-                    <TabsTrigger value="cpp_anti">C++</TabsTrigger>
-                    <TabsTrigger value="python_anti">Python</TabsTrigger>
-                  </TabsList>
-                  <TabsContent value="csharp_anti">
-                    <pre className="rounded-lg bg-muted p-3 font-mono text-xs text-foreground overflow-x-auto">
-{`using System.Diagnostics;
-using System.Runtime.InteropServices;
-
-class AntiDebug
-{
-    [DllImport("kernel32.dll")]
-    static extern bool IsDebuggerPresent();
-
-    [DllImport("kernel32.dll")]
-    static extern bool CheckRemoteDebuggerPresent(IntPtr hProcess, ref bool isDebuggerPresent);
-
-    public static bool IsBeingDebugged()
-    {
-        // Método 1: API do Windows
-        if (IsDebuggerPresent()) return true;
-
-        // Método 2: Debugger remoto
-        bool remoteDebugger = false;
-        CheckRemoteDebuggerPresent(Process.GetCurrentProcess().Handle, ref remoteDebugger);
-        if (remoteDebugger) return true;
-
-        // Método 3: .NET Debugger
-        if (Debugger.IsAttached) return true;
-
-        // Método 4: Processos suspeitos
-        string[] badProcesses = {
-            "x64dbg", "x32dbg", "ollydbg", "ida", "ida64",
-            "cheatengine", "dnspy", "de4dot", "httpdebugger",
-            "fiddler", "wireshark", "processhacker"
-        };
-        foreach (var proc in Process.GetProcesses())
-        {
-            string name = proc.ProcessName.ToLower();
-            foreach (var bad in badProcesses)
-                if (name.Contains(bad)) return true;
-        }
-        return false;
-    }
-
-    // Chame no início do programa e periodicamente
-    public static void Protect()
-    {
-        if (IsBeingDebugged())
-        {
-            // Feche silenciosamente
-            Environment.Exit(0);
-        }
-    }
-}`}
-                    </pre>
-                  </TabsContent>
-                  <TabsContent value="cpp_anti">
-                    <pre className="rounded-lg bg-muted p-3 font-mono text-xs text-foreground overflow-x-auto">
+                <pre className="rounded-lg bg-muted p-3 font-mono text-xs text-foreground overflow-x-auto">
 {`#include <windows.h>
 #include <tlhelp32.h>
 #include <string>
@@ -468,37 +408,7 @@ void ProtectLoop() {
         Sleep(5000);
     }
 }`}
-                    </pre>
-                  </TabsContent>
-                  <TabsContent value="python_anti">
-                    <pre className="rounded-lg bg-muted p-3 font-mono text-xs text-foreground overflow-x-auto">
-{`import sys, os, ctypes, psutil
-
-def is_debugged():
-    # Método 1: sys.gettrace
-    if sys.gettrace() is not None:
-        return True
-
-    # Método 2: Windows API
-    if os.name == "nt":
-        if ctypes.windll.kernel32.IsDebuggerPresent():
-            return True
-
-    # Método 3: Processos suspeitos
-    bad = ["x64dbg", "x32dbg", "ollydbg", "ida", "ida64",
-           "cheatengine", "dnspy", "fiddler", "wireshark"]
-    for proc in psutil.process_iter(['name']):
-        name = proc.info['name'].lower()
-        if any(b in name for b in bad):
-            return True
-    return False
-
-# No início do programa:
-if is_debugged():
-    os._exit(0)`}
-                    </pre>
-                  </TabsContent>
-                </Tabs>
+                </pre>
               </div>
 
               <div>
