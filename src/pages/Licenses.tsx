@@ -451,6 +451,25 @@ const Licenses = () => {
           })()}
         </DialogContent>
       </Dialog>
+
+      {/* Ban reason dialog */}
+      <Dialog open={showBanDialog} onOpenChange={(o) => { if (!o) { setShowBanDialog(false); setBanTargetId(null); setBanReason(""); } }}>
+        <DialogContent>
+          <DialogHeader><DialogTitle className="font-heading">Motivo da desativação</DialogTitle></DialogHeader>
+          <div className="space-y-3">
+            <Input placeholder="Ex: Uso indevido, compartilhamento..." value={banReason} onChange={(e) => setBanReason(e.target.value)} />
+            <div className="flex gap-2">
+              <Button variant="outline" className="flex-1" onClick={() => { setShowBanDialog(false); setBanTargetId(null); }}>Cancelar</Button>
+              <Button className="flex-1 bg-warning hover:bg-warning/90 text-warning-foreground" onClick={async () => {
+                if (banTargetId) {
+                  await deactivateLicense(banTargetId, banReason);
+                  setShowBanDialog(false); setBanTargetId(null); setBanReason(""); setSelectedLicense(null);
+                }
+              }}>Desativar</Button>
+            </div>
+          </div>
+        </DialogContent>
+      </Dialog>
     </DashboardLayout>
   );
 };
