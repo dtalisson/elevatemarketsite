@@ -1,0 +1,1 @@
+ALTER TABLE public.licenses ALTER COLUMN license_key SET DEFAULT upper(replace(replace(encode(extensions.gen_random_bytes(9), 'hex'), '/', ''), '+', ''));
