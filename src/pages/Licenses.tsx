@@ -307,7 +307,7 @@ const Licenses = () => {
       )}
 
       <Dialog open={!!selectedLicense} onOpenChange={(o) => { if (!o) { setSelectedLicense(null); setShowPassword(false); } }}>
-        <DialogContent className="max-w-md">
+        <DialogContent className="max-w-2xl">
           <DialogHeader>
             <DialogTitle className="font-heading flex items-center gap-2">
               Detalhes

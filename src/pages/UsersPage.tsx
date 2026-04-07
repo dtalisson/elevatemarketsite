@@ -151,7 +151,7 @@ const UsersPage = () => {
       )}
 
       <Dialog open={!!selectedUser} onOpenChange={(open) => !open && setSelectedUser(null)}>
-        <DialogContent className="max-w-md">
+        <DialogContent className="max-w-2xl">
           <DialogHeader>
             <DialogTitle className="font-heading flex items-center gap-2">
               {selectedUser?.username}
