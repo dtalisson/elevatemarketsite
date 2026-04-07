@@ -15,6 +15,7 @@ import {
   ChevronRight,
   Wifi,
   ShieldAlert,
+  ShieldX,
 } from "lucide-react";
 import { cn } from "@/lib/utils";
 
@@ -26,6 +27,7 @@ const navItems = [
   { label: "Online", icon: Wifi, href: "/dashboard/online" },
   { label: "Logs", icon: ScrollText, href: "/dashboard/logs" },
   { label: "HWID Logs", icon: ShieldAlert, href: "/dashboard/hwid-logs" },
+  { label: "Segurança", icon: ShieldX, href: "/dashboard/security-logs" },
   { label: "Documentação", icon: Code, href: "/dashboard/docs" },
 ];
 
