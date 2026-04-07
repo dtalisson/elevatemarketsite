@@ -135,6 +135,17 @@ const LogsPage = () => {
             <SelectItem value="failed">Falha</SelectItem>
           </SelectContent>
         </Select>
+        <Select value={selectedApp} onValueChange={setSelectedApp}>
+          <SelectTrigger className="w-48 bg-card/50 border-border/50">
+            <SelectValue placeholder="Todas as aplicações" />
+          </SelectTrigger>
+          <SelectContent>
+            <SelectItem value="all">Todas as aplicações</SelectItem>
+            {apps.map((app) => (
+              <SelectItem key={app.id} value={app.id}>{app.name}</SelectItem>
+            ))}
+          </SelectContent>
+        </Select>
       </div>
 
       {loading ? (
