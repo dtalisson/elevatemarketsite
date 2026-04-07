@@ -528,10 +528,9 @@ bool login(const std::string& user, const std::string& pass) {
 // if (login("usuario", "senha"))                 // próximas vezes
 //     std::cout << "Programa liberado!" << std::endl;`}
             </pre>
+          </CardContent>
+        </Card>
 
-              <TabsContent value="python">
-                <pre className="rounded-lg bg-muted p-3 font-mono text-xs text-foreground overflow-x-auto">
-{`import requests, hashlib, uuid, sys, os, time
 
 BASE_URL = "${baseUrl}"
 APP_SECRET = "coloque-seu-app-secret-aqui"
