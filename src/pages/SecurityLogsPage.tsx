@@ -11,7 +11,7 @@ import {
   AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent,
   AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle, AlertDialogTrigger,
 } from "@/components/ui/alert-dialog";
-import { Search, Clock, Globe, Monitor, User, Bug, Cpu, AlertTriangle, Zap, ShieldX, Trash2, Copy } from "lucide-react";
+import { Search, Trash2, Copy } from "lucide-react";
 import { toast } from "sonner";
 
 interface SecurityLog { id: string; application_id: string; username: string | null; hwid: string | null; event_type: string; details: string | null; client_timestamp: number | null; ip_address: string | null; created_at: string; }
@@ -148,27 +148,23 @@ const SecurityLogsPage = () => {
       ) : (
         <div className="space-y-1">
           {filtered.map((log) => {
-            const cfg = eventConfig[log.event_type] || { label: log.event_type, icon: AlertTriangle, color: "bg-muted text-muted-foreground", description: "" };
-            const IconComponent = cfg.icon;
+            const cfg = eventConfig[log.event_type] || { label: log.event_type, color: "bg-muted text-muted-foreground", description: "" };
             const app = appsMap[log.application_id];
             return (
-              <div key={log.id} className="rounded-lg border border-border bg-card p-3 flex items-center gap-3 cursor-pointer hover:border-primary/20 transition-colors" onClick={() => setSelectedLog(log)}>
-                <div className="flex-shrink-0 h-7 w-7 rounded-md flex items-center justify-center bg-destructive/10">
-                  <IconComponent className="h-3.5 w-3.5 text-destructive" />
-                </div>
+              <div key={log.id} className="rounded-lg border border-border bg-card px-4 py-3 flex items-center gap-3 cursor-pointer hover:border-primary/20 transition-colors" onClick={() => setSelectedLog(log)}>
                 <div className="flex-1 min-w-0">
                   <div className="flex items-center gap-2 flex-wrap">
                     <Badge variant="outline" className={`${cfg.color} text-[10px] border-0`}>{cfg.label}</Badge>
-                    {log.username && <span className="flex items-center gap-1 text-xs text-foreground"><User className="h-3 w-3 text-muted-foreground" />{log.username}</span>}
+                    {log.username && <span className="text-xs font-medium text-foreground">{log.username}</span>}
                     {app && <span className="text-[10px] text-muted-foreground">· {app.name}</span>}
                   </div>
-                  {log.details && <p className="text-[11px] text-muted-foreground/80 mt-0.5 truncate max-w-md">{log.details}</p>}
+                  {log.details && <p className="text-[11px] text-muted-foreground/70 mt-0.5 truncate max-w-md">{log.details}</p>}
                 </div>
                 <div className="flex-shrink-0 flex flex-col items-end gap-0.5">
-                  <span className="flex items-center gap-1 text-[10px] text-muted-foreground"><Clock className="h-2.5 w-2.5" />{formatDate(log.created_at)}</span>
-                  <div className="flex items-center gap-2">
-                    {log.ip_address && <span className="text-[10px] font-mono text-muted-foreground flex items-center gap-1"><Globe className="h-2.5 w-2.5" />{log.ip_address}</span>}
-                    {log.hwid && <span className="text-[10px] font-mono text-destructive flex items-center gap-1"><Monitor className="h-2.5 w-2.5" />{log.hwid.substring(0, 16)}</span>}
+                  <span className="text-[10px] text-muted-foreground">{formatDate(log.created_at)}</span>
+                  <div className="flex items-center gap-3">
+                    {log.ip_address && <span className="text-[10px] font-mono text-muted-foreground">{log.ip_address}</span>}
+                    {log.hwid && <span className="text-[10px] font-mono text-destructive">{log.hwid.substring(0, 16)}</span>}
                   </div>
                 </div>
               </div>
