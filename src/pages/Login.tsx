@@ -75,8 +75,8 @@ const Login = () => {
   return (
     <div className="dark flex min-h-screen items-center justify-center p-4 bg-background relative overflow-hidden">
       <canvas ref={canvasRef} className="fixed inset-0 z-0 pointer-events-none" />
-      <div className="absolute top-[-20%] left-[-10%] w-[600px] h-[600px] rounded-full opacity-[0.04]" style={{ background: "radial-gradient(circle, hsl(160 80% 45%), transparent 70%)" }} />
-      <div className="absolute bottom-[-20%] right-[-10%] w-[500px] h-[500px] rounded-full opacity-[0.03]" style={{ background: "radial-gradient(circle, hsl(160 80% 45%), transparent 70%)" }} />
+      <div className="absolute top-[-20%] left-[-10%] w-[600px] h-[600px] rounded-full opacity-[0.04]" style={{ background: "radial-gradient(circle, hsl(217 90% 58%), transparent 70%)" }} />
+      <div className="absolute bottom-[-20%] right-[-10%] w-[500px] h-[500px] rounded-full opacity-[0.03]" style={{ background: "radial-gradient(circle, hsl(217 90% 58%), transparent 70%)" }} />
 
       <div className="w-full max-w-[360px] relative z-10">
         <div className="mb-10 text-center">
