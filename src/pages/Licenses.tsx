@@ -317,7 +317,7 @@ const Licenses = () => {
           {selectedLicense && (() => {
             const su = softwareUsers[selectedLicense.id];
             return (
-              <div className="space-y-4 max-h-[70vh] overflow-y-auto pr-1">
+              <div className="space-y-4">
                 <div className="rounded-lg border border-border p-3">
                   <p className="text-[10px] uppercase tracking-wider text-muted-foreground mb-2 font-semibold">Chave</p>
                   <InfoRow label="Key" value={selectedLicense.license_key} copyable mono />
