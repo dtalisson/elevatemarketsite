@@ -46,6 +46,9 @@ const Licenses = () => {
   const [showPassword, setShowPassword] = useState(false);
   const [selected, setSelected] = useState<Set<string>>(new Set());
   const [bulkLoading, setBulkLoading] = useState(false);
+  const [banReason, setBanReason] = useState("");
+  const [showBanDialog, setShowBanDialog] = useState(false);
+  const [banTargetId, setBanTargetId] = useState<string | null>(null);
 
   const fetchData = async () => {
     const [licRes, appRes, usersRes] = await Promise.all([
@@ -115,24 +118,63 @@ const Licenses = () => {
     setSelected(new Set()); fetchData(); setBulkLoading(false);
   };
 
+  const deactivateLicense = async (licenseId: string, reason: string) => {
+    // Find the license to calculate remaining time
+    const lic = licenses.find(l => l.id === licenseId);
+    if (!lic) return;
+
+    const updates: { status: "banned"; ban_reason: string | null; remaining_seconds?: number | null } = {
+      status: "banned",
+      ban_reason: reason || null,
+    };
+
+    if (lic.expires_at) {
+      const remaining = Math.max(0, Math.floor((new Date(lic.expires_at).getTime() - Date.now()) / 1000));
+      updates.remaining_seconds = remaining;
+    }
+
+    const { error } = await supabase.from("licenses").update(updates).eq("id", licenseId);
+    if (error) toast.error(error.message);
+    else { toast.success("Licença desativada"); fetchData(); }
+  };
+
+  const activateLicense = async (licenseId: string) => {
+    const lic = licenses.find(l => l.id === licenseId);
+    if (!lic) return;
+
+    const updates: { status: "active"; ban_reason: null; expires_at?: string; remaining_seconds?: null } = {
+      status: "active",
+      ban_reason: null,
+    };
+
+    if ((lic as any).remaining_seconds && (lic as any).remaining_seconds > 0) {
+      updates.expires_at = new Date(Date.now() + (lic as any).remaining_seconds * 1000).toISOString();
+      updates.remaining_seconds = null;
+    }
+
+    const { error } = await supabase.from("licenses").update(updates).eq("id", licenseId);
+    if (error) toast.error(error.message);
+    else { toast.success("Licença ativada"); fetchData(); }
+  };
+
   const bulkBan = async () => {
     if (selected.size === 0) return;
     setBulkLoading(true);
     const ids = Array.from(selected);
-    const { error } = await supabase.from("licenses").update({ status: "banned" as const }).in("id", ids);
-    if (error) toast.error(error.message);
-    else { toast.success(`${ids.length} banida(s)`); setSelected(new Set()); fetchData(); }
-    setBulkLoading(false);
+    for (const id of ids) {
+      await deactivateLicense(id, "Banimento em massa");
+    }
+    setSelected(new Set()); fetchData(); setBulkLoading(false);
   };
 
   const bulkActivate = async () => {
     if (selected.size === 0) return;
     setBulkLoading(true);
     const ids = Array.from(selected);
-    const { error } = await supabase.from("licenses").update({ status: "active" as const }).in("id", ids);
-    if (error) toast.error(error.message);
-    else { toast.success(`${ids.length} ativada(s)`); setSelected(new Set()); fetchData(); }
-    setBulkLoading(false);
+    for (const id of ids) {
+      await activateLicense(id);
+    }
+    setSelected(new Set()); fetchData(); setBulkLoading(false);
   };
 
   const copyKey = (text: string) => { navigator.clipboard.writeText(text); toast.success("Copiado!"); };
@@ -355,23 +397,32 @@ const Licenses = () => {
                     <InfoRow label="Criada" value={formatDate(selectedLicense.created_at)} />
                     <InfoRow label="Ativada" value={selectedLicense.activated_at ? formatDate(selectedLicense.activated_at) : null} />
                     <InfoRow label="Expira" value={selectedLicense.expires_at ? formatDate(selectedLicense.expires_at) : "Sem expiração"} />
+                    {(selectedLicense as any).remaining_seconds > 0 && selectedLicense.status === "banned" && (
+                      <InfoRow label="Tempo restante" value={`${Math.floor((selectedLicense as any).remaining_seconds / 3600)}h ${Math.floor(((selectedLicense as any).remaining_seconds % 3600) / 60)}m`} />
+                    )}
                   </div>
                 </div>
 
+                {(selectedLicense as any).ban_reason && (
+                  <div className="rounded-lg border border-destructive/20 bg-destructive/5 px-3 py-2">
+                    <p className="text-[10px] uppercase tracking-wider text-destructive/60 mb-0.5 font-semibold">Motivo da desativação</p>
+                    <p className="text-xs text-destructive">{(selectedLicense as any).ban_reason}</p>
+                  </div>
+                )}
+
                 <div className="flex gap-2">
                   {selectedLicense.status === "active" || selectedLicense.status === "unused" ? (
-                    <Button variant="outline" className="flex-1 text-warning border-warning/30 hover:bg-warning/10" size="sm"
-                      onClick={async () => {
-                        const { error } = await supabase.from("licenses").update({ status: "banned" as const }).eq("id", selectedLicense.id);
-                        if (error) toast.error(error.message);
-                        else { toast.success("Licença desativada"); setSelectedLicense((p) => p ? { ...p, status: "banned" } : null); fetchData(); }
-                      }}><Ban className="mr-1.5 h-3.5 w-3.5" />Desativar</Button>
+                    <>
+                      <Button variant="outline" className="flex-1 text-warning border-warning/30 hover:bg-warning/10" size="sm"
+                        onClick={() => { setBanTargetId(selectedLicense.id); setBanReason(""); setShowBanDialog(true); }}>
+                        <Ban className="mr-1.5 h-3.5 w-3.5" />Desativar
+                      </Button>
+                    </>
                   ) : (
                     <Button variant="outline" className="flex-1 text-primary border-primary/30 hover:bg-primary/10" size="sm"
                       onClick={async () => {
-                        const { error } = await supabase.from("licenses").update({ status: "active" as const }).eq("id", selectedLicense.id);
-                        if (error) toast.error(error.message);
-                        else { toast.success("Licença ativada"); setSelectedLicense((p) => p ? { ...p, status: "active" } : null); fetchData(); }
+                        await activateLicense(selectedLicense.id);
+                        setSelectedLicense(null);
                       }}><CheckCircle2 className="mr-1.5 h-3.5 w-3.5" />Ativar</Button>
                   )}
                   {selectedLicense.hwid && (
@@ -398,6 +449,25 @@ const Licenses = () => {
               </div>
             );
           })()}
+        </DialogContent>
+      </Dialog>
+
+      {/* Ban reason dialog */}
+      <Dialog open={showBanDialog} onOpenChange={(o) => { if (!o) { setShowBanDialog(false); setBanTargetId(null); setBanReason(""); } }}>
+        <DialogContent>
+          <DialogHeader><DialogTitle className="font-heading">Motivo da desativação</DialogTitle></DialogHeader>
+          <div className="space-y-3">
+            <Input placeholder="Ex: Uso indevido, compartilhamento..." value={banReason} onChange={(e) => setBanReason(e.target.value)} />
+            <div className="flex gap-2">
+              <Button variant="outline" className="flex-1" onClick={() => { setShowBanDialog(false); setBanTargetId(null); }}>Cancelar</Button>
+              <Button className="flex-1 bg-warning hover:bg-warning/90 text-warning-foreground" onClick={async () => {
+                if (banTargetId) {
+                  await deactivateLicense(banTargetId, banReason);
+                  setShowBanDialog(false); setBanTargetId(null); setBanReason(""); setSelectedLicense(null);
+                }
+              }}>Desativar</Button>
+            </div>
+          </div>
         </DialogContent>
       </Dialog>
     </DashboardLayout>

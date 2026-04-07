@@ -120,6 +120,7 @@ export type Database = {
         Row: {
           activated_at: string | null
           application_id: string
+          ban_reason: string | null
           claimed_by: string | null
           created_at: string
           created_by: string
@@ -130,12 +131,14 @@ export type Database = {
           license_key: string
           max_uses: number
           note: string | null
+          remaining_seconds: number | null
           status: Database["public"]["Enums"]["license_status"]
           updated_at: string
         }
         Insert: {
           activated_at?: string | null
           application_id: string
+          ban_reason?: string | null
           claimed_by?: string | null
           created_at?: string
           created_by: string
@@ -146,12 +149,14 @@ export type Database = {
           license_key?: string
           max_uses?: number
           note?: string | null
+          remaining_seconds?: number | null
           status?: Database["public"]["Enums"]["license_status"]
           updated_at?: string
         }
         Update: {
           activated_at?: string | null
           application_id?: string
+          ban_reason?: string | null
           claimed_by?: string | null
           created_at?: string
           created_by?: string
@@ -162,6 +167,7 @@ export type Database = {
           license_key?: string
           max_uses?: number
           note?: string | null
+          remaining_seconds?: number | null
           status?: Database["public"]["Enums"]["license_status"]
           updated_at?: string
         }
