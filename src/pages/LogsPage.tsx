@@ -46,42 +46,49 @@ const eventLabels: Record<string, { label: string; color: string }> = {
 const LogsPage = () => {
   const { user } = useAuth();
   const [logs, setLogs] = useState<AuthLog[]>([]);
-  const [apps, setApps] = useState<Record<string, AppInfo>>({});
+  const [apps, setApps] = useState<AppInfo[]>([]);
+  const [appsMap, setAppsMap] = useState<Record<string, AppInfo>>({});
   const [loading, setLoading] = useState(true);
   const [search, setSearch] = useState("");
   const [filterType, setFilterType] = useState("all");
   const [filterSuccess, setFilterSuccess] = useState("all");
+  const [selectedApp, setSelectedApp] = useState("all");
 
   const fetchData = async () => {
     if (!user) return;
     setLoading(true);
 
-    const [logsRes, appsRes] = await Promise.all([
-      supabase.from("auth_logs").select("*").order("created_at", { ascending: false }).limit(500),
-      supabase.from("applications").select("id, name").eq("owner_id", user.id),
-    ]);
+    const appsRes = await supabase.from("applications").select("id, name").eq("owner_id", user.id);
+    const appsList = appsRes.data || [];
+    setApps(appsList);
+    const m: Record<string, AppInfo> = {};
+    appsList.forEach((a) => (m[a.id] = a));
+    setAppsMap(m);
 
-    if (appsRes.data) {
-      const m: Record<string, AppInfo> = {};
-      appsRes.data.forEach((a) => (m[a.id] = a));
-      setApps(m);
+    let query = supabase.from("auth_logs").select("*").order("created_at", { ascending: false }).limit(500);
+    if (selectedApp !== "all") {
+      query = query.eq("application_id", selectedApp);
     }
+    const logsRes = await query;
     if (logsRes.data) setLogs(logsRes.data as AuthLog[]);
     setLoading(false);
   };
 
-  useEffect(() => { fetchData(); }, [user]);
+  useEffect(() => { fetchData(); }, [user, selectedApp]);
 
   // Realtime subscription
   useEffect(() => {
     const channel = supabase
       .channel("auth_logs_realtime")
       .on("postgres_changes", { event: "INSERT", schema: "public", table: "auth_logs" }, (payload) => {
-        setLogs((prev) => [payload.new as AuthLog, ...prev].slice(0, 500));
+        const newLog = payload.new as AuthLog;
+        if (selectedApp === "all" || newLog.application_id === selectedApp) {
+          setLogs((prev) => [newLog, ...prev].slice(0, 500));
+        }
       })
       .subscribe();
     return () => { supabase.removeChannel(channel); };
-  }, []);
+  }, [selectedApp]);
 
   const formatDate = (date: string) =>
     new Date(date).toLocaleDateString("pt-BR", { day: "2-digit", month: "2-digit", year: "numeric", hour: "2-digit", minute: "2-digit", second: "2-digit" });
@@ -128,6 +135,17 @@ const LogsPage = () => {
             <SelectItem value="failed">Falha</SelectItem>
           </SelectContent>
         </Select>
+        <Select value={selectedApp} onValueChange={setSelectedApp}>
+          <SelectTrigger className="w-48 bg-card/50 border-border/50">
+            <SelectValue placeholder="Todas as aplicações" />
+          </SelectTrigger>
+          <SelectContent>
+            <SelectItem value="all">Todas as aplicações</SelectItem>
+            {apps.map((app) => (
+              <SelectItem key={app.id} value={app.id}>{app.name}</SelectItem>
+            ))}
+          </SelectContent>
+        </Select>
       </div>
 
       {loading ? (
@@ -148,7 +166,7 @@ const LogsPage = () => {
         <div className="space-y-1.5">
           {filtered.map((log, index) => {
             const ev = eventLabels[log.event_type] || { label: log.event_type, color: "bg-muted text-muted-foreground border-border" };
-            const app = apps[log.application_id];
+            const app = appsMap[log.application_id];
             return (
               <Card
                 key={log.id}

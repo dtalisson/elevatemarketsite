@@ -14,6 +14,7 @@ import {
   X,
   ChevronRight,
   Wifi,
+  ShieldAlert,
 } from "lucide-react";
 import { cn } from "@/lib/utils";
 
@@ -24,6 +25,7 @@ const navItems = [
   { label: "Usuários", icon: Users, href: "/dashboard/users" },
   { label: "Online", icon: Wifi, href: "/dashboard/online" },
   { label: "Logs", icon: ScrollText, href: "/dashboard/logs" },
+  { label: "HWID Logs", icon: ShieldAlert, href: "/dashboard/hwid-logs" },
   { label: "Documentação", icon: Code, href: "/dashboard/docs" },
 ];
 
