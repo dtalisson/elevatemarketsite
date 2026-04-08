@@ -116,6 +116,47 @@ export type Database = {
           },
         ]
       }
+      downloads: {
+        Row: {
+          application_id: string
+          created_at: string
+          file_name: string
+          file_path: string
+          file_size: number
+          id: string
+          updated_at: string
+          version: string | null
+        }
+        Insert: {
+          application_id: string
+          created_at?: string
+          file_name: string
+          file_path: string
+          file_size?: number
+          id?: string
+          updated_at?: string
+          version?: string | null
+        }
+        Update: {
+          application_id?: string
+          created_at?: string
+          file_name?: string
+          file_path?: string
+          file_size?: number
+          id?: string
+          updated_at?: string
+          version?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "downloads_application_id_fkey"
+            columns: ["application_id"]
+            isOneToOne: false
+            referencedRelation: "applications"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       licenses: {
         Row: {
           activated_at: string | null
