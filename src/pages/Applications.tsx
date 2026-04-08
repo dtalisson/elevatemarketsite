@@ -63,6 +63,7 @@ const Applications = () => {
 
   const openSettings = (app: Application) => {
     setSettingsAppId(app.id);
+    setEditName(app.name);
     setEditVersion(app.current_version || "");
     setEditMinVersion(app.min_version || "");
     setEditMsgOutdated(app.msg_outdated || "");
