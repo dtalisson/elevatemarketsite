@@ -40,6 +40,7 @@ const App = () => (
             <Route path="/dashboard/hwid-logs" element={<ProtectedRoute><HwidLogsPage /></ProtectedRoute>} />
             <Route path="/dashboard/online" element={<ProtectedRoute><OnlinePage /></ProtectedRoute>} />
             <Route path="/dashboard/security-logs" element={<ProtectedRoute><SecurityLogsPage /></ProtectedRoute>} />
+            <Route path="/dashboard/downloads" element={<ProtectedRoute><DownloadsPage /></ProtectedRoute>} />
             <Route path="/dashboard/docs" element={<ProtectedRoute><ApiDocs /></ProtectedRoute>} />
             <Route path="*" element={<NotFound />} />
           </Routes>
