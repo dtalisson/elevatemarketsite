@@ -1,5 +1,4 @@
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2.49.4";
-import { verifyAppHmac } from "../_shared/hmac-verify.ts";
 
 function compareVersions(a: string, b: string): number {
   const pa = a.split(".").map(Number);
@@ -33,11 +32,11 @@ Deno.serve(async (req) => {
   const ip = getClientIp(req);
 
   try {
-    const { license_key, app_secret, app_hash, timestamp, username, password, hwid, version } = await req.json();
+    const { license_key, app_secret, username, password, hwid, version } = await req.json();
 
-    if (!license_key || (!app_secret && !app_hash) || !username || !password) {
+    if (!license_key || !app_secret || !username || !password) {
       return new Response(
-        JSON.stringify({ success: false, message: "Missing required fields" }),
+        JSON.stringify({ success: false, message: "Missing required fields: license_key, app_secret, username, password" }),
         { status: 400, headers: { ...corsHeaders, "Content-Type": "application/json" } }
       );
     }
@@ -60,15 +59,16 @@ Deno.serve(async (req) => {
     const supabaseKey = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!;
     const supabase = createClient(supabaseUrl, supabaseKey);
 
-    // Verify app via HMAC-TOTP or legacy secret
-    const { app, error: appVerifyError } = await verifyAppHmac(
-      { app_hash, app_secret, timestamp },
-      supabase
-    );
+    // Verify app
+    const { data: app, error: appError } = await supabase
+      .from("applications")
+      .select("id, enabled, current_version, min_version")
+      .eq("secret_key", app_secret)
+      .single();
 
-    if (appVerifyError || !app) {
+    if (appError || !app) {
       return new Response(
-        JSON.stringify({ success: false, message: appVerifyError || "Invalid application" }),
+        JSON.stringify({ success: false, message: "Invalid application secret" }),
         { status: 401, headers: { ...corsHeaders, "Content-Type": "application/json" } }
       );
     }
@@ -143,6 +143,7 @@ Deno.serve(async (req) => {
       );
     }
 
+    // Check if license already has a registered user
     const { data: existingUser } = await supabase
       .from("software_users")
       .select("id")
@@ -160,6 +161,7 @@ Deno.serve(async (req) => {
       );
     }
 
+    // Check if username already exists for this app
     const { data: existingUsername } = await supabase
       .from("software_users")
       .select("id")
@@ -185,6 +187,7 @@ Deno.serve(async (req) => {
     const hashArray = Array.from(new Uint8Array(hashBuffer));
     const passwordHash = hashArray.map(b => b.toString(16).padStart(2, "0")).join("");
 
+    // Create user
     const { error: insertError } = await supabase
       .from("software_users")
       .insert({
@@ -205,6 +208,7 @@ Deno.serve(async (req) => {
       );
     }
 
+    // Activate license
     await supabase.from("licenses").update({
       status: "active",
       current_uses: license.current_uses + 1,
@@ -213,6 +217,7 @@ Deno.serve(async (req) => {
       activated_at: new Date().toISOString(),
     }).eq("id", license.id);
 
+    // Log success
     await supabase.from("auth_logs").insert({
       application_id: app.id, event_type: "register_success", username: username.toLowerCase(),
       ip_address: ip, hwid, success: true, details: "User registered successfully", license_id: license.id,

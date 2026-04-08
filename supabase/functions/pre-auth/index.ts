@@ -1,5 +1,4 @@
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2.49.4";
-import { verifyAppHmac } from "../_shared/hmac-verify.ts";
 
 const corsHeaders = {
   "Access-Control-Allow-Origin": "*",
@@ -27,11 +26,11 @@ Deno.serve(async (req) => {
   const ip = getClientIp(req);
 
   try {
-    const { username, hwid, app_secret, app_hash, timestamp } = await req.json();
+    const { username, hwid, app_secret } = await req.json();
 
-    if (!username || (!app_secret && !app_hash)) {
+    if (!username || !app_secret) {
       return new Response(
-        JSON.stringify({ success: false, message: "Missing required fields" }),
+        JSON.stringify({ success: false, message: "Missing required fields: username, app_secret" }),
         { status: 400, headers: { ...corsHeaders, "Content-Type": "application/json" } }
       );
     }
@@ -40,15 +39,16 @@ Deno.serve(async (req) => {
     const supabaseKey = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!;
     const supabase = createClient(supabaseUrl, supabaseKey);
 
-    // Verify app via HMAC-TOTP or legacy secret
-    const { app, error: appError } = await verifyAppHmac(
-      { app_hash, app_secret, timestamp },
-      supabase
-    );
+    // Verify app
+    const { data: app, error: appError } = await supabase
+      .from("applications")
+      .select("id, enabled")
+      .eq("secret_key", app_secret)
+      .single();
 
     if (appError || !app) {
       return new Response(
-        JSON.stringify({ success: false, message: appError || "Invalid application" }),
+        JSON.stringify({ success: false, message: "Invalid application secret" }),
         { status: 401, headers: { ...corsHeaders, "Content-Type": "application/json" } }
       );
     }
@@ -92,7 +92,7 @@ Deno.serve(async (req) => {
     const token = generateToken();
     const expiresAt = new Date(Date.now() + 60 * 1000).toISOString();
 
-    // Cleanup old tokens for this user
+    // Cleanup old expired tokens for this user
     await supabase
       .from("pre_auth_tokens")
       .delete()

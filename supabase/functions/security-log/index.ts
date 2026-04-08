@@ -1,5 +1,4 @@
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2.49.4";
-import { verifyAppHmac } from "../_shared/hmac-verify.ts";
 
 const corsHeaders = {
   "Access-Control-Allow-Origin": "*",
@@ -30,11 +29,11 @@ Deno.serve(async (req) => {
   const ip = getClientIp(req);
 
   try {
-    const { username, hwid, event_type, details, timestamp: clientTimestamp, app_secret, app_hash, timestamp } = await req.json();
+    const { username, hwid, event_type, details, timestamp, app_secret } = await req.json();
 
-    if ((!app_secret && !app_hash) || !event_type) {
+    if (!app_secret || !event_type) {
       return new Response(
-        JSON.stringify({ success: false, message: "Missing required fields" }),
+        JSON.stringify({ success: false, message: "Missing required fields: app_secret, event_type" }),
         { status: 400, headers: { ...corsHeaders, "Content-Type": "application/json" } }
       );
     }
@@ -50,25 +49,28 @@ Deno.serve(async (req) => {
     const supabaseKey = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!;
     const supabase = createClient(supabaseUrl, supabaseKey);
 
-    const { app, error: appVerifyError } = await verifyAppHmac(
-      { app_hash, app_secret, timestamp },
-      supabase
-    );
+    // Verify app
+    const { data: app, error: appError } = await supabase
+      .from("applications")
+      .select("id")
+      .eq("secret_key", app_secret)
+      .single();
 
-    if (appVerifyError || !app) {
+    if (appError || !app) {
       return new Response(
-        JSON.stringify({ success: false, message: appVerifyError || "Invalid application" }),
+        JSON.stringify({ success: false, message: "Invalid application secret" }),
         { status: 401, headers: { ...corsHeaders, "Content-Type": "application/json" } }
       );
     }
 
+    // Insert security log
     await supabase.from("security_logs").insert({
       application_id: app.id,
       username: username || null,
       hwid: hwid || null,
       event_type,
       details: details || null,
-      client_timestamp: clientTimestamp || null,
+      client_timestamp: timestamp || null,
       ip_address: ip,
     });
 

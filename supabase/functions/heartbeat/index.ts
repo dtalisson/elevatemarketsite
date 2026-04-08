@@ -1,5 +1,4 @@
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2.49.4";
-import { verifyAppHmac } from "../_shared/hmac-verify.ts";
 
 const corsHeaders = {
   "Access-Control-Allow-Origin": "*",
@@ -19,9 +18,9 @@ Deno.serve(async (req) => {
   }
 
   try {
-    const { username, hwid, app_secret, app_hash, timestamp, status } = await req.json();
+    const { username, hwid, app_secret, status } = await req.json();
 
-    if (!username || (!app_secret && !app_hash)) {
+    if (!username || !app_secret) {
       return new Response(
         JSON.stringify({ success: false, message: "Missing required fields" }),
         { status: 400, headers: { ...corsHeaders, "Content-Type": "application/json" } }
@@ -32,18 +31,21 @@ Deno.serve(async (req) => {
     const supabaseKey = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!;
     const supabase = createClient(supabaseUrl, supabaseKey);
 
-    const { app, error: appVerifyError } = await verifyAppHmac(
-      { app_hash, app_secret, timestamp },
-      supabase
-    );
+    // Verify app
+    const { data: app, error: appError } = await supabase
+      .from("applications")
+      .select("id, enabled")
+      .eq("secret_key", app_secret)
+      .single();
 
-    if (appVerifyError || !app) {
+    if (appError || !app) {
       return new Response(
-        JSON.stringify({ success: false, message: appVerifyError || "Invalid application" }),
+        JSON.stringify({ success: false, message: "Invalid application secret" }),
         { status: 401, headers: { ...corsHeaders, "Content-Type": "application/json" } }
       );
     }
 
+    // If app is disabled, tell client to close
     if (!app.enabled) {
       return new Response(
         JSON.stringify({ success: false, message: "Application is disabled", action: "close" }),
@@ -51,6 +53,7 @@ Deno.serve(async (req) => {
       );
     }
 
+    // Find user and their license
     const { data: user, error: userError } = await supabase
       .from("software_users")
       .select("id, hwid, license_id, licenses(status, expires_at)")
@@ -65,6 +68,7 @@ Deno.serve(async (req) => {
       );
     }
 
+    // Check HWID
     if (user.hwid && hwid && user.hwid !== hwid) {
       return new Response(
         JSON.stringify({ success: false, message: "Device mismatch", action: "close", status: "hwid_mismatch" }),
@@ -72,6 +76,7 @@ Deno.serve(async (req) => {
       );
     }
 
+    // Check license status
     const license = user.licenses as { status: string; expires_at: string | null } | null;
 
     if (!license) {
@@ -95,6 +100,7 @@ Deno.serve(async (req) => {
       );
     }
 
+    // Update last activity
     const ip = getClientIp(req);
     await supabase.from("software_users").update({
       last_ip: ip,

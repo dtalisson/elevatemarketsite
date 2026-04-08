@@ -1,5 +1,4 @@
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2.49.4";
-import { verifyAppHmac } from "../_shared/hmac-verify.ts";
 
 const corsHeaders = {
   "Access-Control-Allow-Origin": "*",
@@ -39,12 +38,14 @@ Deno.serve(async (req) => {
     return new Response("ok", { headers: corsHeaders });
   }
 
-  try {
-    const { app_secret, app_hash, timestamp, version, nonce } = await req.json();
+  const ip = getClientIp(req);
 
-    if (!app_secret && !app_hash) {
+  try {
+    const { app_secret, version, nonce } = await req.json();
+
+    if (!app_secret) {
       return new Response(
-        JSON.stringify({ success: false, message: "Missing app authentication" }),
+        JSON.stringify({ success: false, message: "Missing app_secret" }),
         { status: 400, headers: { ...corsHeaders, "Content-Type": "application/json" } }
       );
     }
@@ -53,27 +54,20 @@ Deno.serve(async (req) => {
     const supabaseKey = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!;
     const supabase = createClient(supabaseUrl, supabaseKey);
 
-    // Verify app via HMAC-TOTP or legacy secret
-    const { app, error: appVerifyError } = await verifyAppHmac(
-      { app_hash, app_secret, timestamp },
-      supabase
-    );
+    const { data: app, error: appError } = await supabase
+      .from("applications")
+      .select("id, name, enabled, current_version, min_version, msg_disabled, msg_maintenance, msg_outdated")
+      .eq("secret_key", app_secret)
+      .single();
 
-    if (appVerifyError || !app) {
+    if (appError || !app) {
       return new Response(
-        JSON.stringify({ success: false, message: appVerifyError || "Invalid application" }),
+        JSON.stringify({ success: false, message: "Invalid application secret" }),
         { status: 401, headers: { ...corsHeaders, "Content-Type": "application/json" } }
       );
     }
 
-    // Need full app data for messages
-    const { data: fullApp } = await supabase
-      .from("applications")
-      .select("name, msg_disabled, msg_maintenance, msg_outdated")
-      .eq("id", app.id)
-      .single();
-
-    const ts = Date.now();
+    const timestamp = Date.now();
     let status = "online";
     let message = "Application is online";
     let update_required = false;
@@ -81,10 +75,10 @@ Deno.serve(async (req) => {
 
     if (!app.enabled) {
       status = "disabled";
-      message = fullApp?.msg_disabled || "Application is currently disabled";
+      message = app.msg_disabled || "Application is currently disabled";
     } else if (version && app.min_version && compareVersions(version, app.min_version) < 0) {
       status = "outdated";
-      message = fullApp?.msg_outdated || `Update required. Minimum version: ${app.min_version}`;
+      message = app.msg_outdated || `Update required. Minimum version: ${app.min_version}`;
       update_required = true;
     } else if (version && app.current_version && compareVersions(version, app.current_version) < 0) {
       update_available = true;
@@ -96,18 +90,19 @@ Deno.serve(async (req) => {
       status,
       message,
       app: {
-        name: fullApp?.name || "",
+        name: app.name,
         enabled: app.enabled,
         current_version: app.current_version,
         min_version: app.min_version,
         update_required,
         update_available,
       },
-      timestamp: ts,
+      timestamp,
       nonce: nonce || null,
     };
 
-    const signPayload = JSON.stringify({ status, timestamp: ts, nonce: nonce || "" });
+    // Sign the response so the client can verify it's authentic
+    const signPayload = JSON.stringify({ status, timestamp, nonce: nonce || "" });
     const signature = await hmacSign(signPayload, supabaseKey);
     (responseData as Record<string, unknown>).signature = signature;
 
