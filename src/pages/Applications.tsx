@@ -29,6 +29,7 @@ const Applications = () => {
   const [editMsgOutdated, setEditMsgOutdated] = useState("");
   const [editMsgDisabled, setEditMsgDisabled] = useState("");
   const [editMsgMaintenance, setEditMsgMaintenance] = useState("");
+  const [editName, setEditName] = useState("");
   const [saving, setSaving] = useState(false);
 
   const fetchApps = async () => {
@@ -62,6 +63,7 @@ const Applications = () => {
 
   const openSettings = (app: Application) => {
     setSettingsAppId(app.id);
+    setEditName(app.name);
     setEditVersion(app.current_version || "");
     setEditMinVersion(app.min_version || "");
     setEditMsgOutdated(app.msg_outdated || "");
@@ -73,6 +75,7 @@ const Applications = () => {
     if (!settingsAppId) return;
     setSaving(true);
     const { error } = await supabase.from("applications").update({
+      name: editName,
       current_version: editVersion || null, min_version: editMinVersion || null,
       msg_outdated: editMsgOutdated || null, msg_disabled: editMsgDisabled || null, msg_maintenance: editMsgMaintenance || null,
     }).eq("id", settingsAppId);
@@ -116,6 +119,9 @@ const Applications = () => {
                 <p className="text-xs text-muted-foreground">{settingsApp?.enabled ? "Ativa" : "Desativada"}</p>
               </div>
               <Switch checked={settingsApp?.enabled ?? false} onCheckedChange={() => settingsApp && toggleEnabled(settingsApp.id, settingsApp.enabled)} />
+            </div>
+            <div className="space-y-3">
+              <div className="space-y-2"><Label>Nome</Label><Input value={editName} onChange={(e) => setEditName(e.target.value)} placeholder="Nome da aplicação" required /></div>
             </div>
             <div className="space-y-3">
               <div className="space-y-2"><Label>Versão Atual</Label><Input value={editVersion} onChange={(e) => setEditVersion(e.target.value)} placeholder="ex: 1.1.0" /></div>
