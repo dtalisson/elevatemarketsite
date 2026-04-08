@@ -337,6 +337,50 @@ export type Database = {
           },
         ]
       }
+      session_tokens: {
+        Row: {
+          application_id: string
+          created_at: string
+          expires_at: string
+          hwid: string | null
+          id: string
+          ip_address: string | null
+          revoked: boolean
+          token: string
+          username: string
+        }
+        Insert: {
+          application_id: string
+          created_at?: string
+          expires_at: string
+          hwid?: string | null
+          id?: string
+          ip_address?: string | null
+          revoked?: boolean
+          token: string
+          username: string
+        }
+        Update: {
+          application_id?: string
+          created_at?: string
+          expires_at?: string
+          hwid?: string | null
+          id?: string
+          ip_address?: string | null
+          revoked?: boolean
+          token?: string
+          username?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "session_tokens_application_id_fkey"
+            columns: ["application_id"]
+            isOneToOne: false
+            referencedRelation: "applications"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       software_users: {
         Row: {
           application_id: string
@@ -420,6 +464,7 @@ export type Database = {
       [_ in never]: never
     }
     Functions: {
+      cleanup_expired_sessions: { Args: never; Returns: undefined }
       has_role: {
         Args: {
           _role: Database["public"]["Enums"]["app_role"]

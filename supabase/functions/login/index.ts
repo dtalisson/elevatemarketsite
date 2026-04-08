@@ -39,13 +39,14 @@ function generateSessionToken(): string {
   return Array.from(bytes).map(b => b.toString(16).padStart(2, "0")).join("");
 }
 
+const SESSION_TTL_SECONDS = 1800; // 30 minutes
+
 Deno.serve(async (req) => {
   if (req.method === "OPTIONS") {
     return new Response("ok", { headers: corsHeaders });
   }
 
   const ip = getClientIp(req);
-  const requestStart = Date.now();
 
   try {
     const { app_secret, username, password, hwid, version, nonce, challenge_token } = await req.json();
@@ -125,7 +126,6 @@ Deno.serve(async (req) => {
         );
       }
 
-      // Check expiration
       if (new Date(tokenData.expires_at) < new Date() || tokenData.used) {
         await supabase.from("pre_auth_tokens").delete().eq("id", tokenData.id);
         await supabase.from("auth_logs").insert({
@@ -138,7 +138,6 @@ Deno.serve(async (req) => {
         );
       }
 
-      // Check HWID match with pre-auth
       if (tokenData.hwid && hwid && tokenData.hwid !== hwid) {
         await supabase.from("pre_auth_tokens").delete().eq("id", tokenData.id);
         await supabase.from("auth_logs").insert({
@@ -151,7 +150,6 @@ Deno.serve(async (req) => {
         );
       }
 
-      // Mark token as used
       await supabase.from("pre_auth_tokens").update({ used: true }).eq("id", tokenData.id);
     }
 
@@ -181,7 +179,6 @@ Deno.serve(async (req) => {
     const hashArray = Array.from(new Uint8Array(hashBuffer));
     const passwordHash = hashArray.map(b => b.toString(16).padStart(2, "0")).join("");
 
-    // Constant-time string comparison to prevent timing attacks
     const storedHash = user.password_hash;
     let mismatch = passwordHash.length !== storedHash.length ? 1 : 0;
     for (let i = 0; i < Math.max(passwordHash.length, storedHash.length); i++) {
@@ -256,8 +253,27 @@ Deno.serve(async (req) => {
     if (hwid && !user.hwid) userUpdates.hwid = hwid;
     await supabase.from("software_users").update(userUpdates).eq("id", user.id);
 
-    // Generate session token and sign the response
+    // Revoke any existing session tokens for this user in this app
+    await supabase
+      .from("session_tokens")
+      .update({ revoked: true })
+      .eq("application_id", app.id)
+      .eq("username", username.toLowerCase())
+      .eq("revoked", false);
+
+    // Generate and persist session token with expiration
     const sessionToken = generateSessionToken();
+    const expiresAt = new Date(Date.now() + SESSION_TTL_SECONDS * 1000).toISOString();
+
+    await supabase.from("session_tokens").insert({
+      application_id: app.id,
+      username: username.toLowerCase(),
+      token: sessionToken,
+      hwid: hwid || null,
+      ip_address: ip,
+      expires_at: expiresAt,
+    });
+
     const timestamp = Date.now();
     const signPayload = JSON.stringify({
       session: sessionToken,
@@ -279,6 +295,8 @@ Deno.serve(async (req) => {
         success: true,
         message: "Login successful",
         session_token: sessionToken,
+        session_expires_at: expiresAt,
+        session_ttl_seconds: SESSION_TTL_SECONDS,
         signature,
         timestamp,
         nonce: nonce || null,
