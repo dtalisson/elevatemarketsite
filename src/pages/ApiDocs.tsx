@@ -733,12 +733,13 @@ bool login(const std::string& user, const std::string& pass) {
             <pre className="text-xs bg-background/50 p-3 rounded-lg overflow-x-auto border border-border/30 text-muted-foreground">
 {`// Request
 {
-  "app_secret": "seu-app-secret",
+  "app_hash": "hmac-sha256-do-secret",  // 🔒 HMAC-TOTP (recomendado)
+  "timestamp": 1712505600,              // unix seconds
   "username": "usuario",
   "hwid": "hardware-id",
-  "event_type": "DEBUGGER_DETECTED",  // ou DUMP_TOOL_DETECTED, HWID_ABUSE, SESSION_INVALIDATED, INTEGRITY_VIOLATION, MEMORY_TAMPERING
+  "event_type": "DEBUGGER_DETECTED",
   "details": "x64dbg.exe encontrado em processo ativo",
-  "timestamp": 1712457600000
+  "client_timestamp": 1712457600000
 }
 
 // Response (200)
