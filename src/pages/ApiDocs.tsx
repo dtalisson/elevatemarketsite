@@ -244,8 +244,9 @@ static (string hash, long timestamp) ComputeAppHash(string appSecret) {
                 <p className="mb-2 text-xs font-medium text-muted-foreground">BODY</p>
                 <pre className="rounded-lg bg-muted p-3 font-mono text-sm text-foreground">
 {`{
+  "app_hash": "hmac-sha256-do-secret",   // 🔒 HMAC-TOTP (recomendado)
+  "timestamp": 1712505600,               // unix seconds
   "license_key": "ABC123XYZ456",
-  "app_secret": "secret-key-da-aplicacao",
   "username": "nome_do_usuario",
   "password": "senha",
   "hwid": "identificador-do-hardware",  // opcional
