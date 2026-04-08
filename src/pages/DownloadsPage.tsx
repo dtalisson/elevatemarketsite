@@ -124,9 +124,7 @@ const DownloadsPage = () => {
 
   return (
     <DashboardLayout>
-      {/* Neon Grid Background */}
-      <div className="fixed inset-0 bg-neon-grid pointer-events-none z-0" />
-      <div className="relative z-10">
+      <div>
       {/* Header */}
       <div className="mb-8">
         <h1 className="text-3xl font-heading font-bold text-foreground tracking-tight">
