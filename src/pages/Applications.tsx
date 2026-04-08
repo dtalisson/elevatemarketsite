@@ -121,6 +121,9 @@ const Applications = () => {
               <Switch checked={settingsApp?.enabled ?? false} onCheckedChange={() => settingsApp && toggleEnabled(settingsApp.id, settingsApp.enabled)} />
             </div>
             <div className="space-y-3">
+              <div className="space-y-2"><Label>Nome</Label><Input value={editName} onChange={(e) => setEditName(e.target.value)} placeholder="Nome da aplicação" required /></div>
+            </div>
+            <div className="space-y-3">
               <div className="space-y-2"><Label>Versão Atual</Label><Input value={editVersion} onChange={(e) => setEditVersion(e.target.value)} placeholder="ex: 1.1.0" /></div>
               <div className="space-y-2"><Label>Versão Mínima</Label><Input value={editMinVersion} onChange={(e) => setEditMinVersion(e.target.value)} placeholder="ex: 1.0.0" /></div>
             </div>
