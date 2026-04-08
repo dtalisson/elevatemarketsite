@@ -6,72 +6,76 @@
 
 @layer base {
   :root {
-    --background: 220 25% 6%;
+    --background: 220 15% 4%;
     --foreground: 210 20% 92%;
-    --card: 220 22% 8%;
+    --card: 220 14% 7%;
     --card-foreground: 210 20% 92%;
-    --popover: 220 22% 8%;
+    --popover: 220 14% 7%;
     --popover-foreground: 210 20% 92%;
     --primary: 217 90% 58%;
     --primary-foreground: 0 0% 100%;
-    --secondary: 220 18% 12%;
+    --secondary: 220 12% 10%;
     --secondary-foreground: 210 15% 65%;
-    --muted: 220 18% 11%;
+    --muted: 220 12% 8%;
     --muted-foreground: 215 12% 48%;
     --accent: 217 70% 48%;
     --accent-foreground: 0 0% 100%;
     --destructive: 0 62% 50%;
     --destructive-foreground: 0 0% 100%;
-    --border: 220 16% 14%;
-    --input: 220 16% 14%;
+    --border: 220 12% 15%;
+    --input: 220 12% 15%;
     --ring: 217 90% 58%;
     --radius: 0.5rem;
-    --sidebar-background: 220 25% 5%;
-    --sidebar-foreground: 215 12% 48%;
+    --sidebar-background: 220 15% 5%;
+    --sidebar-foreground: 215 12% 56%;
     --sidebar-primary: 217 90% 58%;
     --sidebar-primary-foreground: 0 0% 100%;
-    --sidebar-accent: 220 18% 10%;
+    --sidebar-accent: 220 12% 9%;
     --sidebar-accent-foreground: 210 20% 92%;
-    --sidebar-border: 220 16% 12%;
+    --sidebar-border: 220 12% 12%;
     --sidebar-ring: 217 90% 58%;
     --success: 152 56% 40%;
     --success-foreground: 0 0% 100%;
     --warning: 38 65% 50%;
     --warning-foreground: 0 0% 100%;
+    --grid-line: 188 100% 68%;
+    --grid-glow: 210 100% 18%;
   }
 
   .dark {
-    --background: 220 25% 6%;
+    --background: 220 15% 4%;
     --foreground: 210 20% 92%;
-    --card: 220 22% 8%;
+    --card: 220 14% 7%;
     --card-foreground: 210 20% 92%;
-    --popover: 220 22% 8%;
+    --popover: 220 14% 7%;
     --popover-foreground: 210 20% 92%;
     --primary: 217 90% 58%;
     --primary-foreground: 0 0% 100%;
-    --secondary: 220 18% 12%;
+    --secondary: 220 12% 10%;
     --secondary-foreground: 210 15% 65%;
-    --muted: 220 18% 11%;
+    --muted: 220 12% 8%;
     --muted-foreground: 215 12% 48%;
     --accent: 217 70% 48%;
     --accent-foreground: 0 0% 100%;
     --destructive: 0 62% 50%;
     --destructive-foreground: 0 0% 100%;
-    --border: 220 16% 14%;
-    --input: 220 16% 14%;
+    --border: 220 12% 15%;
+    --input: 220 12% 15%;
     --ring: 217 90% 58%;
-    --sidebar-background: 220 25% 5%;
-    --sidebar-foreground: 215 12% 48%;
+    --sidebar-background: 220 15% 5%;
+    --sidebar-foreground: 215 12% 56%;
     --sidebar-primary: 217 90% 58%;
     --sidebar-primary-foreground: 0 0% 100%;
-    --sidebar-accent: 220 18% 10%;
+    --sidebar-accent: 220 12% 9%;
     --sidebar-accent-foreground: 210 20% 92%;
-    --sidebar-border: 220 16% 12%;
+    --sidebar-border: 220 12% 12%;
     --sidebar-ring: 217 90% 58%;
     --success: 152 56% 40%;
     --success-foreground: 0 0% 100%;
     --warning: 38 65% 50%;
     --warning-foreground: 0 0% 100%;
+    --grid-line: 188 100% 68%;
+    --grid-glow: 210 100% 18%;
   }
 }
 
@@ -79,14 +83,24 @@
   * {
     @apply border-border;
   }
+
+  html,
+  body,
+  #root {
+    min-height: 100%;
+  }
+
   body {
     @apply bg-background text-foreground antialiased;
     font-family: 'Inter', system-ui, sans-serif;
     background-image:
-      linear-gradient(rgba(56, 189, 248, 0.08) 1px, transparent 1px),
-      linear-gradient(90deg, rgba(56, 189, 248, 0.08) 1px, transparent 1px);
-    background-size: 50px 50px;
+      radial-gradient(circle at 50% 100%, hsl(var(--grid-glow) / 0.24), transparent 38%),
+      linear-gradient(hsl(var(--grid-line) / 0.18) 1px, transparent 1px),
+      linear-gradient(90deg, hsl(var(--grid-line) / 0.18) 1px, transparent 1px);
+    background-size: auto, 48px 48px, 48px 48px;
+    background-attachment: fixed;
   }
+
   h1, h2, h3, h4, h5, h6 {
     font-family: 'Space Grotesk', 'Inter', system-ui, sans-serif;
   }
@@ -107,8 +121,9 @@
 
   .bg-neon-grid {
     background-image:
-      linear-gradient(rgba(59, 130, 246, 0.06) 1px, transparent 1px),
-      linear-gradient(90deg, rgba(59, 130, 246, 0.06) 1px, transparent 1px);
-    background-size: 40px 40px;
+      radial-gradient(circle at 50% 100%, hsl(var(--grid-glow) / 0.24), transparent 38%),
+      linear-gradient(hsl(var(--grid-line) / 0.18) 1px, transparent 1px),
+      linear-gradient(90deg, hsl(var(--grid-line) / 0.18) 1px, transparent 1px);
+    background-size: auto, 48px 48px, 48px 48px;
   }
 }

@@ -73,12 +73,12 @@ const Login = () => {
   }, []);
 
   return (
-    <div className="dark flex min-h-screen items-center justify-center p-4 bg-background relative overflow-hidden">
+    <div className="dark relative flex min-h-screen items-center justify-center overflow-hidden bg-transparent p-4">
       <canvas ref={canvasRef} className="fixed inset-0 z-0 pointer-events-none" />
-      <div className="absolute top-[-20%] left-[-10%] w-[600px] h-[600px] rounded-full opacity-[0.04]" style={{ background: "radial-gradient(circle, hsl(217 90% 58%), transparent 70%)" }} />
-      <div className="absolute bottom-[-20%] right-[-10%] w-[500px] h-[500px] rounded-full opacity-[0.03]" style={{ background: "radial-gradient(circle, hsl(217 90% 58%), transparent 70%)" }} />
+      <div className="absolute top-[-20%] left-[-10%] h-[600px] w-[600px] rounded-full opacity-[0.04]" style={{ background: "radial-gradient(circle, hsl(217 90% 58%), transparent 70%)" }} />
+      <div className="absolute bottom-[-20%] right-[-10%] h-[500px] w-[500px] rounded-full opacity-[0.03]" style={{ background: "radial-gradient(circle, hsl(217 90% 58%), transparent 70%)" }} />
 
-      <div className="w-full max-w-[360px] relative z-10">
+      <div className="relative z-10 w-full max-w-[360px]">
         <div className="mb-10 text-center">
           <h1 className="text-2xl font-heading font-bold tracking-tight text-foreground">
             Elevate<span className="text-primary">Auth</span>
@@ -86,7 +86,7 @@ const Login = () => {
           <p className="mt-2 text-sm text-muted-foreground">Painel de controle</p>
         </div>
 
-        <div className="rounded-xl border border-border bg-card p-6">
+        <div className="rounded-xl border border-border/80 bg-card/80 p-6 backdrop-blur-xl">
           <form onSubmit={handleLogin} className="space-y-4">
             <div className="space-y-1.5">
               <label htmlFor="username" className="block text-xs font-medium text-muted-foreground">Usuário</label>
