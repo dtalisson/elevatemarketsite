@@ -49,6 +49,93 @@ const ApiDocs = () => {
         </CardContent>
       </Card>
 
+      {/* HMAC-TOTP Authentication */}
+      <Card className="mb-6 border-yellow-500/30 bg-yellow-500/5">
+        <CardHeader>
+          <div className="flex items-center gap-2">
+            <Lock className="h-4 w-4 text-yellow-400" />
+            <CardTitle className="text-base">🔐 Autenticação HMAC-TOTP (Recomendado)</CardTitle>
+          </div>
+        </CardHeader>
+        <CardContent>
+          <div className="space-y-3 text-sm text-muted-foreground">
+            <p>
+              Em vez de enviar o <code className="text-primary">app_secret</code> em texto plano (visível em HTTP debuggers), 
+              use <strong className="text-foreground">HMAC-TOTP</strong>: o secret nunca trafega na rede.
+            </p>
+            <div className="rounded-lg bg-muted p-3">
+              <p className="text-xs font-medium text-foreground mb-2">Como funciona:</p>
+              <ol className="list-decimal list-inside space-y-1 text-xs">
+                <li>O <code className="text-primary">app_secret</code> fica embutido no binário do seu software</li>
+                <li>A cada requisição, calcule: <code className="text-primary">time_step = floor(unix_timestamp / 30)</code></li>
+                <li>Gere: <code className="text-primary">app_hash = HMAC-SHA256(app_secret, time_step)</code></li>
+                <li>Envie <code className="text-primary">app_hash</code> + <code className="text-primary">timestamp</code> (unix seconds) no body</li>
+              </ol>
+            </div>
+            <pre className="rounded-lg bg-muted p-3 font-mono text-xs text-foreground overflow-x-auto">
+{`// C++ - Exemplo com OpenSSL
+#include <openssl/hmac.h>
+#include <ctime>
+#include <sstream>
+#include <iomanip>
+
+std::string compute_app_hash(const std::string& app_secret) {
+    long timestamp = std::time(nullptr);
+    long time_step = timestamp / 30;
+    std::string step_str = std::to_string(time_step);
+    
+    unsigned char hash[32];
+    unsigned int len = 32;
+    HMAC(EVP_sha256(), app_secret.c_str(), app_secret.size(),
+         (unsigned char*)step_str.c_str(), step_str.size(), hash, &len);
+    
+    std::ostringstream oss;
+    for (int i = 0; i < 32; i++)
+        oss << std::hex << std::setfill('0') << std::setw(2) << (int)hash[i];
+    return oss.str();
+}
+
+// Uso: envie {"app_hash": compute_app_hash(SECRET), "timestamp": time(nullptr), ...}`}
+            </pre>
+            <pre className="rounded-lg bg-muted p-3 font-mono text-xs text-foreground overflow-x-auto">
+{`# Python - Exemplo
+import hmac, hashlib, time
+
+def compute_app_hash(app_secret: str) -> tuple[str, int]:
+    timestamp = int(time.time())
+    time_step = str(timestamp // 30)
+    h = hmac.new(app_secret.encode(), time_step.encode(), hashlib.sha256).hexdigest()
+    return h, timestamp
+
+# Uso: hash, ts = compute_app_hash("seu-secret")
+# body = {"app_hash": hash, "timestamp": ts, ...}`}
+            </pre>
+            <pre className="rounded-lg bg-muted p-3 font-mono text-xs text-foreground overflow-x-auto">
+{`// C# - Exemplo
+using System.Security.Cryptography;
+using System.Text;
+
+static (string hash, long timestamp) ComputeAppHash(string appSecret) {
+    long timestamp = DateTimeOffset.UtcNow.ToUnixTimeSeconds();
+    long timeStep = timestamp / 30;
+    
+    using var hmac = new HMACSHA256(Encoding.UTF8.GetBytes(appSecret));
+    byte[] hash = hmac.ComputeHash(Encoding.UTF8.GetBytes(timeStep.ToString()));
+    string hex = BitConverter.ToString(hash).Replace("-", "").ToLower();
+    return (hex, timestamp);
+}
+
+// Uso: var (hash, ts) = ComputeAppHash("seu-secret");
+// body = new { app_hash = hash, timestamp = ts, ... };`}
+            </pre>
+            <div className="rounded-lg bg-muted p-3 text-xs">
+              <p className="font-medium text-foreground mb-1">⚠️ Compatibilidade</p>
+              <p>O modo legado (<code className="text-primary">app_secret</code> direto) ainda funciona, mas é <strong className="text-destructive">inseguro</strong>. Migre para HMAC-TOTP o mais rápido possível.</p>
+            </div>
+          </div>
+        </CardContent>
+      </Card>
+
       <div className="space-y-6">
 
         {/* APP STATUS */}
