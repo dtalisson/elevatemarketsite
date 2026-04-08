@@ -791,6 +791,7 @@ void check_hooks() {
 
             </div>
           </CardContent>
+        </Card>
 
         {/* Integration Example - C++ Only */}
         <Card className="border-border/50 bg-card">
