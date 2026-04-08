@@ -5,6 +5,8 @@ const corsHeaders = {
   "Access-Control-Allow-Headers": "authorization, x-client-info, apikey, content-type",
 };
 
+const SESSION_TTL_SECONDS = 1800; // 30 minutes
+
 function getClientIp(req: Request): string {
   return req.headers.get("x-forwarded-for")?.split(",")[0]?.trim()
     || req.headers.get("x-real-ip")
@@ -18,7 +20,7 @@ Deno.serve(async (req) => {
   }
 
   try {
-    const { username, hwid, app_secret, status } = await req.json();
+    const { username, hwid, app_secret, session_token } = await req.json();
 
     if (!username || !app_secret) {
       return new Response(
@@ -45,12 +47,43 @@ Deno.serve(async (req) => {
       );
     }
 
-    // If app is disabled, tell client to close
     if (!app.enabled) {
       return new Response(
         JSON.stringify({ success: false, message: "Application is disabled", action: "close" }),
         { status: 403, headers: { ...corsHeaders, "Content-Type": "application/json" } }
       );
+    }
+
+    // Validate session token if provided
+    if (session_token) {
+      const { data: session, error: sessionError } = await supabase
+        .from("session_tokens")
+        .select("*")
+        .eq("token", session_token)
+        .eq("application_id", app.id)
+        .eq("revoked", false)
+        .single();
+
+      if (sessionError || !session) {
+        return new Response(
+          JSON.stringify({ success: false, message: "Invalid or revoked session", action: "reauth" }),
+          { status: 401, headers: { ...corsHeaders, "Content-Type": "application/json" } }
+        );
+      }
+
+      if (new Date(session.expires_at) < new Date()) {
+        await supabase.from("session_tokens").update({ revoked: true }).eq("id", session.id);
+        return new Response(
+          JSON.stringify({ success: false, message: "Session expired", action: "reauth", expired: true }),
+          { status: 401, headers: { ...corsHeaders, "Content-Type": "application/json" } }
+        );
+      }
+
+      // Renew session on heartbeat
+      const newExpiresAt = new Date(Date.now() + SESSION_TTL_SECONDS * 1000).toISOString();
+      await supabase.from("session_tokens")
+        .update({ expires_at: newExpiresAt })
+        .eq("id", session.id);
     }
 
     // Find user and their license
@@ -68,7 +101,6 @@ Deno.serve(async (req) => {
       );
     }
 
-    // Check HWID
     if (user.hwid && hwid && user.hwid !== hwid) {
       return new Response(
         JSON.stringify({ success: false, message: "Device mismatch", action: "close", status: "hwid_mismatch" }),
@@ -76,7 +108,6 @@ Deno.serve(async (req) => {
       );
     }
 
-    // Check license status
     const license = user.licenses as { status: string; expires_at: string | null } | null;
 
     if (!license) {
