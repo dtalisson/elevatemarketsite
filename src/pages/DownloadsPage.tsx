@@ -8,7 +8,7 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog";
-import { Upload, Trash2, Download, FileArchive, Plus } from "lucide-react";
+import { Upload, Trash2, Download, FileArchive, Plus, Search, Filter } from "lucide-react";
 
 interface Application {
   id: string;
@@ -40,6 +40,8 @@ const DownloadsPage = () => {
   const [selectedApp, setSelectedApp] = useState("");
   const [version, setVersion] = useState("");
   const [uploading, setUploading] = useState(false);
+  const [searchTerm, setSearchTerm] = useState("");
+  const [filterApp, setFilterApp] = useState("all");
   const fileRef = useRef<HTMLInputElement>(null);
   const [selectedFile, setSelectedFile] = useState<File | null>(null);
 
@@ -113,108 +115,161 @@ const DownloadsPage = () => {
     window.open(data.publicUrl, "_blank");
   };
 
+  const filtered = downloads.filter(dl => {
+    const matchSearch = dl.file_name.toLowerCase().includes(searchTerm.toLowerCase()) ||
+      dl.applications?.name?.toLowerCase().includes(searchTerm.toLowerCase());
+    const matchApp = filterApp === "all" || dl.application_id === filterApp;
+    return matchSearch && matchApp;
+  });
+
   return (
     <DashboardLayout>
-      <div className="mb-6 flex items-center justify-between">
-        <div>
-          <h1 className="text-2xl font-heading font-bold text-foreground tracking-tight">Downloads</h1>
-          <p className="text-sm text-muted-foreground mt-1">Gerencie os arquivos de download das aplicações</p>
-        </div>
-        <Dialog open={open} onOpenChange={setOpen}>
-          <DialogTrigger asChild>
-            <Button size="sm" className="gap-1.5"><Plus className="h-3.5 w-3.5" />Upload</Button>
-          </DialogTrigger>
-          <DialogContent className="dark">
-            <DialogHeader><DialogTitle className="font-heading">Enviar Arquivo</DialogTitle></DialogHeader>
-            <form onSubmit={handleUpload} className="space-y-4">
-              <div className="space-y-2">
-                <Label>Aplicação</Label>
-                <Select value={selectedApp} onValueChange={setSelectedApp}>
-                  <SelectTrigger><SelectValue placeholder="Selecione..." /></SelectTrigger>
-                  <SelectContent className="dark">
-                    {apps.map(a => (
-                      <SelectItem key={a.id} value={a.id}>{a.name}</SelectItem>
-                    ))}
-                  </SelectContent>
-                </Select>
-              </div>
-              <div className="space-y-2">
-                <Label>Versão (opcional)</Label>
-                <Input value={version} onChange={e => setVersion(e.target.value)} placeholder="ex: 1.0.0" />
-              </div>
-              <div className="space-y-2">
-                <Label>Arquivo (.zip)</Label>
-                <Input
-                  ref={fileRef}
-                  type="file"
-                  accept=".zip"
-                  onChange={e => setSelectedFile(e.target.files?.[0] || null)}
-                  required
-                />
-              </div>
-              <Button type="submit" className="w-full gap-2" disabled={uploading || !selectedApp || !selectedFile}>
-                <Upload className="h-4 w-4" />
-                {uploading ? "Enviando..." : "Enviar"}
-              </Button>
-            </form>
-          </DialogContent>
-        </Dialog>
+      {/* Header */}
+      <div className="mb-8">
+        <h1 className="text-3xl font-heading font-bold text-foreground tracking-tight">
+          Downloads
+        </h1>
+        <p className="text-sm text-muted-foreground mt-1">Gerencie os arquivos de download das aplicações</p>
       </div>
 
-      {downloads.length === 0 ? (
-        <div className="rounded-lg border border-border bg-card flex flex-col items-center justify-center py-16">
-          <FileArchive className="h-10 w-10 text-muted-foreground/30 mb-3" />
-          <p className="text-foreground font-heading font-medium">Nenhum arquivo</p>
+      {/* Toolbar */}
+      <div className="flex flex-wrap items-center gap-3 mb-6">
+        <div className="flex items-center gap-2">
+          <Filter className="h-4 w-4 text-muted-foreground" />
+          <Select value={filterApp} onValueChange={setFilterApp}>
+            <SelectTrigger className="w-[160px] h-9 text-xs bg-secondary border-border">
+              <SelectValue placeholder="Todas apps" />
+            </SelectTrigger>
+            <SelectContent className="dark">
+              <SelectItem value="all">Todas apps</SelectItem>
+              {apps.map(a => (
+                <SelectItem key={a.id} value={a.id}>{a.name}</SelectItem>
+              ))}
+            </SelectContent>
+          </Select>
+        </div>
+
+        <div className="relative flex-1 min-w-[200px] max-w-[300px]">
+          <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-3.5 w-3.5 text-muted-foreground" />
+          <input
+            placeholder="Buscar..."
+            value={searchTerm}
+            onChange={e => setSearchTerm(e.target.value)}
+            className="w-full h-9 pl-9 pr-3 rounded-lg text-xs bg-secondary border border-border text-foreground placeholder:text-muted-foreground/50 outline-none focus:border-primary/50 focus:ring-1 focus:ring-primary/20 transition-colors"
+          />
+        </div>
+
+        <div className="ml-auto">
+          <Dialog open={open} onOpenChange={setOpen}>
+            <DialogTrigger asChild>
+              <Button size="sm" className="gap-1.5 h-9"><Plus className="h-3.5 w-3.5" />Upload</Button>
+            </DialogTrigger>
+            <DialogContent className="dark">
+              <DialogHeader><DialogTitle className="font-heading">Enviar Arquivo</DialogTitle></DialogHeader>
+              <form onSubmit={handleUpload} className="space-y-4">
+                <div className="space-y-2">
+                  <Label>Aplicação</Label>
+                  <Select value={selectedApp} onValueChange={setSelectedApp}>
+                    <SelectTrigger><SelectValue placeholder="Selecione..." /></SelectTrigger>
+                    <SelectContent className="dark">
+                      {apps.map(a => (
+                        <SelectItem key={a.id} value={a.id}>{a.name}</SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
+                </div>
+                <div className="space-y-2">
+                  <Label>Versão (opcional)</Label>
+                  <Input value={version} onChange={e => setVersion(e.target.value)} placeholder="ex: 1.0.0" />
+                </div>
+                <div className="space-y-2">
+                  <Label>Arquivo (.zip)</Label>
+                  <Input
+                    ref={fileRef}
+                    type="file"
+                    accept=".zip"
+                    onChange={e => setSelectedFile(e.target.files?.[0] || null)}
+                    required
+                  />
+                </div>
+                <Button type="submit" className="w-full gap-2" disabled={uploading || !selectedApp || !selectedFile}>
+                  <Upload className="h-4 w-4" />
+                  {uploading ? "Enviando..." : "Enviar"}
+                </Button>
+              </form>
+            </DialogContent>
+          </Dialog>
+        </div>
+      </div>
+
+      {/* Grid de cards */}
+      {filtered.length === 0 ? (
+        <div className="rounded-xl border border-border bg-card/50 flex flex-col items-center justify-center py-20 relative overflow-hidden">
+          <div className="absolute inset-0 bg-grid opacity-[0.03]" />
+          <FileArchive className="h-12 w-12 text-muted-foreground/20 mb-4" />
+          <p className="text-foreground font-heading font-medium text-lg">Nenhum arquivo</p>
           <p className="text-sm text-muted-foreground mt-1">Faça upload do primeiro arquivo .zip</p>
         </div>
       ) : (
-        <div className="rounded-lg border border-border bg-card overflow-hidden">
-          <div className="overflow-x-auto">
-            <table className="w-full text-sm">
-              <thead>
-                <tr className="border-b border-border bg-muted/30">
-                  <th className="px-4 py-3 text-left text-xs font-semibold text-muted-foreground uppercase tracking-wider">Arquivo</th>
-                  <th className="px-4 py-3 text-left text-xs font-semibold text-muted-foreground uppercase tracking-wider">Aplicação</th>
-                  <th className="px-4 py-3 text-left text-xs font-semibold text-muted-foreground uppercase tracking-wider">Versão</th>
-                  <th className="px-4 py-3 text-left text-xs font-semibold text-muted-foreground uppercase tracking-wider">Tamanho</th>
-                  <th className="px-4 py-3 text-left text-xs font-semibold text-muted-foreground uppercase tracking-wider">Data</th>
-                  <th className="px-4 py-3 text-right text-xs font-semibold text-muted-foreground uppercase tracking-wider">Ações</th>
-                </tr>
-              </thead>
-              <tbody>
-                {downloads.map(dl => (
-                  <tr key={dl.id} className="border-b border-border last:border-0 hover:bg-muted/10 transition-colors">
-                    <td className="px-4 py-3">
-                      <div className="flex items-center gap-2">
-                        <FileArchive className="h-4 w-4 text-primary" />
-                        <span className="font-mono text-xs text-foreground">{dl.file_name}</span>
-                      </div>
-                    </td>
-                    <td className="px-4 py-3 text-xs text-muted-foreground">{dl.applications?.name || "—"}</td>
-                    <td className="px-4 py-3">
-                      {dl.version ? (
-                        <span className="text-xs font-mono bg-primary/10 text-primary px-2 py-0.5 rounded-full">{dl.version}</span>
-                      ) : <span className="text-xs text-muted-foreground">—</span>}
-                    </td>
-                    <td className="px-4 py-3 text-xs text-muted-foreground font-mono">{formatSize(dl.file_size)}</td>
-                    <td className="px-4 py-3 text-xs text-muted-foreground">
-                      {new Date(dl.created_at).toLocaleDateString("pt-BR")}
-                    </td>
-                    <td className="px-4 py-3">
-                      <div className="flex justify-end gap-1">
-                        <button onClick={() => handleDownload(dl)} className="p-1.5 rounded text-muted-foreground hover:text-primary hover:bg-primary/5 transition-colors">
-                          <Download className="h-3.5 w-3.5" />
-                        </button>
-                        <button onClick={() => handleDelete(dl)} className="p-1.5 rounded text-muted-foreground hover:text-destructive hover:bg-destructive/5 transition-colors">
-                          <Trash2 className="h-3.5 w-3.5" />
-                        </button>
-                      </div>
-                    </td>
-                  </tr>
-                ))}
-              </tbody>
-            </table>
-          </div>
+        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+          {filtered.map(dl => (
+            <div
+              key={dl.id}
+              className="group relative rounded-xl border border-border bg-card/60 backdrop-blur-sm p-5 transition-all duration-300 hover:border-primary/30 hover:shadow-[0_0_20px_-5px_hsl(var(--primary)/0.15)]"
+            >
+              {/* Glow accent top */}
+              <div className="absolute top-0 left-4 right-4 h-px bg-gradient-to-r from-transparent via-primary/20 to-transparent opacity-0 group-hover:opacity-100 transition-opacity duration-300" />
+
+              {/* Header do card */}
+              <div className="flex items-start justify-between mb-4">
+                <div className="flex items-center gap-3">
+                  <div className="h-10 w-10 rounded-lg bg-primary/10 border border-primary/20 flex items-center justify-center">
+                    <FileArchive className="h-5 w-5 text-primary" />
+                  </div>
+                  <div className="min-w-0">
+                    <p className="text-sm font-medium text-foreground truncate max-w-[180px]" title={dl.file_name}>
+                      {dl.file_name}
+                    </p>
+                    <p className="text-xs text-muted-foreground mt-0.5">
+                      {dl.applications?.name || "—"}
+                    </p>
+                  </div>
+                </div>
+              </div>
+
+              {/* Info */}
+              <div className="flex items-center gap-3 mb-4">
+                {dl.version && (
+                  <span className="text-[10px] font-mono font-medium bg-primary/10 text-primary px-2 py-0.5 rounded-full border border-primary/20">
+                    v{dl.version}
+                  </span>
+                )}
+                <span className="text-[10px] font-mono text-muted-foreground">
+                  {formatSize(dl.file_size)}
+                </span>
+                <span className="text-[10px] text-muted-foreground">
+                  {new Date(dl.created_at).toLocaleDateString("pt-BR")}
+                </span>
+              </div>
+
+              {/* Actions */}
+              <div className="flex items-center gap-2 pt-3 border-t border-border/50">
+                <button
+                  onClick={() => handleDownload(dl)}
+                  className="flex-1 flex items-center justify-center gap-1.5 h-8 rounded-lg text-xs font-medium text-primary bg-primary/5 border border-primary/10 hover:bg-primary/10 hover:border-primary/30 transition-all duration-200"
+                >
+                  <Download className="h-3.5 w-3.5" />
+                  Download
+                </button>
+                <button
+                  onClick={() => handleDelete(dl)}
+                  className="h-8 w-8 flex items-center justify-center rounded-lg text-muted-foreground hover:text-destructive hover:bg-destructive/10 border border-transparent hover:border-destructive/20 transition-all duration-200"
+                >
+                  <Trash2 className="h-3.5 w-3.5" />
+                </button>
+              </div>
+            </div>
+          ))}
         </div>
       )}
     </DashboardLayout>
