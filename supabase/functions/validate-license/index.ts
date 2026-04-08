@@ -1,4 +1,5 @@
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2.49.4";
+import { verifyAppHmac } from "../_shared/hmac-verify.ts";
 
 const corsHeaders = {
   "Access-Control-Allow-Origin": "*",
@@ -20,11 +21,11 @@ Deno.serve(async (req) => {
   const ip = getClientIp(req);
 
   try {
-    const { license_key, app_secret, hwid } = await req.json();
+    const { license_key, app_secret, app_hash, timestamp, hwid } = await req.json();
 
-    if (!license_key || !app_secret) {
+    if (!license_key || (!app_secret && !app_hash)) {
       return new Response(
-        JSON.stringify({ valid: false, message: "Missing license_key or app_secret" }),
+        JSON.stringify({ valid: false, message: "Missing license_key or app authentication" }),
         { status: 400, headers: { ...corsHeaders, "Content-Type": "application/json" } }
       );
     }
@@ -33,15 +34,15 @@ Deno.serve(async (req) => {
     const supabaseKey = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!;
     const supabase = createClient(supabaseUrl, supabaseKey);
 
-    const { data: app, error: appError } = await supabase
-      .from("applications")
-      .select("id, enabled")
-      .eq("secret_key", app_secret)
-      .single();
+    // Verify app via HMAC-TOTP or legacy secret
+    const { app, error: appVerifyError } = await verifyAppHmac(
+      { app_hash, app_secret, timestamp },
+      supabase
+    );
 
-    if (appError || !app) {
+    if (appVerifyError || !app) {
       return new Response(
-        JSON.stringify({ valid: false, message: "Invalid application secret" }),
+        JSON.stringify({ valid: false, message: appVerifyError || "Invalid application" }),
         { status: 401, headers: { ...corsHeaders, "Content-Type": "application/json" } }
       );
     }
@@ -131,7 +132,6 @@ Deno.serve(async (req) => {
       await supabase.from("licenses").update(updates).eq("id", license.id);
     }
 
-    // Log success
     await supabase.from("auth_logs").insert({
       application_id: app.id, event_type: "validate_success",
       ip_address: ip, hwid, success: true, details: "License validated", license_id: license.id,

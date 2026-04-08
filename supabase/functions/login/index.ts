@@ -1,4 +1,5 @@
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2.49.4";
+import { verifyAppHmac } from "../_shared/hmac-verify.ts";
 
 function compareVersions(a: string, b: string): number {
   const pa = a.split(".").map(Number);
@@ -48,11 +49,11 @@ Deno.serve(async (req) => {
   const requestStart = Date.now();
 
   try {
-    const { app_secret, username, password, hwid, version, nonce, challenge_token } = await req.json();
+    const { app_secret, app_hash, timestamp, username, password, hwid, version, nonce, challenge_token } = await req.json();
 
-    if (!app_secret || !username || !password) {
+    if ((!app_secret && !app_hash) || !username || !password) {
       return new Response(
-        JSON.stringify({ success: false, message: "Missing required fields: app_secret, username, password" }),
+        JSON.stringify({ success: false, message: "Missing required fields" }),
         { status: 400, headers: { ...corsHeaders, "Content-Type": "application/json" } }
       );
     }
@@ -61,16 +62,15 @@ Deno.serve(async (req) => {
     const supabaseKey = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!;
     const supabase = createClient(supabaseUrl, supabaseKey);
 
-    // Verify app
-    const { data: app, error: appError } = await supabase
-      .from("applications")
-      .select("id, enabled, current_version, min_version")
-      .eq("secret_key", app_secret)
-      .single();
+    // Verify app via HMAC-TOTP or legacy secret
+    const { app, error: appVerifyError } = await verifyAppHmac(
+      { app_hash, app_secret, timestamp },
+      supabase
+    );
 
-    if (appError || !app) {
+    if (appVerifyError || !app) {
       return new Response(
-        JSON.stringify({ success: false, message: "Invalid application secret" }),
+        JSON.stringify({ success: false, message: appVerifyError || "Invalid application" }),
         { status: 401, headers: { ...corsHeaders, "Content-Type": "application/json" } }
       );
     }
@@ -125,7 +125,6 @@ Deno.serve(async (req) => {
         );
       }
 
-      // Check expiration
       if (new Date(tokenData.expires_at) < new Date() || tokenData.used) {
         await supabase.from("pre_auth_tokens").delete().eq("id", tokenData.id);
         await supabase.from("auth_logs").insert({
@@ -138,7 +137,6 @@ Deno.serve(async (req) => {
         );
       }
 
-      // Check HWID match with pre-auth
       if (tokenData.hwid && hwid && tokenData.hwid !== hwid) {
         await supabase.from("pre_auth_tokens").delete().eq("id", tokenData.id);
         await supabase.from("auth_logs").insert({
@@ -151,7 +149,6 @@ Deno.serve(async (req) => {
         );
       }
 
-      // Mark token as used
       await supabase.from("pre_auth_tokens").update({ used: true }).eq("id", tokenData.id);
     }
 
@@ -181,7 +178,6 @@ Deno.serve(async (req) => {
     const hashArray = Array.from(new Uint8Array(hashBuffer));
     const passwordHash = hashArray.map(b => b.toString(16).padStart(2, "0")).join("");
 
-    // Constant-time string comparison to prevent timing attacks
     const storedHash = user.password_hash;
     let mismatch = passwordHash.length !== storedHash.length ? 1 : 0;
     for (let i = 0; i < Math.max(passwordHash.length, storedHash.length); i++) {
@@ -251,24 +247,23 @@ Deno.serve(async (req) => {
       );
     }
 
-    // Update user info (HWID, IP, last login)
+    // Update user info
     const userUpdates: Record<string, unknown> = { last_ip: ip, last_login_at: new Date().toISOString() };
     if (hwid && !user.hwid) userUpdates.hwid = hwid;
     await supabase.from("software_users").update(userUpdates).eq("id", user.id);
 
     // Generate session token and sign the response
     const sessionToken = generateSessionToken();
-    const timestamp = Date.now();
+    const ts = Date.now();
     const signPayload = JSON.stringify({
       session: sessionToken,
       username: user.username,
       status: license.status,
-      timestamp,
+      timestamp: ts,
       nonce: nonce || "",
     });
     const signature = await hmacSign(signPayload, supabaseKey);
 
-    // Log success
     await supabase.from("auth_logs").insert({
       application_id: app.id, event_type: "login_success", username: username.toLowerCase(),
       ip_address: ip, hwid: hwid || user.hwid, success: true, details: "Login successful", license_id: license.id,
@@ -280,7 +275,7 @@ Deno.serve(async (req) => {
         message: "Login successful",
         session_token: sessionToken,
         signature,
-        timestamp,
+        timestamp: ts,
         nonce: nonce || null,
         user: {
           username: user.username,
