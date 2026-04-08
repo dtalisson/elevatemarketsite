@@ -796,21 +796,86 @@ void check_hooks() {
         {/* Integration Example - C++ Only */}
         <Card className="border-border/50 bg-card">
           <CardHeader>
-            <CardTitle className="text-base">📦 Exemplo Completo de Integração (C++)</CardTitle>
-            <p className="text-xs text-muted-foreground mt-1">Inclui app-status + registro + login + anti-debug</p>
+            <CardTitle className="text-base">📦 Exemplo Completo de Integração (C++ com HMAC)</CardTitle>
+            <p className="text-xs text-muted-foreground mt-1">Inclui HMAC signing + verificação de resposta + app-status + registro + login + anti-debug</p>
           </CardHeader>
           <CardContent>
             <pre className="rounded-lg bg-muted p-3 font-mono text-xs text-foreground overflow-x-auto">
 {`#include <iostream>
 #include <string>
+#include <chrono>
+#include <random>
+#include <sstream>
+#include <iomanip>
 #include <curl/curl.h>
 #include <nlohmann/json.hpp>
+#include <openssl/hmac.h>
 #include <windows.h>
 
 using json = nlohmann::json;
 
 const std::string BASE_URL = "${baseUrl}";
-const std::string APP_SECRET = "coloque-seu-app-secret-aqui";
+const std::string APP_ID = "seu-app-id-uuid";
+
+// ⚠️ NUNCA deixe em plaintext — use decrypt_secret() (veja seção acima)
+// Aqui está em texto só para fins didáticos
+const std::string APP_SECRET = "seu-secret-key-uuid";
+
+// ========== HMAC UTILS ==========
+
+std::string hmac_sha256(const std::string& key, const std::string& msg) {
+    unsigned char hash[EVP_MAX_MD_SIZE];
+    unsigned int len = 0;
+    HMAC(EVP_sha256(), key.c_str(), key.size(),
+         (unsigned char*)msg.c_str(), msg.size(), hash, &len);
+    std::ostringstream ss;
+    for (unsigned int i = 0; i < len; i++)
+        ss << std::hex << std::setfill('0') << std::setw(2) << (int)hash[i];
+    return ss.str();
+}
+
+std::string random_nonce(int len = 16) {
+    static const char chars[] = "abcdef0123456789";
+    std::random_device rd;
+    std::mt19937 gen(rd());
+    std::uniform_int_distribution<> dist(0, sizeof(chars)-2);
+    std::string nonce;
+    for (int i = 0; i < len; i++) nonce += chars[dist(gen)];
+    return nonce;
+}
+
+// Assina request com HMAC (secret nunca sai do cliente)
+json sign_request(json body_fields) {
+    auto ms = std::chrono::duration_cast<std::chrono::milliseconds>(
+        std::chrono::system_clock::now().time_since_epoch()).count();
+    std::string nonce = random_nonce();
+
+    json sorted(json::value_t::object);
+    for (auto& [k, v] : body_fields.items()) sorted[k] = v;
+    std::string canonical = sorted.dump();
+    std::string message = std::to_string(ms) + ":" + nonce + ":" + canonical;
+    std::string sig = hmac_sha256(APP_SECRET, message);
+
+    json request = body_fields;
+    request["app_id"] = APP_ID;
+    request["timestamp"] = ms;
+    request["nonce"] = nonce;
+    request["signature"] = sig;
+    return request;
+}
+
+// Verifica assinatura da resposta do servidor
+bool verify_response(const json& response) {
+    if (!response.contains("_sig") || !response.contains("_ts"))
+        return false;
+    std::string received_sig = response["_sig"];
+    json without_sig = response;
+    without_sig.erase("_sig");
+    std::string payload = without_sig.dump();
+    return hmac_sha256(APP_SECRET, payload) == received_sig;
+}
+
+// ========== HTTP + ANTI-DEBUG ==========
 
 void anti_debug() {
     if (IsDebuggerPresent()) ExitProcess(0);
@@ -843,50 +908,62 @@ json post(const std::string& endpoint, const json& body) {
     return json::parse(response);
 }
 
+// ========== API CALLS ==========
+
 bool check_status(const std::string& version = "1.0.0") {
     anti_debug();
-    std::string nonce = "nonce-" + std::to_string(rand());
-    auto res = post("app-status", {
-        {"app_secret", APP_SECRET}, {"version", version}, {"nonce", nonce}
-    });
-    if (res["nonce"] != nonce) ExitProcess(0);
+    auto body = sign_request({{"version", version}});
+    auto res = post("app-status", body);
+
+    // Verificar assinatura da resposta!
+    if (!verify_response(res)) {
+        std::cerr << "Resposta adulterada!" << std::endl;
+        ExitProcess(0);
+    }
+
     if (res["status"] == "disabled" || res["status"] == "outdated") {
-        std::cout << res["message"] << std::endl;
+        std::cout << res["message"].get<std::string>() << std::endl;
         return false;
     }
     return true;
 }
 
-bool do_register(const std::string& key, const std::string& user, const std::string& pass) {
-    auto res = post("register-with-license", {
-        {"license_key", key}, {"app_secret", APP_SECRET},
-        {"username", user}, {"password", pass}
+bool do_register(const std::string& key, const std::string& user,
+                 const std::string& pass, const std::string& hwid = "") {
+    auto body = sign_request({
+        {"license_key", key}, {"username", user},
+        {"password", pass}, {"hwid", hwid}
     });
-    return res["success"];
+    auto res = post("register-with-license", body);
+    if (!verify_response(res)) ExitProcess(0);
+    return res.value("success", false);
 }
 
-bool login(const std::string& user, const std::string& pass) {
+bool login(const std::string& user, const std::string& pass,
+           const std::string& hwid = "") {
     anti_debug();
-    std::string nonce = "nonce-" + std::to_string(rand());
-    auto res = post("login", {
-        {"app_secret", APP_SECRET}, {"username", user},
-        {"password", pass}, {"nonce", nonce}
+    auto body = sign_request({
+        {"username", user}, {"password", pass}, {"hwid", hwid}
     });
-    if (!res["success"]) return false;
-    if (res["nonce"] != nonce) ExitProcess(0);
-    std::string sig = res["signature"];
-    if (sig.length() != 64) ExitProcess(0);
-    std::cout << "Session: " << res["session_token"] << std::endl;
+    auto res = post("login", body);
+
+    if (!verify_response(res)) {
+        std::cerr << "Resposta do login adulterada!" << std::endl;
+        ExitProcess(0);
+    }
+
+    if (!res.value("success", false)) return false;
+    std::cout << "Session: " << res["session_token"].get<std::string>() << std::endl;
     return true;
 }
 
-// Dependências: libcurl, nlohmann/json
-// Compilar: g++ -o app main.cpp -lcurl
+// Dependências: libcurl, nlohmann/json, OpenSSL
+// Compilar: g++ -o app main.cpp -lcurl -lssl -lcrypto
 
 // USO:
 // if (!check_status("1.0.0")) return 1;
-// do_register("SUA-KEY", "usuario", "senha");   // primeira vez
-// if (login("usuario", "senha"))                 // próximas vezes
+// do_register("SUA-KEY", "usuario", "senha", get_hwid());  // primeira vez
+// if (login("usuario", "senha", get_hwid()))                // próximas vezes
 //     std::cout << "Programa liberado!" << std::endl;`}
             </pre>
           </CardContent>
