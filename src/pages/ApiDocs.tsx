@@ -583,6 +583,215 @@ void ProtectLoop() {
           </CardContent>
         </Card>
 
+        {/* CLIENT BINARY SECURITY */}
+        <Card className="border-amber-500/30 bg-amber-500/5">
+          <CardHeader>
+            <div className="flex items-center gap-2">
+              <Lock className="h-4 w-4 text-amber-400" />
+              <CardTitle className="text-base">🔒 Segurança do Binário C++</CardTitle>
+            </div>
+            <p className="text-xs text-muted-foreground mt-1">
+              O servidor está protegido com HMAC, mas o <code className="text-primary">secret_key</code> vive no seu .exe — proteja-o contra engenharia reversa
+            </p>
+          </CardHeader>
+          <CardContent>
+            <div className="space-y-5">
+
+              <div className="rounded-lg border border-amber-500/30 bg-amber-500/10 p-3 text-sm text-muted-foreground">
+                <strong className="text-amber-400">⚠️ Por que isso importa?</strong> O HMAC protege a comunicação, mas o <code className="text-primary">secret_key</code> está embutido no seu binário. Com ferramentas como IDA Pro ou x64dbg, um atacante avançado pode extraí-lo. As técnicas abaixo dificultam significativamente essa extração.
+              </div>
+
+              <div>
+                <h3 className="text-sm font-semibold text-foreground mb-2 flex items-center gap-2">
+                  <Lock className="h-3.5 w-3.5 text-amber-400" />
+                  1. Encriptação do Secret Key em Runtime
+                </h3>
+                <p className="text-xs text-muted-foreground mb-2">
+                  <strong className="text-destructive">NUNCA</strong> deixe o secret_key como string literal no binário. Um simples <code className="text-primary">strings meubinario.exe</code> revelaria tudo. Use XOR ou AES para decriptar apenas em runtime.
+                </p>
+                <pre className="rounded-lg bg-muted p-3 font-mono text-xs text-foreground overflow-x-auto whitespace-pre">
+{`// ❌ ERRADO — qualquer um encontra com "strings" ou HxD
+const std::string APP_SECRET = "9ee56446-5150-4e9e-bfc0-b21b505cebfd";
+
+// ✅ CORRETO — XOR encryption em compile-time
+constexpr unsigned char XOR_KEY = 0x5A;
+
+// Gere os bytes com:
+// python3 -c "s='seu-secret'; print([hex(ord(c)^0x5A) for c in s])"
+static const unsigned char enc_secret[] = {
+    0x63, 0x65, 0x65, 0x0E, 0x66, 0x0C, 0x0C, 0x0E, /* ... resto */
+};
+
+std::string decrypt_secret() {
+    std::string result(sizeof(enc_secret), '\\0');
+    for (size_t i = 0; i < sizeof(enc_secret); i++)
+        result[i] = enc_secret[i] ^ XOR_KEY;
+    return result;
+}
+
+// Use decrypt_secret() só quando precisar assinar
+// Limpe da memória logo depois com SecureZeroMemory()`}
+                </pre>
+              </div>
+
+              <div>
+                <h3 className="text-sm font-semibold text-foreground mb-2 flex items-center gap-2">
+                  <Lock className="h-3.5 w-3.5 text-amber-400" />
+                  2. Limpeza de Memória (Anti-Dump)
+                </h3>
+                <p className="text-xs text-muted-foreground mb-2">
+                  Após usar o secret_key para gerar o HMAC, <strong>limpe imediatamente</strong> da memória para dificultar dumps.
+                </p>
+                <pre className="rounded-lg bg-muted p-3 font-mono text-xs text-foreground overflow-x-auto whitespace-pre">
+{`void secure_sign_request(json& body, const std::string& app_id) {
+    // 1. Decriptar secret apenas quando necessário
+    std::string secret = decrypt_secret();
+    
+    // 2. Gerar assinatura HMAC
+    auto now_ms = std::chrono::duration_cast<std::chrono::milliseconds>(
+        std::chrono::system_clock::now().time_since_epoch()).count();
+    std::string nonce = random_nonce();
+    
+    json canonical;
+    for (auto& [k, v] : body.items()) canonical[k] = v;
+    std::string message = std::to_string(now_ms) + ":" + nonce + ":" + canonical.dump();
+    std::string sig = hmac_sha256(secret, message);
+    
+    // 3. LIMPAR o secret da memória IMEDIATAMENTE
+    SecureZeroMemory(secret.data(), secret.size());
+    
+    // 4. Montar body final
+    body["app_id"] = app_id;
+    body["timestamp"] = now_ms;
+    body["nonce"] = nonce;
+    body["signature"] = sig;
+}`}
+                </pre>
+              </div>
+
+              <div>
+                <h3 className="text-sm font-semibold text-foreground mb-2 flex items-center gap-2">
+                  <Lock className="h-3.5 w-3.5 text-amber-400" />
+                  3. Integrity Check (Auto-Verificação do .exe)
+                </h3>
+                <p className="text-xs text-muted-foreground mb-2">
+                  Calcule o hash do próprio executável em runtime. Se alguém patchar o .exe, o hash muda e o programa fecha.
+                </p>
+                <pre className="rounded-lg bg-muted p-3 font-mono text-xs text-foreground overflow-x-auto whitespace-pre">
+{`#include <fstream>
+#include <openssl/sha.h>
+
+std::string hash_file(const std::string& path) {
+    std::ifstream f(path, std::ios::binary);
+    if (!f) return "";
+    SHA256_CTX ctx;
+    SHA256_Init(&ctx);
+    char buf[8192];
+    while (f.read(buf, sizeof(buf)))
+        SHA256_Update(&ctx, buf, f.gcount());
+    SHA256_Update(&ctx, buf, f.gcount());
+    unsigned char hash[SHA256_DIGEST_LENGTH];
+    SHA256_Final(hash, &ctx);
+    std::ostringstream ss;
+    for (int i = 0; i < SHA256_DIGEST_LENGTH; i++)
+        ss << std::hex << std::setfill('0') << std::setw(2) << (int)hash[i];
+    return ss.str();
+}
+
+void check_integrity() {
+    char path[MAX_PATH];
+    GetModuleFileNameA(NULL, path, MAX_PATH);
+    std::string current_hash = hash_file(path);
+    
+    // Compare com o hash esperado (atualize a cada build)
+    // Armazene encriptado, não em plaintext!
+    std::string expected = decrypt_expected_hash();
+    
+    if (current_hash != expected) {
+        // Binário foi modificado — reporte e feche
+        report_security_event("INTEGRITY_VIOLATION",
+            "Binary hash mismatch: " + current_hash);
+        ExitProcess(0);
+    }
+}`}
+                </pre>
+              </div>
+
+              <div>
+                <h3 className="text-sm font-semibold text-foreground mb-2 flex items-center gap-2">
+                  <Lock className="h-3.5 w-3.5 text-amber-400" />
+                  4. Anti-Hook (Proteção de Funções HTTP)
+                </h3>
+                <p className="text-xs text-muted-foreground mb-2">
+                  Crackers podem hookear <code className="text-primary">WinHttpSendRequest</code> para interceptar dados antes do HTTPS. Verifique os primeiros bytes de funções críticas.
+                </p>
+                <pre className="rounded-lg bg-muted p-3 font-mono text-xs text-foreground overflow-x-auto whitespace-pre">
+{`bool is_function_hooked(void* func_addr) {
+    unsigned char* bytes = (unsigned char*)func_addr;
+    if (bytes[0] == 0xE9) return true;                    // JMP rel32
+    if (bytes[0] == 0xFF && bytes[1] == 0x25) return true; // JMP [addr]
+    if (bytes[0] == 0x68) return true;                    // PUSH addr
+    return false;
+}
+
+void check_hooks() {
+    HMODULE winhttp = GetModuleHandleA("winhttp.dll");
+    if (winhttp) {
+        void* send = GetProcAddress(winhttp, "WinHttpSendRequest");
+        void* recv = GetProcAddress(winhttp, "WinHttpReceiveResponse");
+        if (is_function_hooked(send) || is_function_hooked(recv)) {
+            report_security_event("MEMORY_TAMPERING",
+                "WinHTTP functions hooked");
+            ExitProcess(0);
+        }
+    }
+}`}
+                </pre>
+              </div>
+
+              <div>
+                <h3 className="text-sm font-semibold text-foreground mb-2 flex items-center gap-2">
+                  <Lock className="h-3.5 w-3.5 text-amber-400" />
+                  5. Ofuscação Profissional
+                </h3>
+                <p className="text-xs text-muted-foreground">
+                  Para proteção máxima, use uma dessas ferramentas <strong>após compilar</strong> o .exe:
+                </p>
+                <div className="rounded-lg bg-muted p-4 space-y-2 text-xs text-muted-foreground mt-2">
+                  <p>🛡️ <strong className="text-foreground">VMProtect</strong> — Virtualiza funções críticas em uma VM customizada. O código real nunca existe descompilável em memória. <span className="text-primary">(Recomendado)</span></p>
+                  <p>🛡️ <strong className="text-foreground">Themida / WinLicense</strong> — Anti-debug avançado + empacotamento. Boa integração com loaders.</p>
+                  <p>🛡️ <strong className="text-foreground">Compile-time obfuscation</strong> — Use <code className="text-primary">constexpr</code> e templates C++ para ofuscar strings em tempo de compilação. Grátis.</p>
+                  <p>🛡️ <strong className="text-foreground">UPX</strong> — Compressão básica (fácil de unpackar, mas dificulta análise rápida). Nível básico.</p>
+                </div>
+              </div>
+
+              <div>
+                <h3 className="text-sm font-semibold text-foreground mb-2">📋 Checklist Completo de Segurança</h3>
+                <div className="rounded-lg bg-muted p-4 space-y-1.5 text-xs text-muted-foreground">
+                  <p className="font-medium text-foreground mb-2">Servidor (já implementado ✅)</p>
+                  <p>✅ HMAC-SHA256 — secret nunca trafega na rede</p>
+                  <p>✅ Anti-replay — timestamp com janela de 60s</p>
+                  <p>✅ Respostas assinadas — _sig e _ts em toda resposta</p>
+                  <p>✅ HWID lock — licença travada no hardware</p>
+                  <p>✅ Session tokens — expiração de 30min com renovação</p>
+                  <p>✅ Pre-auth handshake — challenge token antes do login</p>
+                  
+                  <p className="font-medium text-foreground mb-2 mt-4">Cliente C++ (implementar no seu lado)</p>
+                  <p>🔲 Encriptar secret_key no binário (XOR/AES, não plaintext)</p>
+                  <p>🔲 SecureZeroMemory após cada uso do secret</p>
+                  <p>🔲 Verificar _sig de toda resposta do servidor</p>
+                  <p>🔲 Integrity check do próprio .exe (hash SHA256)</p>
+                  <p>🔲 Anti-debug em loop contínuo (não só no início)</p>
+                  <p>🔲 Anti-hook nas funções HTTP (WinHTTP/curl)</p>
+                  <p>🔲 Reportar ameaças via /security-log</p>
+                  <p>🔲 VMProtect ou Themida no build final de release</p>
+                  <p>🔲 Nunca logar dados sensíveis (cout, printf, logs)</p>
+                </div>
+              </div>
+
+            </div>
+          </CardContent>
+
         {/* Integration Example - C++ Only */}
         <Card className="border-border/50 bg-card">
           <CardHeader>
