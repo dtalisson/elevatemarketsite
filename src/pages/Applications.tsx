@@ -29,6 +29,7 @@ const Applications = () => {
   const [editMsgOutdated, setEditMsgOutdated] = useState("");
   const [editMsgDisabled, setEditMsgDisabled] = useState("");
   const [editMsgMaintenance, setEditMsgMaintenance] = useState("");
+  const [editName, setEditName] = useState("");
   const [saving, setSaving] = useState(false);
 
   const fetchApps = async () => {
