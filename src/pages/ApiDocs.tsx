@@ -982,9 +982,12 @@ bool login(const std::string& user, const std::string& pass,
           <CardContent>
             <p className="text-xs text-muted-foreground mb-2"><strong>URL:</strong> <code className="text-primary">{baseUrl}/pre-auth</code></p>
             <pre className="text-xs bg-background/50 p-3 rounded-lg overflow-x-auto border border-border/30 text-muted-foreground">
-{`// Request
+{`// Request (com HMAC signing)
 {
-  "app_secret": "seu-app-secret",
+  "app_id": "seu-app-id-uuid",
+  "timestamp": 1712345678000,
+  "nonce": "random-hex",
+  "signature": "hmac-sha256-hex",
   "username": "usuario",
   "hwid": "hardware-id"
 }
@@ -993,7 +996,9 @@ bool login(const std::string& user, const std::string& pass,
 {
   "success": true,
   "token": "challenge-token-hex-64-chars",
-  "message": "Challenge token generated"
+  "message": "Challenge token generated",
+  "_ts": 1712345678000,
+  "_sig": "hmac-resposta"
 }`}
             </pre>
           </CardContent>
