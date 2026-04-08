@@ -214,9 +214,11 @@ bool verify_response(const json& response, const std::string& app_secret) {
                 <p className="mb-2 text-xs font-medium text-muted-foreground">BODY</p>
                 <pre className="rounded-lg bg-muted p-3 font-mono text-sm text-foreground">
 {`{
-  "app_secret": "secret-key-da-aplicacao",
-  "version": "1.0.0",                    // versão atual do cliente
-  "nonce": "random-string-unica"          // anti-replay (recomendado)
+  "app_id": "uuid-da-aplicacao",
+  "timestamp": 1712345678000,
+  "nonce": "random-hex",
+  "signature": "hmac-sha256-hex",
+  "version": "1.0.0"
 }`}
                 </pre>
               </div>
