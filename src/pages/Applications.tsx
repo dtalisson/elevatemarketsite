@@ -75,6 +75,7 @@ const Applications = () => {
     if (!settingsAppId) return;
     setSaving(true);
     const { error } = await supabase.from("applications").update({
+      name: editName,
       current_version: editVersion || null, min_version: editMinVersion || null,
       msg_outdated: editMsgOutdated || null, msg_disabled: editMsgDisabled || null, msg_maintenance: editMsgMaintenance || null,
     }).eq("id", settingsAppId);
