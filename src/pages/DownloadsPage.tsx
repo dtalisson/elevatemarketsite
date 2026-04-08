@@ -275,6 +275,7 @@ const DownloadsPage = () => {
           ))}
         </div>
       )}
+      </div>
     </DashboardLayout>
   );
 };
