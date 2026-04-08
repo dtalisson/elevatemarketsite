@@ -2,7 +2,7 @@ import { DashboardLayout } from "@/components/DashboardLayout";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
-import { Shield, Wifi, LogIn, UserPlus, Key, AlertTriangle } from "lucide-react";
+import { Shield, Wifi, LogIn, UserPlus, Key, AlertTriangle, Lock } from "lucide-react";
 
 const ApiDocs = () => {
   const baseUrl = `https://${import.meta.env.VITE_SUPABASE_PROJECT_ID || "your-project"}.supabase.co/functions/v1`;
