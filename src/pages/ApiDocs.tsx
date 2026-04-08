@@ -35,14 +35,18 @@ const ApiDocs = () => {
             </div>
             <div className="flex items-start gap-3">
               <Badge variant="outline" className="shrink-0 mt-0.5">4</Badge>
-              <span>Faça login via <code className="text-primary">/login</code> enviando o <code className="text-primary">challenge_token</code> junto com credenciais</span>
+              <span>Faça login via <code className="text-primary">/login</code> enviando o <code className="text-primary">challenge_token</code> junto com credenciais. Receba um <code className="text-primary">session_token</code> com <strong className="text-foreground">expiração de 30 min</strong></span>
             </div>
             <div className="flex items-start gap-3">
               <Badge variant="outline" className="shrink-0 mt-0.5">5</Badge>
-              <span>Durante a sessão, envie <code className="text-primary">/heartbeat</code> a cada 30s para manter a sessão e detectar <strong className="text-foreground">bans em tempo real</strong></span>
+              <span>Use <code className="text-primary">/validate-session</code> para verificar se o token ainda é válido. Cada validação <strong className="text-foreground">renova a expiração</strong> automaticamente</span>
             </div>
             <div className="flex items-start gap-3">
               <Badge variant="outline" className="shrink-0 mt-0.5">6</Badge>
+              <span>Envie <code className="text-primary">/heartbeat</code> a cada 30s com o <code className="text-primary">session_token</code> para manter sessão ativa e detectar <strong className="text-foreground">bans em tempo real</strong></span>
+            </div>
+            <div className="flex items-start gap-3">
+              <Badge variant="outline" className="shrink-0 mt-0.5">7</Badge>
               <span>Se detectar debugger/dump, envie <code className="text-primary">/security-log</code> para alertar o painel</span>
             </div>
           </div>
