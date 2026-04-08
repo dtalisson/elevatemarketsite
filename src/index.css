@@ -94,10 +94,9 @@
     @apply bg-background text-foreground antialiased;
     font-family: 'Inter', system-ui, sans-serif;
     background-image:
-      radial-gradient(circle at 50% 100%, hsl(var(--grid-glow) / 0.24), transparent 38%),
-      linear-gradient(hsl(var(--grid-line) / 0.18) 1px, transparent 1px),
-      linear-gradient(90deg, hsl(var(--grid-line) / 0.18) 1px, transparent 1px);
-    background-size: auto, 48px 48px, 48px 48px;
+      linear-gradient(rgba(255, 255, 255, 0.07) 1px, transparent 1px),
+      linear-gradient(90deg, rgba(255, 255, 255, 0.07) 1px, transparent 1px);
+    background-size: 48px 48px;
     background-attachment: fixed;
   }
 
@@ -121,9 +120,8 @@
 
   .bg-neon-grid {
     background-image:
-      radial-gradient(circle at 50% 100%, hsl(var(--grid-glow) / 0.24), transparent 38%),
-      linear-gradient(hsl(var(--grid-line) / 0.18) 1px, transparent 1px),
-      linear-gradient(90deg, hsl(var(--grid-line) / 0.18) 1px, transparent 1px);
-    background-size: auto, 48px 48px, 48px 48px;
+      linear-gradient(rgba(255, 255, 255, 0.07) 1px, transparent 1px),
+      linear-gradient(90deg, rgba(255, 255, 255, 0.07) 1px, transparent 1px);
+    background-size: 48px 48px;
   }
 }
