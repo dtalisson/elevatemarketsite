@@ -157,6 +157,16 @@ const Applications = () => {
                 </span>
               </div>
 
+              <div className="mb-3">
+                <p className="text-[10px] uppercase tracking-wider text-muted-foreground mb-1.5">App ID</p>
+                <div className="flex items-center gap-2">
+                  <code className="flex-1 truncate rounded-md bg-muted px-3 py-1.5 font-mono text-[11px] text-foreground/80">{app.id}</code>
+                  <button onClick={() => copyKey(app.id)} className="text-muted-foreground hover:text-primary transition-colors">
+                    <Copy className="h-3.5 w-3.5" />
+                  </button>
+                </div>
+              </div>
+
               <div className="mb-4">
                 <p className="text-[10px] uppercase tracking-wider text-muted-foreground mb-1.5">Secret Key</p>
                 <div className="flex items-center gap-2">
