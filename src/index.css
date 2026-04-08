@@ -83,9 +83,9 @@
     @apply bg-background text-foreground antialiased;
     font-family: 'Inter', system-ui, sans-serif;
     background-image:
-      linear-gradient(rgba(255, 255, 255, 0.03) 1px, transparent 1px),
-      linear-gradient(90deg, rgba(255, 255, 255, 0.03) 1px, transparent 1px);
-    background-size: 40px 40px;
+      linear-gradient(rgba(56, 189, 248, 0.08) 1px, transparent 1px),
+      linear-gradient(90deg, rgba(56, 189, 248, 0.08) 1px, transparent 1px);
+    background-size: 50px 50px;
   }
   h1, h2, h3, h4, h5, h6 {
     font-family: 'Space Grotesk', 'Inter', system-ui, sans-serif;
