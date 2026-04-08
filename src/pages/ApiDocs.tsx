@@ -543,12 +543,33 @@ void ProtectLoop() {
 #include <string>
 #include <curl/curl.h>
 #include <nlohmann/json.hpp>
+#include <openssl/hmac.h>
 #include <windows.h>
+#include <ctime>
+#include <sstream>
+#include <iomanip>
 
 using json = nlohmann::json;
 
 const std::string BASE_URL = "${baseUrl}";
-const std::string APP_SECRET = "coloque-seu-app-secret-aqui";
+const std::string APP_SECRET = "coloque-seu-app-secret-aqui"; // NUNCA trafega na rede!
+
+// Gera HMAC-TOTP: hash que muda a cada 30 segundos
+std::pair<std::string, long> compute_app_hash() {
+    long timestamp = std::time(nullptr);
+    long time_step = timestamp / 30;
+    std::string step_str = std::to_string(time_step);
+    
+    unsigned char hash[32];
+    unsigned int len = 32;
+    HMAC(EVP_sha256(), APP_SECRET.c_str(), APP_SECRET.size(),
+         (unsigned char*)step_str.c_str(), step_str.size(), hash, &len);
+    
+    std::ostringstream oss;
+    for (int i = 0; i < 32; i++)
+        oss << std::hex << std::setfill('0') << std::setw(2) << (int)hash[i];
+    return {oss.str(), timestamp};
+}
 
 void anti_debug() {
     if (IsDebuggerPresent()) ExitProcess(0);
@@ -583,9 +604,11 @@ json post(const std::string& endpoint, const json& body) {
 
 bool check_status(const std::string& version = "1.0.0") {
     anti_debug();
+    auto [hash, ts] = compute_app_hash();
     std::string nonce = "nonce-" + std::to_string(rand());
     auto res = post("app-status", {
-        {"app_secret", APP_SECRET}, {"version", version}, {"nonce", nonce}
+        {"app_hash", hash}, {"timestamp", ts},
+        {"version", version}, {"nonce", nonce}
     });
     if (res["nonce"] != nonce) ExitProcess(0);
     if (res["status"] == "disabled" || res["status"] == "outdated") {
@@ -596,8 +619,9 @@ bool check_status(const std::string& version = "1.0.0") {
 }
 
 bool do_register(const std::string& key, const std::string& user, const std::string& pass) {
+    auto [hash, ts] = compute_app_hash();
     auto res = post("register-with-license", {
-        {"license_key", key}, {"app_secret", APP_SECRET},
+        {"license_key", key}, {"app_hash", hash}, {"timestamp", ts},
         {"username", user}, {"password", pass}
     });
     return res["success"];
@@ -605,10 +629,11 @@ bool do_register(const std::string& key, const std::string& user, const std::str
 
 bool login(const std::string& user, const std::string& pass) {
     anti_debug();
+    auto [hash, ts] = compute_app_hash();
     std::string nonce = "nonce-" + std::to_string(rand());
     auto res = post("login", {
-        {"app_secret", APP_SECRET}, {"username", user},
-        {"password", pass}, {"nonce", nonce}
+        {"app_hash", hash}, {"timestamp", ts},
+        {"username", user}, {"password", pass}, {"nonce", nonce}
     });
     if (!res["success"]) return false;
     if (res["nonce"] != nonce) ExitProcess(0);
@@ -618,8 +643,8 @@ bool login(const std::string& user, const std::string& pass) {
     return true;
 }
 
-// Dependências: libcurl, nlohmann/json
-// Compilar: g++ -o app main.cpp -lcurl
+// Dependências: libcurl, nlohmann/json, OpenSSL
+// Compilar: g++ -o app main.cpp -lcurl -lssl -lcrypto
 
 // USO:
 // if (!check_status("1.0.0")) return 1;
