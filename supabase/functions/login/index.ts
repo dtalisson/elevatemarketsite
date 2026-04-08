@@ -33,13 +33,94 @@ async function hmacSign(message: string, secret: string): Promise<string> {
   return Array.from(new Uint8Array(sig)).map(b => b.toString(16).padStart(2, "0")).join("");
 }
 
+function constantTimeCompare(a: string, b: string): boolean {
+  if (a.length !== b.length) return false;
+  let mismatch = 0;
+  for (let i = 0; i < a.length; i++) {
+    mismatch |= a.charCodeAt(i) ^ b.charCodeAt(i);
+  }
+  return mismatch === 0;
+}
+
+// Build canonical payload: sort body keys excluding auth fields, stringify
+function buildCanonicalPayload(body: Record<string, unknown>): string {
+  const authFields = ["app_id", "app_secret", "signature", "timestamp", "nonce"];
+  const filtered = Object.entries(body)
+    .filter(([k]) => !authFields.includes(k))
+    .sort(([a], [b]) => a.localeCompare(b));
+  return JSON.stringify(Object.fromEntries(filtered));
+}
+
+const REQUEST_MAX_AGE_MS = 60_000; // 60 seconds
+
+interface AppAuthResult {
+  app: { id: string; enabled: boolean; current_version: string | null; min_version: string | null; secret_key: string } | null;
+  error?: string;
+}
+
+async function verifyAppAuth(supabase: any, body: Record<string, unknown>): Promise<AppAuthResult> {
+  // New HMAC mode: app_id + timestamp + nonce + signature
+  if (body.app_id && body.signature && body.timestamp) {
+    const { data: app, error: appError } = await supabase
+      .from("applications")
+      .select("id, enabled, current_version, min_version, secret_key")
+      .eq("id", body.app_id)
+      .single();
+
+    if (appError || !app) {
+      return { app: null, error: "Invalid app_id" };
+    }
+
+    // Verify timestamp freshness (anti-replay)
+    const ts = Number(body.timestamp);
+    if (isNaN(ts) || Math.abs(Date.now() - ts) > REQUEST_MAX_AGE_MS) {
+      return { app: null, error: "Request expired or invalid timestamp" };
+    }
+
+    // Reconstruct and verify signature
+    const canonical = buildCanonicalPayload(body);
+    const message = `${body.timestamp}:${body.nonce || ""}:${canonical}`;
+    const expectedSig = await hmacSign(message, app.secret_key);
+
+    if (!constantTimeCompare(expectedSig, body.signature as string)) {
+      return { app: null, error: "Invalid signature" };
+    }
+
+    return { app };
+  }
+
+  // Legacy mode: app_secret (backward compat - will be deprecated)
+  if (body.app_secret) {
+    const { data: app, error: appError } = await supabase
+      .from("applications")
+      .select("id, enabled, current_version, min_version, secret_key")
+      .eq("secret_key", body.app_secret)
+      .single();
+
+    if (appError || !app) {
+      return { app: null, error: "Invalid app_secret" };
+    }
+
+    return { app };
+  }
+
+  return { app: null, error: "Missing authentication (app_id+signature or app_secret)" };
+}
+
+async function signResponse(data: Record<string, unknown>, secretKey: string): Promise<Record<string, unknown>> {
+  const ts = Date.now();
+  const payload = JSON.stringify({ ...data, _ts: ts });
+  const sig = await hmacSign(payload, secretKey);
+  return { ...data, _ts: ts, _sig: sig };
+}
+
 function generateSessionToken(): string {
   const bytes = new Uint8Array(32);
   crypto.getRandomValues(bytes);
   return Array.from(bytes).map(b => b.toString(16).padStart(2, "0")).join("");
 }
 
-const SESSION_TTL_SECONDS = 1800; // 30 minutes
+const SESSION_TTL_SECONDS = 1800;
 
 Deno.serve(async (req) => {
   if (req.method === "OPTIONS") {
@@ -49,11 +130,12 @@ Deno.serve(async (req) => {
   const ip = getClientIp(req);
 
   try {
-    const { app_secret, username, password, hwid, version, nonce, challenge_token } = await req.json();
+    const body = await req.json();
+    const { username, password, hwid, version, nonce, challenge_token } = body;
 
-    if (!app_secret || !username || !password) {
+    if (!username || !password) {
       return new Response(
-        JSON.stringify({ success: false, message: "Missing required fields: app_secret, username, password" }),
+        JSON.stringify({ success: false, message: "Missing required fields: username, password" }),
         { status: 400, headers: { ...corsHeaders, "Content-Type": "application/json" } }
       );
     }
@@ -62,16 +144,11 @@ Deno.serve(async (req) => {
     const supabaseKey = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!;
     const supabase = createClient(supabaseUrl, supabaseKey);
 
-    // Verify app
-    const { data: app, error: appError } = await supabase
-      .from("applications")
-      .select("id, enabled, current_version, min_version")
-      .eq("secret_key", app_secret)
-      .single();
-
-    if (appError || !app) {
+    // Verify app (HMAC or legacy)
+    const { app, error: authError } = await verifyAppAuth(supabase, body);
+    if (!app) {
       return new Response(
-        JSON.stringify({ success: false, message: "Invalid application secret" }),
+        JSON.stringify({ success: false, message: authError }),
         { status: 401, headers: { ...corsHeaders, "Content-Type": "application/json" } }
       );
     }
@@ -82,7 +159,7 @@ Deno.serve(async (req) => {
         ip_address: ip, hwid, success: false, details: "Application is disabled",
       });
       return new Response(
-        JSON.stringify({ success: false, message: "Application is disabled" }),
+        JSON.stringify(await signResponse({ success: false, message: "Application is disabled" }, app.secret_key)),
         { status: 403, headers: { ...corsHeaders, "Content-Type": "application/json" } }
       );
     }
@@ -94,13 +171,13 @@ Deno.serve(async (req) => {
         ip_address: ip, hwid, success: false, details: `Version outdated: ${version} < ${app.min_version}`,
       });
       return new Response(
-        JSON.stringify({
+        JSON.stringify(await signResponse({
           success: false,
           message: `Update required. Minimum version: ${app.min_version}, your version: ${version}`,
           update_required: true,
           current_version: app.current_version,
           min_version: app.min_version,
-        }),
+        }, app.secret_key)),
         { status: 403, headers: { ...corsHeaders, "Content-Type": "application/json" } }
       );
     }
@@ -121,7 +198,7 @@ Deno.serve(async (req) => {
           ip_address: ip, hwid, success: false, details: "Invalid challenge token",
         });
         return new Response(
-          JSON.stringify({ success: false, message: "Invalid or expired challenge token" }),
+          JSON.stringify(await signResponse({ success: false, message: "Invalid or expired challenge token" }, app.secret_key)),
           { status: 401, headers: { ...corsHeaders, "Content-Type": "application/json" } }
         );
       }
@@ -133,7 +210,7 @@ Deno.serve(async (req) => {
           ip_address: ip, hwid, success: false, details: "Challenge token expired or already used",
         });
         return new Response(
-          JSON.stringify({ success: false, message: "Challenge token expired" }),
+          JSON.stringify(await signResponse({ success: false, message: "Challenge token expired" }, app.secret_key)),
           { status: 401, headers: { ...corsHeaders, "Content-Type": "application/json" } }
         );
       }
@@ -145,7 +222,7 @@ Deno.serve(async (req) => {
           ip_address: ip, hwid, success: false, details: "HWID mismatch between pre-auth and login",
         });
         return new Response(
-          JSON.stringify({ success: false, message: "Device mismatch", status: "hwid_mismatch" }),
+          JSON.stringify(await signResponse({ success: false, message: "Device mismatch", status: "hwid_mismatch" }, app.secret_key)),
           { status: 403, headers: { ...corsHeaders, "Content-Type": "application/json" } }
         );
       }
@@ -167,12 +244,12 @@ Deno.serve(async (req) => {
         ip_address: ip, hwid, success: false, details: "User not found",
       });
       return new Response(
-        JSON.stringify({ success: false, message: "Invalid username or password" }),
+        JSON.stringify(await signResponse({ success: false, message: "Invalid username or password" }, app.secret_key)),
         { status: 401, headers: { ...corsHeaders, "Content-Type": "application/json" } }
       );
     }
 
-    // Verify password with constant-time comparison
+    // Verify password
     const encoder = new TextEncoder();
     const data = encoder.encode(password);
     const hashBuffer = await crypto.subtle.digest("SHA-256", data);
@@ -180,32 +257,26 @@ Deno.serve(async (req) => {
     const passwordHash = hashArray.map(b => b.toString(16).padStart(2, "0")).join("");
 
     const storedHash = user.password_hash;
-    let mismatch = passwordHash.length !== storedHash.length ? 1 : 0;
-    for (let i = 0; i < Math.max(passwordHash.length, storedHash.length); i++) {
-      mismatch |= (passwordHash.charCodeAt(i) || 0) ^ (storedHash.charCodeAt(i) || 0);
-    }
-
-    if (mismatch !== 0) {
+    if (!constantTimeCompare(passwordHash, storedHash)) {
       await supabase.from("auth_logs").insert({
         application_id: app.id, event_type: "login_failed", username: username.toLowerCase(),
         ip_address: ip, hwid, success: false, details: "Wrong password", license_id: user.license_id,
       });
       return new Response(
-        JSON.stringify({ success: false, message: "Invalid username or password" }),
+        JSON.stringify(await signResponse({ success: false, message: "Invalid username or password" }, app.secret_key)),
         { status: 401, headers: { ...corsHeaders, "Content-Type": "application/json" } }
       );
     }
 
-    // Check license status
+    // Check license
     const license = user.licenses;
-
     if (!license) {
       await supabase.from("auth_logs").insert({
         application_id: app.id, event_type: "login_failed", username: username.toLowerCase(),
         ip_address: ip, hwid, success: false, details: "No license associated", license_id: user.license_id,
       });
       return new Response(
-        JSON.stringify({ success: false, message: "No license associated" }),
+        JSON.stringify(await signResponse({ success: false, message: "No license associated" }, app.secret_key)),
         { status: 403, headers: { ...corsHeaders, "Content-Type": "application/json" } }
       );
     }
@@ -217,7 +288,7 @@ Deno.serve(async (req) => {
         ip_address: ip, hwid, success: false, details: banReason ? `License paused: ${banReason}` : "License is paused", license_id: license.id,
       });
       return new Response(
-        JSON.stringify({ success: false, message: banReason ? `License paused: ${banReason}` : "License is currently paused" }),
+        JSON.stringify(await signResponse({ success: false, message: banReason ? `License paused: ${banReason}` : "License is currently paused" }, app.secret_key)),
         { status: 403, headers: { ...corsHeaders, "Content-Type": "application/json" } }
       );
     }
@@ -231,7 +302,7 @@ Deno.serve(async (req) => {
         ip_address: ip, hwid, success: false, details: "License expired", license_id: license.id,
       });
       return new Response(
-        JSON.stringify({ success: false, message: "License has expired" }),
+        JSON.stringify(await signResponse({ success: false, message: "License has expired" }, app.secret_key)),
         { status: 403, headers: { ...corsHeaders, "Content-Type": "application/json" } }
       );
     }
@@ -243,17 +314,17 @@ Deno.serve(async (req) => {
         ip_address: ip, hwid, success: false, details: `HWID mismatch: expected ${user.hwid}`, license_id: license.id,
       });
       return new Response(
-        JSON.stringify({ success: false, message: "Account is locked to another device" }),
+        JSON.stringify(await signResponse({ success: false, message: "Account is locked to another device" }, app.secret_key)),
         { status: 403, headers: { ...corsHeaders, "Content-Type": "application/json" } }
       );
     }
 
-    // Update user info (HWID, IP, last login)
+    // Update user info
     const userUpdates: Record<string, unknown> = { last_ip: ip, last_login_at: new Date().toISOString() };
     if (hwid && !user.hwid) userUpdates.hwid = hwid;
     await supabase.from("software_users").update(userUpdates).eq("id", user.id);
 
-    // Revoke any existing session tokens for this user in this app
+    // Revoke existing sessions
     await supabase
       .from("session_tokens")
       .update({ revoked: true })
@@ -261,7 +332,7 @@ Deno.serve(async (req) => {
       .eq("username", username.toLowerCase())
       .eq("revoked", false);
 
-    // Generate and persist session token with expiration
+    // Generate session token
     const sessionToken = generateSessionToken();
     const expiresAt = new Date(Date.now() + SESSION_TTL_SECONDS * 1000).toISOString();
 
@@ -274,44 +345,34 @@ Deno.serve(async (req) => {
       expires_at: expiresAt,
     });
 
-    const timestamp = Date.now();
-    const signPayload = JSON.stringify({
-      session: sessionToken,
-      username: user.username,
-      status: license.status,
-      timestamp,
-      nonce: nonce || "",
-    });
-    const signature = await hmacSign(signPayload, supabaseKey);
-
     // Log success
     await supabase.from("auth_logs").insert({
       application_id: app.id, event_type: "login_success", username: username.toLowerCase(),
       ip_address: ip, hwid: hwid || user.hwid, success: true, details: "Login successful", license_id: license.id,
     });
 
+    const responseData = {
+      success: true,
+      message: "Login successful",
+      session_token: sessionToken,
+      session_expires_at: expiresAt,
+      session_ttl_seconds: SESSION_TTL_SECONDS,
+      nonce: nonce || null,
+      user: {
+        username: user.username,
+        license: {
+          status: license.status,
+          expires_at: license.expires_at,
+        },
+      },
+      app: {
+        current_version: app.current_version,
+        update_available: version && app.current_version ? compareVersions(version, app.current_version) < 0 : false,
+      },
+    };
+
     return new Response(
-      JSON.stringify({
-        success: true,
-        message: "Login successful",
-        session_token: sessionToken,
-        session_expires_at: expiresAt,
-        session_ttl_seconds: SESSION_TTL_SECONDS,
-        signature,
-        timestamp,
-        nonce: nonce || null,
-        user: {
-          username: user.username,
-          license: {
-            status: license.status,
-            expires_at: license.expires_at,
-          },
-        },
-        app: {
-          current_version: app.current_version,
-          update_available: version && app.current_version ? compareVersions(version, app.current_version) < 0 : false,
-        },
-      }),
+      JSON.stringify(await signResponse(responseData, app.secret_key)),
       { status: 200, headers: { ...corsHeaders, "Content-Type": "application/json" } }
     );
   } catch {
