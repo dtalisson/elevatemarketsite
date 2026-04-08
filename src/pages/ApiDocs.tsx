@@ -1050,18 +1050,22 @@ bool login(const std::string& user, const std::string& pass,
           <CardContent>
             <p className="text-xs text-muted-foreground mb-2"><strong>URL:</strong> <code className="text-primary">{baseUrl}/security-log</code></p>
             <pre className="text-xs bg-background/50 p-3 rounded-lg overflow-x-auto border border-border/30 text-muted-foreground">
-{`// Request
+{`// Request (com HMAC signing)
 {
-  "app_secret": "seu-app-secret",
+  "app_id": "seu-app-id-uuid",
+  "timestamp": 1712345678000,
+  "nonce": "random-hex",
+  "signature": "hmac-sha256-hex",
   "username": "usuario",
   "hwid": "hardware-id",
-  "event_type": "DEBUGGER_DETECTED",  // ou DUMP_TOOL_DETECTED, HWID_ABUSE, SESSION_INVALIDATED, INTEGRITY_VIOLATION, MEMORY_TAMPERING
-  "details": "x64dbg.exe encontrado em processo ativo",
-  "timestamp": 1712457600000
+  "event_type": "DEBUGGER_DETECTED",
+  // Tipos: DUMP_TOOL_DETECTED, DEBUGGER_DETECTED, HWID_ABUSE,
+  //        SESSION_INVALIDATED, INTEGRITY_VIOLATION, MEMORY_TAMPERING
+  "details": "x64dbg.exe encontrado em processo ativo"
 }
 
-// Response (200)
-{ "success": true, "message": "Security event logged" }`}
+// Response (200) — verificar _sig!
+{ "success": true, "message": "Security event logged", "_ts": ..., "_sig": "..." }`}
             </pre>
           </CardContent>
         </Card>
