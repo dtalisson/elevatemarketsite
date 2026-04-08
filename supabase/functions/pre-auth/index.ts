@@ -68,9 +68,11 @@ async function verifyAppAuth(supabase: any, body: Record<string, unknown>) {
 
 async function signResponse(data: Record<string, unknown>, secretKey: string): Promise<Record<string, unknown>> {
   const ts = Date.now();
-  const payload = JSON.stringify({ ...data, _ts: ts });
+  const withTs = { ...data, _ts: ts };
+  const sorted = Object.keys(withTs).sort().reduce((obj, key) => { obj[key] = withTs[key]; return obj; }, {} as Record<string, unknown>);
+  const payload = JSON.stringify(sorted);
   const sig = await hmacSign(payload, secretKey);
-  return { ...data, _ts: ts, _sig: sig };
+  return { ...sorted, _sig: sig };
 }
 
 function generateToken(): string {
