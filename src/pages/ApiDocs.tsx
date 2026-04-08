@@ -300,12 +300,14 @@ static (string hash, long timestamp) ComputeAppHash(string appSecret) {
                 <p className="mb-2 text-xs font-medium text-muted-foreground">BODY</p>
                 <pre className="rounded-lg bg-muted p-3 font-mono text-sm text-foreground">
 {`{
-  "app_secret": "secret-key-da-aplicacao",
+  "app_hash": "hmac-sha256-do-secret",   // 🔒 HMAC-TOTP (recomendado)
+  "timestamp": 1712505600,               // unix seconds
   "username": "nome_do_usuario",
   "password": "senha",
   "hwid": "identificador-do-hardware",  // opcional
   "version": "1.0.0",                   // opcional
-  "nonce": "random-string-unica"         // anti-replay (recomendado)
+  "nonce": "random-string-unica",       // anti-replay (recomendado)
+  "challenge_token": "token-do-pre-auth" // opcional
 }`}
                 </pre>
               </div>
