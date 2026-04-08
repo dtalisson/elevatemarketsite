@@ -645,7 +645,8 @@ bool login(const std::string& user, const std::string& pass) {
             <pre className="text-xs bg-background/50 p-3 rounded-lg overflow-x-auto border border-border/30 text-muted-foreground">
 {`// Request
 {
-  "app_secret": "seu-app-secret",
+  "app_hash": "hmac-sha256-do-secret",  // 🔒 HMAC-TOTP (recomendado)
+  "timestamp": 1712505600,              // unix seconds
   "username": "usuario",
   "hwid": "hardware-id"
 }
