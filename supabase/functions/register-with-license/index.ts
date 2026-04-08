@@ -24,6 +24,67 @@ function getClientIp(req: Request): string {
     || "unknown";
 }
 
+async function hmacSign(message: string, secret: string): Promise<string> {
+  const encoder = new TextEncoder();
+  const key = await crypto.subtle.importKey(
+    "raw", encoder.encode(secret), { name: "HMAC", hash: "SHA-256" }, false, ["sign"]
+  );
+  const sig = await crypto.subtle.sign("HMAC", key, encoder.encode(message));
+  return Array.from(new Uint8Array(sig)).map(b => b.toString(16).padStart(2, "0")).join("");
+}
+
+function constantTimeCompare(a: string, b: string): boolean {
+  if (a.length !== b.length) return false;
+  let mismatch = 0;
+  for (let i = 0; i < a.length; i++) {
+    mismatch |= a.charCodeAt(i) ^ b.charCodeAt(i);
+  }
+  return mismatch === 0;
+}
+
+function buildCanonicalPayload(body: Record<string, unknown>): string {
+  const authFields = ["app_id", "app_secret", "signature", "timestamp", "nonce"];
+  const filtered = Object.entries(body)
+    .filter(([k]) => !authFields.includes(k))
+    .sort(([a], [b]) => a.localeCompare(b));
+  return JSON.stringify(Object.fromEntries(filtered));
+}
+
+const REQUEST_MAX_AGE_MS = 60_000;
+
+async function verifyAppAuth(supabase: any, body: Record<string, unknown>) {
+  if (body.app_id && body.signature && body.timestamp) {
+    const { data: app, error } = await supabase
+      .from("applications").select("id, enabled, current_version, min_version, secret_key")
+      .eq("id", body.app_id).single();
+    if (error || !app) return { app: null, error: "Invalid app_id" };
+    const ts = Number(body.timestamp);
+    if (isNaN(ts) || Math.abs(Date.now() - ts) > REQUEST_MAX_AGE_MS)
+      return { app: null, error: "Request expired" };
+    const canonical = buildCanonicalPayload(body);
+    const message = `${body.timestamp}:${body.nonce || ""}:${canonical}`;
+    const expectedSig = await hmacSign(message, app.secret_key);
+    if (!constantTimeCompare(expectedSig, body.signature as string))
+      return { app: null, error: "Invalid signature" };
+    return { app };
+  }
+  if (body.app_secret) {
+    const { data: app, error } = await supabase
+      .from("applications").select("id, enabled, current_version, min_version, secret_key")
+      .eq("secret_key", body.app_secret).single();
+    if (error || !app) return { app: null, error: "Invalid app_secret" };
+    return { app };
+  }
+  return { app: null, error: "Missing authentication" };
+}
+
+async function signResponse(data: Record<string, unknown>, secretKey: string): Promise<Record<string, unknown>> {
+  const ts = Date.now();
+  const payload = JSON.stringify({ ...data, _ts: ts });
+  const sig = await hmacSign(payload, secretKey);
+  return { ...data, _ts: ts, _sig: sig };
+}
+
 Deno.serve(async (req) => {
   if (req.method === "OPTIONS") {
     return new Response("ok", { headers: corsHeaders });
@@ -32,11 +93,12 @@ Deno.serve(async (req) => {
   const ip = getClientIp(req);
 
   try {
-    const { license_key, app_secret, username, password, hwid, version } = await req.json();
+    const body = await req.json();
+    const { license_key, username, password, hwid, version } = body;
 
-    if (!license_key || !app_secret || !username || !password) {
+    if (!license_key || !username || !password) {
       return new Response(
-        JSON.stringify({ success: false, message: "Missing required fields: license_key, app_secret, username, password" }),
+        JSON.stringify({ success: false, message: "Missing required fields: license_key, username, password" }),
         { status: 400, headers: { ...corsHeaders, "Content-Type": "application/json" } }
       );
     }
@@ -59,16 +121,10 @@ Deno.serve(async (req) => {
     const supabaseKey = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!;
     const supabase = createClient(supabaseUrl, supabaseKey);
 
-    // Verify app
-    const { data: app, error: appError } = await supabase
-      .from("applications")
-      .select("id, enabled, current_version, min_version")
-      .eq("secret_key", app_secret)
-      .single();
-
-    if (appError || !app) {
+    const { app, error: authError } = await verifyAppAuth(supabase, body);
+    if (!app) {
       return new Response(
-        JSON.stringify({ success: false, message: "Invalid application secret" }),
+        JSON.stringify({ success: false, message: authError }),
         { status: 401, headers: { ...corsHeaders, "Content-Type": "application/json" } }
       );
     }
@@ -79,36 +135,29 @@ Deno.serve(async (req) => {
         ip_address: ip, hwid, success: false, details: "Application is disabled",
       });
       return new Response(
-        JSON.stringify({ success: false, message: "Application is disabled" }),
+        JSON.stringify(await signResponse({ success: false, message: "Application is disabled" }, app.secret_key)),
         { status: 403, headers: { ...corsHeaders, "Content-Type": "application/json" } }
       );
     }
 
-    // Check version
     if (version && app.min_version && compareVersions(version, app.min_version) < 0) {
       await supabase.from("auth_logs").insert({
         application_id: app.id, event_type: "register_failed", username: username.toLowerCase(),
         ip_address: ip, hwid, success: false, details: `Version outdated: ${version} < ${app.min_version}`,
       });
       return new Response(
-        JSON.stringify({
+        JSON.stringify(await signResponse({
           success: false,
           message: `Update required. Minimum version: ${app.min_version}, your version: ${version}`,
-          update_required: true,
-          current_version: app.current_version,
-          min_version: app.min_version,
-        }),
+          update_required: true, current_version: app.current_version, min_version: app.min_version,
+        }, app.secret_key)),
         { status: 403, headers: { ...corsHeaders, "Content-Type": "application/json" } }
       );
     }
 
-    // Verify license
     const { data: license, error: licError } = await supabase
-      .from("licenses")
-      .select("*")
-      .eq("license_key", license_key)
-      .eq("application_id", app.id)
-      .single();
+      .from("licenses").select("*")
+      .eq("license_key", license_key).eq("application_id", app.id).single();
 
     if (licError || !license) {
       await supabase.from("auth_logs").insert({
@@ -116,7 +165,7 @@ Deno.serve(async (req) => {
         ip_address: ip, hwid, success: false, details: "Invalid license key",
       });
       return new Response(
-        JSON.stringify({ success: false, message: "Invalid license key" }),
+        JSON.stringify(await signResponse({ success: false, message: "Invalid license key" }, app.secret_key)),
         { status: 404, headers: { ...corsHeaders, "Content-Type": "application/json" } }
       );
     }
@@ -127,7 +176,7 @@ Deno.serve(async (req) => {
         ip_address: ip, hwid, success: false, details: "License is banned", license_id: license.id,
       });
       return new Response(
-        JSON.stringify({ success: false, message: "License is banned" }),
+        JSON.stringify(await signResponse({ success: false, message: "License is banned" }, app.secret_key)),
         { status: 403, headers: { ...corsHeaders, "Content-Type": "application/json" } }
       );
     }
@@ -138,17 +187,14 @@ Deno.serve(async (req) => {
         ip_address: ip, hwid, success: false, details: "License expired", license_id: license.id,
       });
       return new Response(
-        JSON.stringify({ success: false, message: "License has expired" }),
+        JSON.stringify(await signResponse({ success: false, message: "License has expired" }, app.secret_key)),
         { status: 403, headers: { ...corsHeaders, "Content-Type": "application/json" } }
       );
     }
 
-    // Check if license already has a registered user
     const { data: existingUser } = await supabase
-      .from("software_users")
-      .select("id")
-      .eq("license_id", license.id)
-      .single();
+      .from("software_users").select("id")
+      .eq("license_id", license.id).single();
 
     if (existingUser) {
       await supabase.from("auth_logs").insert({
@@ -156,18 +202,14 @@ Deno.serve(async (req) => {
         ip_address: ip, hwid, success: false, details: "License already has a user", license_id: license.id,
       });
       return new Response(
-        JSON.stringify({ success: false, message: "License already has a registered user" }),
+        JSON.stringify(await signResponse({ success: false, message: "License already has a registered user" }, app.secret_key)),
         { status: 409, headers: { ...corsHeaders, "Content-Type": "application/json" } }
       );
     }
 
-    // Check if username already exists for this app
     const { data: existingUsername } = await supabase
-      .from("software_users")
-      .select("id")
-      .eq("application_id", app.id)
-      .eq("username", username.toLowerCase())
-      .single();
+      .from("software_users").select("id")
+      .eq("application_id", app.id).eq("username", username.toLowerCase()).single();
 
     if (existingUsername) {
       await supabase.from("auth_logs").insert({
@@ -175,7 +217,7 @@ Deno.serve(async (req) => {
         ip_address: ip, hwid, success: false, details: "Username already taken", license_id: license.id,
       });
       return new Response(
-        JSON.stringify({ success: false, message: "Username already taken" }),
+        JSON.stringify(await signResponse({ success: false, message: "Username already taken" }, app.secret_key)),
         { status: 409, headers: { ...corsHeaders, "Content-Type": "application/json" } }
       );
     }
@@ -187,48 +229,38 @@ Deno.serve(async (req) => {
     const hashArray = Array.from(new Uint8Array(hashBuffer));
     const passwordHash = hashArray.map(b => b.toString(16).padStart(2, "0")).join("");
 
-    // Create user
     const { error: insertError } = await supabase
       .from("software_users")
       .insert({
-        license_id: license.id,
-        application_id: app.id,
-        username: username.toLowerCase(),
-        password_hash: passwordHash,
-        password_plain: password,
-        hwid: hwid || null,
-        ip_address: ip,
-        last_ip: ip,
+        license_id: license.id, application_id: app.id,
+        username: username.toLowerCase(), password_hash: passwordHash,
+        password_plain: password, hwid: hwid || null,
+        ip_address: ip, last_ip: ip,
       });
 
     if (insertError) {
       return new Response(
-        JSON.stringify({ success: false, message: "Failed to create user" }),
+        JSON.stringify(await signResponse({ success: false, message: "Failed to create user" }, app.secret_key)),
         { status: 500, headers: { ...corsHeaders, "Content-Type": "application/json" } }
       );
     }
 
-    // Activate license
     await supabase.from("licenses").update({
-      status: "active",
-      current_uses: license.current_uses + 1,
-      claimed_by: username.toLowerCase(),
-      hwid: hwid || license.hwid,
+      status: "active", current_uses: license.current_uses + 1,
+      claimed_by: username.toLowerCase(), hwid: hwid || license.hwid,
       activated_at: new Date().toISOString(),
     }).eq("id", license.id);
 
-    // Log success
     await supabase.from("auth_logs").insert({
       application_id: app.id, event_type: "register_success", username: username.toLowerCase(),
       ip_address: ip, hwid, success: true, details: "User registered successfully", license_id: license.id,
     });
 
     return new Response(
-      JSON.stringify({
-        success: true,
-        message: "User registered successfully",
+      JSON.stringify(await signResponse({
+        success: true, message: "User registered successfully",
         user: { username: username.toLowerCase() },
-      }),
+      }, app.secret_key)),
       { status: 201, headers: { ...corsHeaders, "Content-Type": "application/json" } }
     );
   } catch {

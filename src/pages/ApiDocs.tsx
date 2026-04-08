@@ -2,7 +2,7 @@ import { DashboardLayout } from "@/components/DashboardLayout";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
-import { Shield, Wifi, LogIn, UserPlus, Key, AlertTriangle } from "lucide-react";
+import { Shield, Wifi, LogIn, UserPlus, Key, AlertTriangle, Lock } from "lucide-react";
 
 const ApiDocs = () => {
   const baseUrl = `https://${import.meta.env.VITE_SUPABASE_PROJECT_ID || "your-project"}.supabase.co/functions/v1`;
@@ -53,6 +53,143 @@ const ApiDocs = () => {
         </CardContent>
       </Card>
 
+      {/* HMAC Signing Guide */}
+      <Card className="mb-6 border-destructive/30 bg-destructive/5">
+        <CardHeader>
+          <div className="flex items-center gap-2">
+            <Lock className="h-4 w-4 text-destructive" />
+            <CardTitle className="text-base">🔐 Autenticação HMAC (Segura)</CardTitle>
+          </div>
+          <p className="text-xs text-muted-foreground mt-1">
+            <strong className="text-destructive">IMPORTANTE:</strong> Nunca envie o <code className="text-primary">app_secret</code> diretamente na requisição. Use HMAC signing para provar que você possui o secret sem expô-lo.
+          </p>
+        </CardHeader>
+        <CardContent>
+          <div className="space-y-4">
+            <div>
+              <p className="mb-2 text-xs font-medium text-muted-foreground">COMO FUNCIONA</p>
+              <div className="flex flex-col gap-2 text-sm text-muted-foreground">
+                <span>1. O cliente monta o body da requisição <strong className="text-foreground">sem o app_secret</strong></span>
+                <span>2. Gera um <code className="text-primary">timestamp</code> (epoch ms) e um <code className="text-primary">nonce</code> (string aleatória)</span>
+                <span>3. Ordena os campos do body alfabeticamente (exceto app_id, signature, timestamp, nonce)</span>
+                <span>4. Calcula: <code className="text-primary">signature = HMAC-SHA256(timestamp:nonce:canonical_body, app_secret)</code></span>
+                <span>5. Envia <code className="text-primary">app_id</code>, <code className="text-primary">timestamp</code>, <code className="text-primary">nonce</code>, <code className="text-primary">signature</code> no body</span>
+              </div>
+            </div>
+
+            <div>
+              <p className="mb-2 text-xs font-medium text-muted-foreground">VERIFICAÇÃO DE RESPOSTA</p>
+              <div className="flex flex-col gap-2 text-sm text-muted-foreground">
+                <span>Todas as respostas incluem <code className="text-primary">_ts</code> (timestamp) e <code className="text-primary">_sig</code> (HMAC da resposta)</span>
+                <span>O cliente deve verificar: <code className="text-primary">HMAC-SHA256(json_sem_sig, app_secret) == _sig</code></span>
+                <span>Se não bater, a resposta foi <strong className="text-destructive">adulterada</strong> — ignore e feche o programa</span>
+              </div>
+            </div>
+
+            <div>
+              <p className="mb-2 text-xs font-medium text-muted-foreground">EXEMPLO — BODY COM HMAC</p>
+              <pre className="rounded-lg bg-muted p-3 font-mono text-sm text-foreground overflow-x-auto">
+{`{
+  "app_id": "uuid-da-aplicacao",          // ID público (não o secret!)
+  "timestamp": 1712345678000,             // epoch ms (Date.now())
+  "nonce": "a1b2c3d4e5f6",               // string aleatória única
+  "signature": "hmac-sha256-hex-string",  // HMAC calculado
+  "username": "meu_usuario",             // campos do endpoint
+  "password": "minha_senha"
+}`}
+              </pre>
+            </div>
+
+            <div>
+              <p className="mb-2 text-xs font-medium text-muted-foreground">EXEMPLO C++ (com OpenSSL)</p>
+              <pre className="rounded-lg bg-muted p-3 font-mono text-xs text-foreground overflow-x-auto whitespace-pre">
+{`#include <openssl/hmac.h>
+#include <nlohmann/json.hpp>
+#include <chrono>
+#include <random>
+#include <sstream>
+#include <iomanip>
+
+using json = nlohmann::json;
+
+std::string hmac_sha256(const std::string& key, const std::string& msg) {
+    unsigned char hash[EVP_MAX_MD_SIZE];
+    unsigned int len = 0;
+    HMAC(EVP_sha256(), key.c_str(), key.size(),
+         (unsigned char*)msg.c_str(), msg.size(), hash, &len);
+    std::ostringstream ss;
+    for (unsigned int i = 0; i < len; i++)
+        ss << std::hex << std::setfill('0') << std::setw(2) << (int)hash[i];
+    return ss.str();
+}
+
+std::string random_nonce(int len = 16) {
+    static const char chars[] = "abcdef0123456789";
+    std::random_device rd;
+    std::mt19937 gen(rd());
+    std::uniform_int_distribution<> dist(0, sizeof(chars)-2);
+    std::string nonce;
+    for (int i = 0; i < len; i++) nonce += chars[dist(gen)];
+    return nonce;
+}
+
+// Monta body assinado para qualquer endpoint
+json sign_request(const std::string& app_id, const std::string& app_secret,
+                  json body_fields) {
+    auto now = std::chrono::system_clock::now();
+    auto ms = std::chrono::duration_cast<std::chrono::milliseconds>(
+        now.time_since_epoch()).count();
+    std::string nonce = random_nonce();
+
+    // Canonical: ordenar body_fields por chave, stringify
+    json sorted(json::value_t::object);
+    for (auto& [k, v] : body_fields.items()) sorted[k] = v;
+    std::string canonical = sorted.dump();
+
+    // message = "timestamp:nonce:canonical"
+    std::string message = std::to_string(ms) + ":" + nonce + ":" + canonical;
+    std::string sig = hmac_sha256(app_secret, message);
+
+    // Montar body final
+    json request = body_fields;
+    request["app_id"] = app_id;
+    request["timestamp"] = ms;
+    request["nonce"] = nonce;
+    request["signature"] = sig;
+    return request;
+}
+
+// Verificar resposta do servidor
+bool verify_response(const json& response, const std::string& app_secret) {
+    if (!response.contains("_sig") || !response.contains("_ts"))
+        return false;
+    std::string received_sig = response["_sig"];
+    json without_sig = response;
+    without_sig.erase("_sig");
+    std::string payload = without_sig.dump();
+    std::string expected = hmac_sha256(app_secret, payload);
+    return expected == received_sig;
+}
+
+// Uso:
+// json body = sign_request(APP_ID, APP_SECRET, {
+//     {"username", "meu_user"},
+//     {"password", "minha_senha"},
+//     {"hwid", get_hwid()}
+// });
+// auto resp = http_post(url + "/login", body.dump());
+// json result = json::parse(resp);
+// if (!verify_response(result, APP_SECRET)) { exit(1); }`}
+              </pre>
+            </div>
+
+            <div className="rounded-lg border border-destructive/30 bg-destructive/10 p-3 text-sm text-muted-foreground">
+              <strong className="text-destructive">⚠️ Anti-Replay:</strong> O servidor rejeita requests com timestamp com mais de <strong>60 segundos</strong> de diferença. Mantenha o relógio do sistema sincronizado.
+            </div>
+          </div>
+        </CardContent>
+      </Card>
+
       <div className="space-y-6">
 
         {/* APP STATUS */}
@@ -77,9 +214,11 @@ const ApiDocs = () => {
                 <p className="mb-2 text-xs font-medium text-muted-foreground">BODY</p>
                 <pre className="rounded-lg bg-muted p-3 font-mono text-sm text-foreground">
 {`{
-  "app_secret": "secret-key-da-aplicacao",
-  "version": "1.0.0",                    // versão atual do cliente
-  "nonce": "random-string-unica"          // anti-replay (recomendado)
+  "app_id": "uuid-da-aplicacao",
+  "timestamp": 1712345678000,
+  "nonce": "random-hex",
+  "signature": "hmac-sha256-hex",
+  "version": "1.0.0"
 }`}
                 </pre>
               </div>
