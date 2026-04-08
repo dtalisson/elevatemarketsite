@@ -2,7 +2,7 @@ import { DashboardLayout } from "@/components/DashboardLayout";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
-import { Shield, Wifi, LogIn, UserPlus, Key, AlertTriangle } from "lucide-react";
+import { Shield, Wifi, LogIn, UserPlus, Key, AlertTriangle, Lock } from "lucide-react";
 
 const ApiDocs = () => {
   const baseUrl = `https://${import.meta.env.VITE_SUPABASE_PROJECT_ID || "your-project"}.supabase.co/functions/v1`;
@@ -49,6 +49,93 @@ const ApiDocs = () => {
         </CardContent>
       </Card>
 
+      {/* HMAC-TOTP Authentication */}
+      <Card className="mb-6 border-yellow-500/30 bg-yellow-500/5">
+        <CardHeader>
+          <div className="flex items-center gap-2">
+            <Lock className="h-4 w-4 text-yellow-400" />
+            <CardTitle className="text-base">🔐 Autenticação HMAC-TOTP (Recomendado)</CardTitle>
+          </div>
+        </CardHeader>
+        <CardContent>
+          <div className="space-y-3 text-sm text-muted-foreground">
+            <p>
+              Em vez de enviar o <code className="text-primary">app_secret</code> em texto plano (visível em HTTP debuggers), 
+              use <strong className="text-foreground">HMAC-TOTP</strong>: o secret nunca trafega na rede.
+            </p>
+            <div className="rounded-lg bg-muted p-3">
+              <p className="text-xs font-medium text-foreground mb-2">Como funciona:</p>
+              <ol className="list-decimal list-inside space-y-1 text-xs">
+                <li>O <code className="text-primary">app_secret</code> fica embutido no binário do seu software</li>
+                <li>A cada requisição, calcule: <code className="text-primary">time_step = floor(unix_timestamp / 30)</code></li>
+                <li>Gere: <code className="text-primary">app_hash = HMAC-SHA256(app_secret, time_step)</code></li>
+                <li>Envie <code className="text-primary">app_hash</code> + <code className="text-primary">timestamp</code> (unix seconds) no body</li>
+              </ol>
+            </div>
+            <pre className="rounded-lg bg-muted p-3 font-mono text-xs text-foreground overflow-x-auto">
+{`// C++ - Exemplo com OpenSSL
+#include <openssl/hmac.h>
+#include <ctime>
+#include <sstream>
+#include <iomanip>
+
+std::string compute_app_hash(const std::string& app_secret) {
+    long timestamp = std::time(nullptr);
+    long time_step = timestamp / 30;
+    std::string step_str = std::to_string(time_step);
+    
+    unsigned char hash[32];
+    unsigned int len = 32;
+    HMAC(EVP_sha256(), app_secret.c_str(), app_secret.size(),
+         (unsigned char*)step_str.c_str(), step_str.size(), hash, &len);
+    
+    std::ostringstream oss;
+    for (int i = 0; i < 32; i++)
+        oss << std::hex << std::setfill('0') << std::setw(2) << (int)hash[i];
+    return oss.str();
+}
+
+// Uso: envie {"app_hash": compute_app_hash(SECRET), "timestamp": time(nullptr), ...}`}
+            </pre>
+            <pre className="rounded-lg bg-muted p-3 font-mono text-xs text-foreground overflow-x-auto">
+{`# Python - Exemplo
+import hmac, hashlib, time
+
+def compute_app_hash(app_secret: str) -> tuple[str, int]:
+    timestamp = int(time.time())
+    time_step = str(timestamp // 30)
+    h = hmac.new(app_secret.encode(), time_step.encode(), hashlib.sha256).hexdigest()
+    return h, timestamp
+
+# Uso: hash, ts = compute_app_hash("seu-secret")
+# body = {"app_hash": hash, "timestamp": ts, ...}`}
+            </pre>
+            <pre className="rounded-lg bg-muted p-3 font-mono text-xs text-foreground overflow-x-auto">
+{`// C# - Exemplo
+using System.Security.Cryptography;
+using System.Text;
+
+static (string hash, long timestamp) ComputeAppHash(string appSecret) {
+    long timestamp = DateTimeOffset.UtcNow.ToUnixTimeSeconds();
+    long timeStep = timestamp / 30;
+    
+    using var hmac = new HMACSHA256(Encoding.UTF8.GetBytes(appSecret));
+    byte[] hash = hmac.ComputeHash(Encoding.UTF8.GetBytes(timeStep.ToString()));
+    string hex = BitConverter.ToString(hash).Replace("-", "").ToLower();
+    return (hex, timestamp);
+}
+
+// Uso: var (hash, ts) = ComputeAppHash("seu-secret");
+// body = new { app_hash = hash, timestamp = ts, ... };`}
+            </pre>
+            <div className="rounded-lg bg-muted p-3 text-xs">
+              <p className="font-medium text-foreground mb-1">⚠️ Compatibilidade</p>
+              <p>O modo legado (<code className="text-primary">app_secret</code> direto) ainda funciona, mas é <strong className="text-destructive">inseguro</strong>. Migre para HMAC-TOTP o mais rápido possível.</p>
+            </div>
+          </div>
+        </CardContent>
+      </Card>
+
       <div className="space-y-6">
 
         {/* APP STATUS */}
@@ -73,7 +160,8 @@ const ApiDocs = () => {
                 <p className="mb-2 text-xs font-medium text-muted-foreground">BODY</p>
                 <pre className="rounded-lg bg-muted p-3 font-mono text-sm text-foreground">
 {`{
-  "app_secret": "secret-key-da-aplicacao",
+  "app_hash": "hmac-sha256-do-secret",   // 🔒 HMAC-TOTP (recomendado)
+  "timestamp": 1712505600,               // unix seconds
   "version": "1.0.0",                    // versão atual do cliente
   "nonce": "random-string-unica"          // anti-replay (recomendado)
 }`}
@@ -157,8 +245,9 @@ const ApiDocs = () => {
                 <p className="mb-2 text-xs font-medium text-muted-foreground">BODY</p>
                 <pre className="rounded-lg bg-muted p-3 font-mono text-sm text-foreground">
 {`{
+  "app_hash": "hmac-sha256-do-secret",   // 🔒 HMAC-TOTP (recomendado)
+  "timestamp": 1712505600,               // unix seconds
   "license_key": "ABC123XYZ456",
-  "app_secret": "secret-key-da-aplicacao",
   "username": "nome_do_usuario",
   "password": "senha",
   "hwid": "identificador-do-hardware",  // opcional
@@ -212,12 +301,14 @@ const ApiDocs = () => {
                 <p className="mb-2 text-xs font-medium text-muted-foreground">BODY</p>
                 <pre className="rounded-lg bg-muted p-3 font-mono text-sm text-foreground">
 {`{
-  "app_secret": "secret-key-da-aplicacao",
+  "app_hash": "hmac-sha256-do-secret",   // 🔒 HMAC-TOTP (recomendado)
+  "timestamp": 1712505600,               // unix seconds
   "username": "nome_do_usuario",
   "password": "senha",
   "hwid": "identificador-do-hardware",  // opcional
   "version": "1.0.0",                   // opcional
-  "nonce": "random-string-unica"         // anti-replay (recomendado)
+  "nonce": "random-string-unica",       // anti-replay (recomendado)
+  "challenge_token": "token-do-pre-auth" // opcional
 }`}
                 </pre>
               </div>
@@ -279,9 +370,10 @@ const ApiDocs = () => {
                 <p className="mb-2 text-xs font-medium text-muted-foreground">BODY</p>
                 <pre className="rounded-lg bg-muted p-3 font-mono text-sm text-foreground">
 {`{
+  "app_hash": "hmac-sha256-do-secret",  // 🔒 HMAC-TOTP (recomendado)
+  "timestamp": 1712505600,              // unix seconds
   "license_key": "ABC123XYZ456",
-  "app_secret": "secret-key-da-aplicacao",
-  "hwid": "identificador-do-hardware"  // opcional
+  "hwid": "identificador-do-hardware"   // opcional
 }`}
                 </pre>
               </div>
@@ -452,12 +544,33 @@ void ProtectLoop() {
 #include <string>
 #include <curl/curl.h>
 #include <nlohmann/json.hpp>
+#include <openssl/hmac.h>
 #include <windows.h>
+#include <ctime>
+#include <sstream>
+#include <iomanip>
 
 using json = nlohmann::json;
 
 const std::string BASE_URL = "${baseUrl}";
-const std::string APP_SECRET = "coloque-seu-app-secret-aqui";
+const std::string APP_SECRET = "coloque-seu-app-secret-aqui"; // NUNCA trafega na rede!
+
+// Gera HMAC-TOTP: hash que muda a cada 30 segundos
+std::pair<std::string, long> compute_app_hash() {
+    long timestamp = std::time(nullptr);
+    long time_step = timestamp / 30;
+    std::string step_str = std::to_string(time_step);
+    
+    unsigned char hash[32];
+    unsigned int len = 32;
+    HMAC(EVP_sha256(), APP_SECRET.c_str(), APP_SECRET.size(),
+         (unsigned char*)step_str.c_str(), step_str.size(), hash, &len);
+    
+    std::ostringstream oss;
+    for (int i = 0; i < 32; i++)
+        oss << std::hex << std::setfill('0') << std::setw(2) << (int)hash[i];
+    return {oss.str(), timestamp};
+}
 
 void anti_debug() {
     if (IsDebuggerPresent()) ExitProcess(0);
@@ -492,9 +605,11 @@ json post(const std::string& endpoint, const json& body) {
 
 bool check_status(const std::string& version = "1.0.0") {
     anti_debug();
+    auto [hash, ts] = compute_app_hash();
     std::string nonce = "nonce-" + std::to_string(rand());
     auto res = post("app-status", {
-        {"app_secret", APP_SECRET}, {"version", version}, {"nonce", nonce}
+        {"app_hash", hash}, {"timestamp", ts},
+        {"version", version}, {"nonce", nonce}
     });
     if (res["nonce"] != nonce) ExitProcess(0);
     if (res["status"] == "disabled" || res["status"] == "outdated") {
@@ -505,8 +620,9 @@ bool check_status(const std::string& version = "1.0.0") {
 }
 
 bool do_register(const std::string& key, const std::string& user, const std::string& pass) {
+    auto [hash, ts] = compute_app_hash();
     auto res = post("register-with-license", {
-        {"license_key", key}, {"app_secret", APP_SECRET},
+        {"license_key", key}, {"app_hash", hash}, {"timestamp", ts},
         {"username", user}, {"password", pass}
     });
     return res["success"];
@@ -514,10 +630,11 @@ bool do_register(const std::string& key, const std::string& user, const std::str
 
 bool login(const std::string& user, const std::string& pass) {
     anti_debug();
+    auto [hash, ts] = compute_app_hash();
     std::string nonce = "nonce-" + std::to_string(rand());
     auto res = post("login", {
-        {"app_secret", APP_SECRET}, {"username", user},
-        {"password", pass}, {"nonce", nonce}
+        {"app_hash", hash}, {"timestamp", ts},
+        {"username", user}, {"password", pass}, {"nonce", nonce}
     });
     if (!res["success"]) return false;
     if (res["nonce"] != nonce) ExitProcess(0);
@@ -527,8 +644,8 @@ bool login(const std::string& user, const std::string& pass) {
     return true;
 }
 
-// Dependências: libcurl, nlohmann/json
-// Compilar: g++ -o app main.cpp -lcurl
+// Dependências: libcurl, nlohmann/json, OpenSSL
+// Compilar: g++ -o app main.cpp -lcurl -lssl -lcrypto
 
 // USO:
 // if (!check_status("1.0.0")) return 1;
@@ -554,7 +671,8 @@ bool login(const std::string& user, const std::string& pass) {
             <pre className="text-xs bg-background/50 p-3 rounded-lg overflow-x-auto border border-border/30 text-muted-foreground">
 {`// Request
 {
-  "app_secret": "seu-app-secret",
+  "app_hash": "hmac-sha256-do-secret",  // 🔒 HMAC-TOTP (recomendado)
+  "timestamp": 1712505600,              // unix seconds
   "username": "usuario",
   "hwid": "hardware-id"
 }
@@ -584,7 +702,8 @@ bool login(const std::string& user, const std::string& pass) {
             <pre className="text-xs bg-background/50 p-3 rounded-lg overflow-x-auto border border-border/30 text-muted-foreground">
 {`// Request
 {
-  "app_secret": "seu-app-secret",
+  "app_hash": "hmac-sha256-do-secret",  // 🔒 HMAC-TOTP (recomendado)
+  "timestamp": 1712505600,              // unix seconds
   "username": "usuario",
   "hwid": "hardware-id",
   "status": "active"
@@ -614,12 +733,13 @@ bool login(const std::string& user, const std::string& pass) {
             <pre className="text-xs bg-background/50 p-3 rounded-lg overflow-x-auto border border-border/30 text-muted-foreground">
 {`// Request
 {
-  "app_secret": "seu-app-secret",
+  "app_hash": "hmac-sha256-do-secret",  // 🔒 HMAC-TOTP (recomendado)
+  "timestamp": 1712505600,              // unix seconds
   "username": "usuario",
   "hwid": "hardware-id",
-  "event_type": "DEBUGGER_DETECTED",  // ou DUMP_TOOL_DETECTED, HWID_ABUSE, SESSION_INVALIDATED, INTEGRITY_VIOLATION, MEMORY_TAMPERING
+  "event_type": "DEBUGGER_DETECTED",
   "details": "x64dbg.exe encontrado em processo ativo",
-  "timestamp": 1712457600000
+  "client_timestamp": 1712457600000
 }
 
 // Response (200)
