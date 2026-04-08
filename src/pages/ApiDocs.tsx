@@ -160,7 +160,8 @@ static (string hash, long timestamp) ComputeAppHash(string appSecret) {
                 <p className="mb-2 text-xs font-medium text-muted-foreground">BODY</p>
                 <pre className="rounded-lg bg-muted p-3 font-mono text-sm text-foreground">
 {`{
-  "app_secret": "secret-key-da-aplicacao",
+  "app_hash": "hmac-sha256-do-secret",   // 🔒 HMAC-TOTP (recomendado)
+  "timestamp": 1712505600,               // unix seconds
   "version": "1.0.0",                    // versão atual do cliente
   "nonce": "random-string-unica"          // anti-replay (recomendado)
 }`}
