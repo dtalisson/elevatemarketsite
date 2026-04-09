@@ -458,7 +458,60 @@ export type Database = {
       }
     }
     Views: {
-      [_ in never]: never
+      software_users_safe: {
+        Row: {
+          application_id: string | null
+          created_at: string | null
+          hwid: string | null
+          id: string | null
+          ip_address: string | null
+          last_ip: string | null
+          last_login_at: string | null
+          license_id: string | null
+          updated_at: string | null
+          username: string | null
+        }
+        Insert: {
+          application_id?: string | null
+          created_at?: string | null
+          hwid?: string | null
+          id?: string | null
+          ip_address?: string | null
+          last_ip?: string | null
+          last_login_at?: string | null
+          license_id?: string | null
+          updated_at?: string | null
+          username?: string | null
+        }
+        Update: {
+          application_id?: string | null
+          created_at?: string | null
+          hwid?: string | null
+          id?: string | null
+          ip_address?: string | null
+          last_ip?: string | null
+          last_login_at?: string | null
+          license_id?: string | null
+          updated_at?: string | null
+          username?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "software_users_application_id_fkey"
+            columns: ["application_id"]
+            isOneToOne: false
+            referencedRelation: "applications"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "software_users_license_id_fkey"
+            columns: ["license_id"]
+            isOneToOne: false
+            referencedRelation: "licenses"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
     }
     Functions: {
       cleanup_expired_sessions: { Args: never; Returns: undefined }
