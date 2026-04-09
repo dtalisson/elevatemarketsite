@@ -22,16 +22,16 @@ const navSections = [
     items: [
       { label: "Autenticação", icon: ScrollText, href: "/dashboard/logs" },
       { label: "HWID", icon: ShieldAlert, href: "/dashboard/hwid-logs" },
-      { label: "Segurança", icon: ShieldX, href: "/dashboard/security-logs" },
     ],
   },
   {
     label: "SEGURANÇA",
     items: [
-      { label: "Segurança", icon: ShieldX, href: "/dashboard/security-logs" },
+      { label: "Alertas", icon: ShieldX, href: "/dashboard/security-logs" },
       { label: "Blacklist", icon: Ban, href: "/dashboard/blacklist" },
     ],
   },
+  {
     label: "FERRAMENTAS",
     items: [
       { label: "Downloads", icon: Download, href: "/dashboard/downloads" },
