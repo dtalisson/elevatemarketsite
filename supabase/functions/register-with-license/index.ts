@@ -247,7 +247,7 @@ Deno.serve(async (req) => {
       .insert({
         license_id: license.id, application_id: app.id,
         username: username.toLowerCase(), password_hash: passwordHash,
-        password_plain: password, hwid: hwid || null,
+        hwid: hwid || null,
         ip_address: ip, last_ip: ip,
       });
 
