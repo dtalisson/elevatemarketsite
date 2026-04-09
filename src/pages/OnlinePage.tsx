@@ -19,7 +19,7 @@ const OnlinePage = () => {
     if (!user) return;
     setLoading(true);
     const [usersRes, appsRes] = await Promise.all([
-      supabase.from("software_users").select("id, username, hwid, last_ip, last_login_at, application_id").order("last_login_at", { ascending: false }),
+      supabase.from("software_users_safe").select("id, username, hwid, last_ip, last_login_at, application_id").order("last_login_at", { ascending: false }),
       supabase.from("applications").select("id, name").eq("owner_id", user.id),
     ]);
     if (appsRes.data) { const m: Record<string, AppInfo> = {}; appsRes.data.forEach((a) => (m[a.id] = a)); setApps(m); }
