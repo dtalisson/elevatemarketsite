@@ -93,11 +93,6 @@ const SecurityLogsPage = () => {
       hwid: (type === "hwid" || type === "both") ? log.hwid : null,
     };
 
-    // If banning both but only one exists, pick what's available
-    if (type === "both") {
-      if (!log.ip_address) entry.ip_address = undefined;
-      if (!log.hwid) entry.hwid = undefined;
-    }
 
     const { error } = await supabase.from("blacklist").insert(entry);
     if (error) {
