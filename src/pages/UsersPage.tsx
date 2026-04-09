@@ -48,7 +48,7 @@ const UsersPage = () => {
   useEffect(() => { fetchData(); }, [user]);
 
   const handleDelete = async (userId: string) => {
-    const { error } = await supabase.from("software_users_safe").delete().eq("id", userId);
+    const { error } = await supabase.from("software_users").delete().eq("id", userId);
     if (error) toast.error("Erro ao excluir");
     else { toast.success("Excluído"); setSelectedUser(null); fetchData(); }
   };
