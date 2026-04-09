@@ -45,7 +45,7 @@ const Dashboard = () => {
     const [appsRes, licensesRes, usersRes, logsRes] = await Promise.all([
       supabase.from("applications").select("id, name, enabled"),
       supabase.from("licenses").select("id, status"),
-      supabase.from("software_users").select("id, username, hwid, last_ip, last_login_at, application_id, created_at").order("last_login_at", { ascending: false }),
+      supabase.from("software_users_safe").select("id, username, hwid, last_ip, last_login_at, application_id, created_at").order("last_login_at", { ascending: false }),
       supabase.from("auth_logs").select("id, event_type, username, ip_address, hwid, created_at, application_id, success")
         .in("event_type", ["login_success", "login_failed", "login_banned", "login_expired", "login_hwid_mismatch"])
         .order("created_at", { ascending: false }).limit(20),
