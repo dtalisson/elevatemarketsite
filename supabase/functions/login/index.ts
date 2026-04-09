@@ -17,6 +17,17 @@ const corsHeaders = {
   "Access-Control-Allow-Headers": "authorization, x-client-info, apikey, content-type",
 };
 
+const securityHeaders = {
+  "X-Content-Type-Options": "nosniff",
+  "X-Frame-Options": "DENY",
+  "X-XSS-Protection": "0",
+  "Referrer-Policy": "strict-origin-when-cross-origin",
+  "Cache-Control": "no-store, no-cache, must-revalidate",
+  "Pragma": "no-cache",
+};
+
+const allHeaders = { ...corsHeaders, ...securityHeaders, "Content-Type": "application/json" };
+
 function getClientIp(req: Request): string {
   return req.headers.get("x-forwarded-for")?.split(",")[0]?.trim()
     || req.headers.get("x-real-ip")
@@ -42,7 +53,6 @@ function constantTimeCompare(a: string, b: string): boolean {
   return mismatch === 0;
 }
 
-// Build canonical payload: sort body keys excluding auth fields, stringify
 function buildCanonicalPayload(body: Record<string, unknown>): string {
   const authFields = ["app_id", "app_secret", "signature", "timestamp", "nonce"];
   const filtered = Object.entries(body)
@@ -51,7 +61,7 @@ function buildCanonicalPayload(body: Record<string, unknown>): string {
   return JSON.stringify(Object.fromEntries(filtered));
 }
 
-const REQUEST_MAX_AGE_MS = 60_000; // 60 seconds
+const REQUEST_MAX_AGE_MS = 60_000;
 
 interface AppAuthResult {
   app: { id: string; enabled: boolean; current_version: string | null; min_version: string | null; secret_key: string } | null;
@@ -59,7 +69,6 @@ interface AppAuthResult {
 }
 
 async function verifyAppAuth(supabase: any, body: Record<string, unknown>): Promise<AppAuthResult> {
-  // New HMAC mode: app_id + timestamp + nonce + signature
   if (body.app_id && body.signature && body.timestamp) {
     const { data: app, error: appError } = await supabase
       .from("applications")
@@ -67,29 +76,22 @@ async function verifyAppAuth(supabase: any, body: Record<string, unknown>): Prom
       .eq("id", body.app_id)
       .single();
 
-    if (appError || !app) {
-      return { app: null, error: "Invalid app_id" };
-    }
+    if (appError || !app) return { app: null, error: "Invalid app_id" };
 
-    // Verify timestamp freshness (anti-replay)
     const ts = Number(body.timestamp);
-    if (isNaN(ts) || Math.abs(Date.now() - ts) > REQUEST_MAX_AGE_MS) {
+    if (isNaN(ts) || Math.abs(Date.now() - ts) > REQUEST_MAX_AGE_MS)
       return { app: null, error: "Request expired or invalid timestamp" };
-    }
 
-    // Reconstruct and verify signature
     const canonical = buildCanonicalPayload(body);
     const message = `${body.timestamp}:${body.nonce || ""}:${canonical}`;
     const expectedSig = await hmacSign(message, app.secret_key);
 
-    if (!constantTimeCompare(expectedSig, body.signature as string)) {
+    if (!constantTimeCompare(expectedSig, body.signature as string))
       return { app: null, error: "Invalid signature" };
-    }
 
     return { app };
   }
 
-  // Legacy mode: app_secret (backward compat - will be deprecated)
   if (body.app_secret) {
     const { data: app, error: appError } = await supabase
       .from("applications")
@@ -97,10 +99,7 @@ async function verifyAppAuth(supabase: any, body: Record<string, unknown>): Prom
       .eq("secret_key", body.app_secret)
       .single();
 
-    if (appError || !app) {
-      return { app: null, error: "Invalid app_secret" };
-    }
-
+    if (appError || !app) return { app: null, error: "Invalid app_secret" };
     return { app };
   }
 
@@ -133,7 +132,21 @@ function generateSessionToken(): string {
   return Array.from(bytes).map(b => b.toString(16).padStart(2, "0")).join("");
 }
 
+// Input validation limits
+const MAX_USERNAME_LENGTH = 64;
+const MAX_PASSWORD_LENGTH = 256;
+const MAX_HWID_LENGTH = 128;
+const MAX_VERSION_LENGTH = 32;
+const MAX_NONCE_LENGTH = 64;
+const MAX_BODY_SIZE = 2048;
+
 const SESSION_TTL_SECONDS = 1800;
+
+// Rate limits: 10 login attempts per IP per 5 minutes, 5 per username per 5 minutes
+const RATE_LIMIT_IP_MAX = 10;
+const RATE_LIMIT_IP_WINDOW = 300;
+const RATE_LIMIT_USER_MAX = 5;
+const RATE_LIMIT_USER_WINDOW = 300;
 
 Deno.serve(async (req) => {
   if (req.method === "OPTIONS") {
@@ -143,13 +156,52 @@ Deno.serve(async (req) => {
   const ip = getClientIp(req);
 
   try {
+    // Body size check
+    const contentLength = req.headers.get("content-length");
+    if (contentLength && parseInt(contentLength) > MAX_BODY_SIZE) {
+      return new Response(
+        JSON.stringify({ success: false, message: "Request too large" }),
+        { status: 413, headers: allHeaders }
+      );
+    }
+
     const body = await req.json();
     const { username, password, hwid, version, nonce, challenge_token } = body;
 
+    // Input validation
     if (!username || !password) {
       return new Response(
-        JSON.stringify({ success: false, message: "Missing required fields: username, password" }),
-        { status: 400, headers: { ...corsHeaders, "Content-Type": "application/json" } }
+        JSON.stringify({ success: false, message: "Missing required fields" }),
+        { status: 400, headers: allHeaders }
+      );
+    }
+
+    if (typeof username !== "string" || username.length > MAX_USERNAME_LENGTH ||
+        typeof password !== "string" || password.length > MAX_PASSWORD_LENGTH) {
+      return new Response(
+        JSON.stringify({ success: false, message: "Invalid input" }),
+        { status: 400, headers: allHeaders }
+      );
+    }
+
+    if (hwid && (typeof hwid !== "string" || hwid.length > MAX_HWID_LENGTH)) {
+      return new Response(
+        JSON.stringify({ success: false, message: "Invalid input" }),
+        { status: 400, headers: allHeaders }
+      );
+    }
+
+    if (version && (typeof version !== "string" || version.length > MAX_VERSION_LENGTH)) {
+      return new Response(
+        JSON.stringify({ success: false, message: "Invalid input" }),
+        { status: 400, headers: allHeaders }
+      );
+    }
+
+    if (nonce && (typeof nonce !== "string" || nonce.length > MAX_NONCE_LENGTH)) {
+      return new Response(
+        JSON.stringify({ success: false, message: "Invalid input" }),
+        { status: 400, headers: allHeaders }
       );
     }
 
@@ -157,12 +209,57 @@ Deno.serve(async (req) => {
     const supabaseKey = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!;
     const supabase = createClient(supabaseUrl, supabaseKey);
 
+    // Rate limit by IP
+    const { data: ipAllowed } = await supabase.rpc("check_rate_limit", {
+      p_key: `login_ip:${ip}`,
+      p_max_requests: RATE_LIMIT_IP_MAX,
+      p_window_seconds: RATE_LIMIT_IP_WINDOW,
+    });
+
+    if (ipAllowed === false) {
+      return new Response(
+        JSON.stringify({ success: false, message: "Too many requests. Try again later." }),
+        { status: 429, headers: { ...allHeaders, "Retry-After": String(RATE_LIMIT_IP_WINDOW) } }
+      );
+    }
+
     // Verify app (HMAC or legacy)
     const { app, error: authError } = await verifyAppAuth(supabase, body);
     if (!app) {
       return new Response(
         JSON.stringify({ success: false, message: authError }),
-        { status: 401, headers: { ...corsHeaders, "Content-Type": "application/json" } }
+        { status: 401, headers: allHeaders }
+      );
+    }
+
+    // Rate limit by username
+    const { data: userAllowed } = await supabase.rpc("check_rate_limit", {
+      p_key: `login_user:${app.id}:${username.toLowerCase()}`,
+      p_max_requests: RATE_LIMIT_USER_MAX,
+      p_window_seconds: RATE_LIMIT_USER_WINDOW,
+    });
+
+    if (userAllowed === false) {
+      return new Response(
+        JSON.stringify(await signResponse({ success: false, message: "Account temporarily locked. Try again later." }, app.secret_key)),
+        { status: 429, headers: { ...allHeaders, "Retry-After": String(RATE_LIMIT_USER_WINDOW) } }
+      );
+    }
+
+    // Check account lockout
+    const { data: isLocked } = await supabase.rpc("is_account_locked", {
+      p_username: username.toLowerCase(),
+      p_app_id: app.id,
+    });
+
+    if (isLocked) {
+      await supabase.from("auth_logs").insert({
+        application_id: app.id, event_type: "login_locked", username: username.toLowerCase(),
+        ip_address: ip, hwid, success: false, details: "Account locked due to too many failed attempts",
+      });
+      return new Response(
+        JSON.stringify(await signResponse({ success: false, message: "Account locked. Try again in 15 minutes." }, app.secret_key)),
+        { status: 429, headers: allHeaders }
       );
     }
 
@@ -173,7 +270,7 @@ Deno.serve(async (req) => {
       });
       return new Response(
         JSON.stringify(await signResponse({ success: false, message: "Application is disabled" }, app.secret_key)),
-        { status: 403, headers: { ...corsHeaders, "Content-Type": "application/json" } }
+        { status: 403, headers: allHeaders }
       );
     }
 
@@ -191,7 +288,7 @@ Deno.serve(async (req) => {
           current_version: app.current_version,
           min_version: app.min_version,
         }, app.secret_key)),
-        { status: 403, headers: { ...corsHeaders, "Content-Type": "application/json" } }
+        { status: 403, headers: allHeaders }
       );
     }
 
@@ -212,7 +309,7 @@ Deno.serve(async (req) => {
         });
         return new Response(
           JSON.stringify(await signResponse({ success: false, message: "Invalid or expired challenge token" }, app.secret_key)),
-          { status: 401, headers: { ...corsHeaders, "Content-Type": "application/json" } }
+          { status: 401, headers: allHeaders }
         );
       }
 
@@ -224,7 +321,7 @@ Deno.serve(async (req) => {
         });
         return new Response(
           JSON.stringify(await signResponse({ success: false, message: "Challenge token expired" }, app.secret_key)),
-          { status: 401, headers: { ...corsHeaders, "Content-Type": "application/json" } }
+          { status: 401, headers: allHeaders }
         );
       }
 
@@ -236,14 +333,14 @@ Deno.serve(async (req) => {
         });
         return new Response(
           JSON.stringify(await signResponse({ success: false, message: "Device mismatch", status: "hwid_mismatch" }, app.secret_key)),
-          { status: 403, headers: { ...corsHeaders, "Content-Type": "application/json" } }
+          { status: 403, headers: allHeaders }
         );
       }
 
       await supabase.from("pre_auth_tokens").update({ used: true }).eq("id", tokenData.id);
     }
 
-    // Find user
+    // Find user — generic error for both user not found and wrong password
     const { data: user, error: userError } = await supabase
       .from("software_users")
       .select("*, licenses(*, ban_reason)")
@@ -252,34 +349,63 @@ Deno.serve(async (req) => {
       .single();
 
     if (userError || !user) {
+      // Record failed attempt (don't reveal user doesn't exist)
+      await supabase.rpc("record_failed_login", { p_username: username.toLowerCase(), p_app_id: app.id });
       await supabase.from("auth_logs").insert({
         application_id: app.id, event_type: "login_failed", username: username.toLowerCase(),
-        ip_address: ip, hwid, success: false, details: "User not found",
+        ip_address: ip, hwid, success: false, details: "Invalid credentials",
       });
+      // Add artificial delay to prevent timing attacks
+      await new Promise(r => setTimeout(r, 100 + Math.random() * 200));
       return new Response(
         JSON.stringify(await signResponse({ success: false, message: "Invalid username or password" }, app.secret_key)),
-        { status: 401, headers: { ...corsHeaders, "Content-Type": "application/json" } }
+        { status: 401, headers: allHeaders }
       );
     }
 
-    // Verify password
+    // Verify password (salted: hash = SHA-256(password + username))
     const encoder = new TextEncoder();
-    const data = encoder.encode(password);
+    const salted = password + user.username; // username as salt for backward compat awareness
+    const data = encoder.encode(salted);
     const hashBuffer = await crypto.subtle.digest("SHA-256", data);
     const hashArray = Array.from(new Uint8Array(hashBuffer));
     const passwordHash = hashArray.map(b => b.toString(16).padStart(2, "0")).join("");
 
+    // Try salted first, then fallback to unsalted for backward compat
     const storedHash = user.password_hash;
-    if (!constantTimeCompare(passwordHash, storedHash)) {
+    let passwordMatch = constantTimeCompare(passwordHash, storedHash);
+
+    if (!passwordMatch) {
+      // Fallback: try unsalted hash (legacy)
+      const unsaltedData = encoder.encode(password);
+      const unsaltedBuffer = await crypto.subtle.digest("SHA-256", unsaltedData);
+      const unsaltedHash = Array.from(new Uint8Array(unsaltedBuffer)).map(b => b.toString(16).padStart(2, "0")).join("");
+      passwordMatch = constantTimeCompare(unsaltedHash, storedHash);
+
+      // If legacy match, upgrade hash to salted version
+      if (passwordMatch) {
+        await supabase.from("software_users").update({ password_hash: passwordHash }).eq("id", user.id);
+      }
+    }
+
+    if (!passwordMatch) {
+      // Record failed login attempt
+      const isNowLocked = await supabase.rpc("record_failed_login", {
+        p_username: username.toLowerCase(),
+        p_app_id: app.id,
+      });
       await supabase.from("auth_logs").insert({
         application_id: app.id, event_type: "login_failed", username: username.toLowerCase(),
-        ip_address: ip, hwid, success: false, details: "Wrong password", license_id: user.license_id,
+        ip_address: ip, hwid, success: false, details: isNowLocked?.data ? "Account locked after too many attempts" : "Wrong password", license_id: user.license_id,
       });
       return new Response(
         JSON.stringify(await signResponse({ success: false, message: "Invalid username or password" }, app.secret_key)),
-        { status: 401, headers: { ...corsHeaders, "Content-Type": "application/json" } }
+        { status: 401, headers: allHeaders }
       );
     }
+
+    // Clear lockout on successful login
+    await supabase.rpc("clear_lockout", { p_username: username.toLowerCase(), p_app_id: app.id });
 
     // Check license
     const license = user.licenses;
@@ -290,7 +416,7 @@ Deno.serve(async (req) => {
       });
       return new Response(
         JSON.stringify(await signResponse({ success: false, message: "No license associated" }, app.secret_key)),
-        { status: 403, headers: { ...corsHeaders, "Content-Type": "application/json" } }
+        { status: 403, headers: allHeaders }
       );
     }
 
@@ -302,7 +428,7 @@ Deno.serve(async (req) => {
       });
       return new Response(
         JSON.stringify(await signResponse({ success: false, message: banReason ? `License paused: ${banReason}` : "License is currently paused" }, app.secret_key)),
-        { status: 403, headers: { ...corsHeaders, "Content-Type": "application/json" } }
+        { status: 403, headers: allHeaders }
       );
     }
 
@@ -316,7 +442,7 @@ Deno.serve(async (req) => {
       });
       return new Response(
         JSON.stringify(await signResponse({ success: false, message: "License has expired" }, app.secret_key)),
-        { status: 403, headers: { ...corsHeaders, "Content-Type": "application/json" } }
+        { status: 403, headers: allHeaders }
       );
     }
 
@@ -328,7 +454,7 @@ Deno.serve(async (req) => {
       });
       return new Response(
         JSON.stringify(await signResponse({ success: false, message: "Account is locked to another device" }, app.secret_key)),
-        { status: 403, headers: { ...corsHeaders, "Content-Type": "application/json" } }
+        { status: 403, headers: allHeaders }
       );
     }
 
@@ -386,12 +512,12 @@ Deno.serve(async (req) => {
 
     return new Response(
       JSON.stringify(await signResponse(responseData, app.secret_key)),
-      { status: 200, headers: { ...corsHeaders, "Content-Type": "application/json" } }
+      { status: 200, headers: allHeaders }
     );
   } catch {
     return new Response(
       JSON.stringify({ success: false, message: "Internal server error" }),
-      { status: 500, headers: { ...corsHeaders, "Content-Type": "application/json" } }
+      { status: 500, headers: allHeaders }
     );
   }
 });
