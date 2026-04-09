@@ -83,16 +83,15 @@ const SecurityLogsPage = () => {
     if (!banTarget || !user) return;
     const { log, type } = banTarget;
 
-    const entry: Record<string, unknown> = {
+    const entry = {
       application_id: log.application_id,
       reason: banReason || "Banido via logs de segurança",
       details: `Evento: ${log.event_type}\nDetalhes: ${log.details || "N/A"}\nUsername: ${log.username || "N/A"}\nData do evento: ${log.created_at}`,
       source_log_id: log.id,
       created_by: user.id,
+      ip_address: (type === "ip" || type === "both") ? log.ip_address : null,
+      hwid: (type === "hwid" || type === "both") ? log.hwid : null,
     };
-
-    if (type === "ip" || type === "both") entry.ip_address = log.ip_address;
-    if (type === "hwid" || type === "both") entry.hwid = log.hwid;
 
     // If banning both but only one exists, pick what's available
     if (type === "both") {
