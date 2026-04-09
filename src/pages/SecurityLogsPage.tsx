@@ -6,12 +6,12 @@ import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
-import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
+import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from "@/components/ui/dialog";
 import {
   AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent,
   AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle, AlertDialogTrigger,
 } from "@/components/ui/alert-dialog";
-import { Search, Trash2, Copy } from "lucide-react";
+import { Search, Trash2, Copy, Ban, ShieldOff } from "lucide-react";
 import { toast } from "sonner";
 
 interface SecurityLog { id: string; application_id: string; username: string | null; hwid: string | null; event_type: string; details: string | null; client_timestamp: number | null; ip_address: string | null; created_at: string; }
@@ -35,6 +35,9 @@ const SecurityLogsPage = () => {
   const [selectedApp, setSelectedApp] = useState("all");
   const [filterEvent, setFilterEvent] = useState("all");
   const [selectedLog, setSelectedLog] = useState<SecurityLog | null>(null);
+  const [banDialogOpen, setBanDialogOpen] = useState(false);
+  const [banTarget, setBanTarget] = useState<{ log: SecurityLog; type: "ip" | "hwid" | "both" } | null>(null);
+  const [banReason, setBanReason] = useState("");
 
   const fetchData = async () => {
     if (!user) return;
@@ -68,6 +71,44 @@ const SecurityLogsPage = () => {
     const { error } = await supabase.from("security_logs").delete().in("application_id", appIds);
     if (error) toast.error(error.message);
     else { toast.success("Logs limpos"); setLogs([]); }
+  };
+
+  const openBanDialog = (log: SecurityLog, type: "ip" | "hwid" | "both") => {
+    setBanTarget({ log, type });
+    setBanReason(`${eventConfig[log.event_type]?.label || log.event_type} - ${log.details || "Atividade suspeita"}`);
+    setBanDialogOpen(true);
+  };
+
+  const executeBan = async () => {
+    if (!banTarget || !user) return;
+    const { log, type } = banTarget;
+
+    const entry: Record<string, unknown> = {
+      application_id: log.application_id,
+      reason: banReason || "Banido via logs de segurança",
+      details: `Evento: ${log.event_type}\nDetalhes: ${log.details || "N/A"}\nUsername: ${log.username || "N/A"}\nData do evento: ${log.created_at}`,
+      source_log_id: log.id,
+      created_by: user.id,
+    };
+
+    if (type === "ip" || type === "both") entry.ip_address = log.ip_address;
+    if (type === "hwid" || type === "both") entry.hwid = log.hwid;
+
+    // If banning both but only one exists, pick what's available
+    if (type === "both") {
+      if (!log.ip_address) entry.ip_address = undefined;
+      if (!log.hwid) entry.hwid = undefined;
+    }
+
+    const { error } = await supabase.from("blacklist").insert(entry);
+    if (error) {
+      toast.error(error.message);
+    } else {
+      toast.success("Adicionado à blacklist!");
+      setBanDialogOpen(false);
+      setBanTarget(null);
+      setBanReason("");
+    }
   };
 
   const formatDate = (date: string) => new Date(date).toLocaleDateString("pt-BR", { day: "2-digit", month: "2-digit", year: "numeric", hour: "2-digit", minute: "2-digit", second: "2-digit" });
@@ -151,8 +192,8 @@ const SecurityLogsPage = () => {
             const cfg = eventConfig[log.event_type] || { label: log.event_type, color: "bg-muted text-muted-foreground", description: "" };
             const app = appsMap[log.application_id];
             return (
-              <div key={log.id} className="rounded-lg border border-border bg-card px-4 py-3 flex items-center gap-3 cursor-pointer hover:border-primary/20 transition-colors" onClick={() => setSelectedLog(log)}>
-                <div className="flex-1 min-w-0">
+              <div key={log.id} className="rounded-lg border border-border bg-card px-4 py-3 flex items-center gap-3 hover:border-primary/20 transition-colors">
+                <div className="flex-1 min-w-0 cursor-pointer" onClick={() => setSelectedLog(log)}>
                   <div className="flex items-center gap-2 flex-wrap">
                     <Badge variant="outline" className={`${cfg.color} text-[10px] border-0`}>{cfg.label}</Badge>
                     {log.username && <span className="text-xs font-medium text-foreground">{log.username}</span>}
@@ -160,11 +201,31 @@ const SecurityLogsPage = () => {
                   </div>
                   {log.details && <p className="text-[11px] text-muted-foreground/70 mt-0.5 truncate max-w-md">{log.details}</p>}
                 </div>
-                <div className="flex-shrink-0 flex flex-col items-end gap-0.5">
-                  <span className="text-[10px] text-muted-foreground">{formatDate(log.created_at)}</span>
-                  <div className="flex items-center gap-3">
-                    {log.ip_address && <span className="text-[10px] font-mono text-muted-foreground">{log.ip_address}</span>}
-                    {log.hwid && <span className="text-[10px] font-mono text-destructive">{log.hwid.substring(0, 16)}</span>}
+                <div className="flex-shrink-0 flex items-center gap-2">
+                  <div className="flex flex-col items-end gap-0.5 mr-2">
+                    <span className="text-[10px] text-muted-foreground">{formatDate(log.created_at)}</span>
+                    <div className="flex items-center gap-3">
+                      {log.ip_address && <span className="text-[10px] font-mono text-muted-foreground">{log.ip_address}</span>}
+                      {log.hwid && <span className="text-[10px] font-mono text-destructive">{log.hwid.substring(0, 16)}</span>}
+                    </div>
+                  </div>
+                  {/* Ban buttons */}
+                  <div className="flex items-center gap-1">
+                    {log.ip_address && (
+                      <Button variant="ghost" size="icon" className="h-7 w-7" onClick={(e) => { e.stopPropagation(); openBanDialog(log, "ip"); }} title="Banir IP">
+                        <Ban className="h-3.5 w-3.5 text-warning" />
+                      </Button>
+                    )}
+                    {log.hwid && (
+                      <Button variant="ghost" size="icon" className="h-7 w-7" onClick={(e) => { e.stopPropagation(); openBanDialog(log, "hwid"); }} title="Banir HWID">
+                        <ShieldOff className="h-3.5 w-3.5 text-destructive" />
+                      </Button>
+                    )}
+                    {log.ip_address && log.hwid && (
+                      <Button variant="ghost" size="icon" className="h-7 w-7" onClick={(e) => { e.stopPropagation(); openBanDialog(log, "both"); }} title="Banir IP + HWID">
+                        <Ban className="h-3.5 w-3.5 text-destructive" />
+                      </Button>
+                    )}
                   </div>
                 </div>
               </div>
@@ -173,6 +234,7 @@ const SecurityLogsPage = () => {
         </div>
       )}
 
+      {/* Detail Dialog */}
       <Dialog open={!!selectedLog} onOpenChange={(o) => !o && setSelectedLog(null)}>
         <DialogContent className="max-w-3xl">
           <DialogHeader>
@@ -210,9 +272,60 @@ const SecurityLogsPage = () => {
                 {selectedLog.details && (
                   <p className="text-[11px] font-mono text-muted-foreground/70 bg-muted/30 rounded-md px-3 py-2 break-all">{selectedLog.details}</p>
                 )}
+
+                {/* Ban actions in detail modal */}
+                <div className="flex items-center gap-2 pt-2 border-t border-border/50">
+                  <span className="text-xs text-muted-foreground">Banir:</span>
+                  {selectedLog.ip_address && (
+                    <Button variant="outline" size="sm" className="gap-1.5 text-warning border-warning/30 hover:bg-warning/10" onClick={() => { setSelectedLog(null); openBanDialog(selectedLog, "ip"); }}>
+                      <Ban className="h-3 w-3" />IP
+                    </Button>
+                  )}
+                  {selectedLog.hwid && (
+                    <Button variant="outline" size="sm" className="gap-1.5 text-destructive border-destructive/30 hover:bg-destructive/10" onClick={() => { setSelectedLog(null); openBanDialog(selectedLog, "hwid"); }}>
+                      <ShieldOff className="h-3 w-3" />HWID
+                    </Button>
+                  )}
+                  {selectedLog.ip_address && selectedLog.hwid && (
+                    <Button variant="outline" size="sm" className="gap-1.5 text-destructive border-destructive/30 hover:bg-destructive/10" onClick={() => { setSelectedLog(null); openBanDialog(selectedLog, "both"); }}>
+                      <Ban className="h-3 w-3" />IP + HWID
+                    </Button>
+                  )}
+                </div>
               </div>
             );
           })()}
+        </DialogContent>
+      </Dialog>
+
+      {/* Ban Confirmation Dialog */}
+      <Dialog open={banDialogOpen} onOpenChange={setBanDialogOpen}>
+        <DialogContent>
+          <DialogHeader>
+            <DialogTitle className="font-heading text-destructive flex items-center gap-2">
+              <Ban className="h-5 w-5" />
+              Confirmar Banimento
+            </DialogTitle>
+          </DialogHeader>
+          {banTarget && (
+            <div className="space-y-3">
+              <div className="rounded-lg border border-destructive/20 bg-destructive/5 p-3 space-y-1.5">
+                {(banTarget.type === "ip" || banTarget.type === "both") && banTarget.log.ip_address && (
+                  <p className="text-xs"><span className="text-muted-foreground">IP:</span> <span className="font-mono text-foreground">{banTarget.log.ip_address}</span></p>
+                )}
+                {(banTarget.type === "hwid" || banTarget.type === "both") && banTarget.log.hwid && (
+                  <p className="text-xs"><span className="text-muted-foreground">HWID:</span> <span className="font-mono text-foreground">{banTarget.log.hwid}</span></p>
+                )}
+                <p className="text-xs"><span className="text-muted-foreground">App:</span> <span className="text-foreground">{appsMap[banTarget.log.application_id]?.name || "—"}</span></p>
+              </div>
+              <Input placeholder="Motivo do ban" value={banReason} onChange={(e) => setBanReason(e.target.value)} />
+              <p className="text-[11px] text-muted-foreground">Este IP/HWID será bloqueado de usar qualquer endpoint da aplicação (login, validação de licença, etc).</p>
+            </div>
+          )}
+          <DialogFooter>
+            <Button variant="outline" onClick={() => setBanDialogOpen(false)}>Cancelar</Button>
+            <Button onClick={executeBan} className="bg-destructive hover:bg-destructive/90 gap-1.5"><Ban className="h-3.5 w-3.5" />Banir</Button>
+          </DialogFooter>
         </DialogContent>
       </Dialog>
     </DashboardLayout>
