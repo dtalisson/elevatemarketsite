@@ -4,7 +4,7 @@ import { Button } from "@/components/ui/button";
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/contexts/AuthContext";
 import { toast } from "sonner";
-import { Trash2, Search, Key, Eye, EyeOff, Copy, Clock, Globe, Ban, CheckCircle2 } from "lucide-react";
+import { Trash2, Search, Key, Copy, Clock, Globe, Ban, CheckCircle2, ChevronDown } from "lucide-react";
 import { Badge } from "@/components/ui/badge";
 import { Input } from "@/components/ui/input";
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
@@ -12,6 +12,9 @@ import {
   AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent,
   AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle, AlertDialogTrigger,
 } from "@/components/ui/alert-dialog";
+import {
+  Select, SelectContent, SelectItem, SelectTrigger, SelectValue,
+} from "@/components/ui/select";
 
 interface SoftwareUser {
   id: string; username: string;
@@ -28,8 +31,8 @@ const UsersPage = () => {
   const [apps, setApps] = useState<Record<string, AppInfo>>({});
   const [loading, setLoading] = useState(true);
   const [search, setSearch] = useState("");
+  const [selectedAppId, setSelectedAppId] = useState<string>("all");
   const [selectedUser, setSelectedUser] = useState<SoftwareUser | null>(null);
-  const [showPasswords, setShowPasswords] = useState<Record<string, boolean>>({});
 
   const fetchData = async () => {
     if (!user) return;
@@ -66,7 +69,16 @@ const UsersPage = () => {
   const formatDate = (date: string) =>
     new Date(date).toLocaleDateString("pt-BR", { day: "2-digit", month: "2-digit", year: "numeric", hour: "2-digit", minute: "2-digit" });
 
-  const filtered = softwareUsers.filter((u) => u.username.toLowerCase().includes(search.toLowerCase()));
+  const filtered = softwareUsers
+    .filter((u) => selectedAppId === "all" || u.application_id === selectedAppId)
+    .filter((u) => u.username.toLowerCase().includes(search.toLowerCase()));
+
+  const appsList = Object.values(apps);
+
+  const appUserCounts = softwareUsers.reduce<Record<string, number>>((acc, u) => {
+    acc[u.application_id] = (acc[u.application_id] || 0) + 1;
+    return acc;
+  }, {});
 
   const InfoRow = ({ label, value, copyable, mono }: { label: string; value: string | null | undefined; copyable?: boolean; mono?: boolean }) => (
     <div className="flex items-center justify-between py-2 border-b border-border/50 last:border-0">
@@ -85,24 +97,38 @@ const UsersPage = () => {
         <p className="text-sm text-muted-foreground mt-1">Usuários registrados nas suas aplicações</p>
       </div>
 
-      <div className="mb-4 max-w-sm relative">
-        <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
-        <Input placeholder="Buscar por username..." value={search} onChange={(e) => setSearch(e.target.value)} className="pl-9" />
+      <div className="mb-4 flex items-center gap-3 flex-wrap">
+        <div className="relative max-w-sm flex-1 min-w-[200px]">
+          <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
+          <Input placeholder="Buscar por username..." value={search} onChange={(e) => setSearch(e.target.value)} className="pl-9" />
+        </div>
+        <Select value={selectedAppId} onValueChange={setSelectedAppId}>
+          <SelectTrigger className="w-[220px]">
+            <SelectValue placeholder="Todas as aplicações" />
+          </SelectTrigger>
+          <SelectContent>
+            <SelectItem value="all">Todas as aplicações ({softwareUsers.length})</SelectItem>
+            {appsList.map((app) => (
+              <SelectItem key={app.id} value={app.id}>
+                {app.name} ({appUserCounts[app.id] || 0})
+              </SelectItem>
+            ))}
+          </SelectContent>
+        </Select>
       </div>
 
       {loading ? (
         <div className="space-y-2">{[1, 2, 3].map((i) => <div key={i} className="h-16 rounded-lg border border-border bg-card animate-pulse" />)}</div>
       ) : filtered.length === 0 ? (
         <div className="rounded-lg border border-border bg-card flex flex-col items-center justify-center py-16">
-          <p className="text-muted-foreground font-heading font-medium">{search ? "Nenhum encontrado" : "Nenhum usuário registrado"}</p>
-          <p className="text-xs text-muted-foreground/60 mt-1">{search ? "Tente outro nome" : "Aparecerão aqui quando se registrarem"}</p>
+          <p className="text-muted-foreground font-heading font-medium">{search || selectedAppId !== "all" ? "Nenhum encontrado" : "Nenhum usuário registrado"}</p>
+          <p className="text-xs text-muted-foreground/60 mt-1">{search || selectedAppId !== "all" ? "Tente outro filtro" : "Aparecerão aqui quando se registrarem"}</p>
         </div>
       ) : (
         <div className="space-y-2">
           {filtered.map((su) => {
             const license = licenses[su.license_id];
             const app = apps[su.application_id];
-            const showPw = showPasswords[su.id];
             return (
               <div
                 key={su.id}
@@ -114,13 +140,13 @@ const UsersPage = () => {
                     <div className="flex items-center gap-2">
                       <span className="text-sm font-heading font-semibold text-foreground">{su.username}</span>
                       {getStatusBadge(license)}
+                      {app && <Badge variant="outline" className="text-[10px]">{app.name}</Badge>}
                     </div>
                     <div className="flex items-center gap-3 mt-1 flex-wrap">
                       <span className="flex items-center gap-1 text-xs text-muted-foreground">
                         <Key className="h-3 w-3" />
                         <code className="font-mono text-[10px]">••••••••</code>
                       </span>
-                      {app && <span className="text-xs text-muted-foreground">{app.name}</span>}
                       {su.last_ip && <span className="flex items-center gap-1 text-xs text-muted-foreground"><Globe className="h-3 w-3" />{su.last_ip}</span>}
                       <span className="flex items-center gap-1 text-xs text-muted-foreground"><Clock className="h-3 w-3" />{formatDate(su.created_at)}</span>
                     </div>
