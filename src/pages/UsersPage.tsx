@@ -14,7 +14,7 @@ import {
 } from "@/components/ui/alert-dialog";
 
 interface SoftwareUser {
-  id: string; username: string; password_hash: string; password_plain: string | null;
+  id: string; username: string; password_hash: string;
   hwid: string | null; ip_address: string | null; last_ip: string | null;
   last_login_at: string | null; created_at: string; application_id: string; license_id: string;
 }
@@ -118,10 +118,7 @@ const UsersPage = () => {
                     <div className="flex items-center gap-3 mt-1 flex-wrap">
                       <span className="flex items-center gap-1 text-xs text-muted-foreground">
                         <Key className="h-3 w-3" />
-                        <code className="font-mono text-[10px]">{showPw ? (su.password_plain || "•••") : "••••••••"}</code>
-                        <button onClick={(e) => { e.stopPropagation(); setShowPasswords(p => ({ ...p, [su.id]: !p[su.id] })); }} className="text-muted-foreground hover:text-primary transition-colors">
-                          {showPw ? <EyeOff className="h-3 w-3" /> : <Eye className="h-3 w-3" />}
-                        </button>
+                        <code className="font-mono text-[10px]">••••••••</code>
                       </span>
                       {app && <span className="text-xs text-muted-foreground">{app.name}</span>}
                       {su.last_ip && <span className="flex items-center gap-1 text-xs text-muted-foreground"><Globe className="h-3 w-3" />{su.last_ip}</span>}
@@ -167,7 +164,7 @@ const UsersPage = () => {
                   <div className="rounded-lg border border-border/50 p-3 space-y-0">
                     <p className="text-[10px] uppercase tracking-wider text-muted-foreground/60 mb-1 font-semibold">Credenciais</p>
                     <InfoRow label="Username" value={selectedUser.username} copyable mono />
-                    <InfoRow label="Senha" value={selectedUser.password_plain || "N/A"} copyable mono />
+                    <InfoRow label="Senha" value="[protegida]" />
                     <InfoRow label="Aplicação" value={app?.name} />
                     <InfoRow label="Registrado" value={formatDate(selectedUser.created_at)} />
                   </div>
