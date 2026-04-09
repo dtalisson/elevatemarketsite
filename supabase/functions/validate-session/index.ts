@@ -101,7 +101,7 @@ Deno.serve(async (req) => {
     if (!session_token) {
       return new Response(
         JSON.stringify({ valid: false, message: "Missing session_token" }),
-        { status: 400, headers: { ...corsHeaders, "Content-Type": "application/json" } }
+        { status: 400, headers: allHeaders }
       );
     }
 
@@ -113,14 +113,14 @@ Deno.serve(async (req) => {
     if (!app) {
       return new Response(
         JSON.stringify({ valid: false, message: authError }),
-        { status: 401, headers: { ...corsHeaders, "Content-Type": "application/json" } }
+        { status: 401, headers: allHeaders }
       );
     }
 
     if (!app.enabled) {
       return new Response(
         JSON.stringify(await signResponse({ valid: false, message: "Application is disabled" }, app.secret_key)),
-        { status: 403, headers: { ...corsHeaders, "Content-Type": "application/json" } }
+        { status: 403, headers: allHeaders }
       );
     }
 
@@ -131,7 +131,7 @@ Deno.serve(async (req) => {
     if (sessionError || !session) {
       return new Response(
         JSON.stringify(await signResponse({ valid: false, message: "Invalid or revoked session token" }, app.secret_key)),
-        { status: 401, headers: { ...corsHeaders, "Content-Type": "application/json" } }
+        { status: 401, headers: allHeaders }
       );
     }
 
@@ -139,7 +139,7 @@ Deno.serve(async (req) => {
       await supabase.from("session_tokens").update({ revoked: true }).eq("id", session.id);
       return new Response(
         JSON.stringify(await signResponse({ valid: false, message: "Session expired", expired: true }, app.secret_key)),
-        { status: 401, headers: { ...corsHeaders, "Content-Type": "application/json" } }
+        { status: 401, headers: allHeaders }
       );
     }
 
@@ -151,12 +151,12 @@ Deno.serve(async (req) => {
         valid: true, message: "Session is valid",
         username: session.username, expires_at: newExpiresAt, ttl_seconds: SESSION_TTL_SECONDS,
       }, app.secret_key)),
-      { status: 200, headers: { ...corsHeaders, "Content-Type": "application/json" } }
+      { status: 200, headers: allHeaders }
     );
   } catch {
     return new Response(
       JSON.stringify({ valid: false, message: "Internal server error" }),
-      { status: 500, headers: { ...corsHeaders, "Content-Type": "application/json" } }
+      { status: 500, headers: allHeaders }
     );
   }
 });

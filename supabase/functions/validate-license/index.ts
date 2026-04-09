@@ -120,7 +120,7 @@ Deno.serve(async (req) => {
     if (!license_key) {
       return new Response(
         JSON.stringify({ valid: false, message: "Missing license_key" }),
-        { status: 400, headers: { ...corsHeaders, "Content-Type": "application/json" } }
+        { status: 400, headers: allHeaders }
       );
     }
 
@@ -132,7 +132,7 @@ Deno.serve(async (req) => {
     if (!app) {
       return new Response(
         JSON.stringify({ valid: false, message: authError }),
-        { status: 401, headers: { ...corsHeaders, "Content-Type": "application/json" } }
+        { status: 401, headers: allHeaders }
       );
     }
 
@@ -143,7 +143,7 @@ Deno.serve(async (req) => {
       });
       return new Response(
         JSON.stringify(await signResponse({ valid: false, message: "Application is disabled" }, app.secret_key)),
-        { status: 403, headers: { ...corsHeaders, "Content-Type": "application/json" } }
+        { status: 403, headers: allHeaders }
       );
     }
 
@@ -158,7 +158,7 @@ Deno.serve(async (req) => {
       });
       return new Response(
         JSON.stringify(await signResponse({ valid: false, message: "License not found" }, app.secret_key)),
-        { status: 404, headers: { ...corsHeaders, "Content-Type": "application/json" } }
+        { status: 404, headers: allHeaders }
       );
     }
 
@@ -170,7 +170,7 @@ Deno.serve(async (req) => {
       });
       return new Response(
         JSON.stringify(await signResponse({ valid: false, message: banReason ? `License paused: ${banReason}` : "License is currently paused" }, app.secret_key)),
-        { status: 403, headers: { ...corsHeaders, "Content-Type": "application/json" } }
+        { status: 403, headers: allHeaders }
       );
     }
 
@@ -184,7 +184,7 @@ Deno.serve(async (req) => {
       });
       return new Response(
         JSON.stringify(await signResponse({ valid: false, message: "License has expired" }, app.secret_key)),
-        { status: 403, headers: { ...corsHeaders, "Content-Type": "application/json" } }
+        { status: 403, headers: allHeaders }
       );
     }
 
@@ -195,7 +195,7 @@ Deno.serve(async (req) => {
       });
       return new Response(
         JSON.stringify(await signResponse({ valid: false, message: "License is locked to another device" }, app.secret_key)),
-        { status: 403, headers: { ...corsHeaders, "Content-Type": "application/json" } }
+        { status: 403, headers: allHeaders }
       );
     }
 
@@ -203,7 +203,7 @@ Deno.serve(async (req) => {
       if (license.current_uses >= license.max_uses) {
         return new Response(
           JSON.stringify(await signResponse({ valid: false, message: "License max uses reached" }, app.secret_key)),
-          { status: 403, headers: { ...corsHeaders, "Content-Type": "application/json" } }
+          { status: 403, headers: allHeaders }
         );
       }
 
@@ -229,12 +229,12 @@ Deno.serve(async (req) => {
           current_uses: license.current_uses + (license.status === "unused" ? 1 : 0),
         },
       }, app.secret_key)),
-      { status: 200, headers: { ...corsHeaders, "Content-Type": "application/json" } }
+      { status: 200, headers: allHeaders }
     );
   } catch {
     return new Response(
       JSON.stringify({ valid: false, message: "Internal server error" }),
-      { status: 500, headers: { ...corsHeaders, "Content-Type": "application/json" } }
+      { status: 500, headers: allHeaders }
     );
   }
 });
