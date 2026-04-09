@@ -35,7 +35,7 @@ const UsersPage = () => {
     if (!user) return;
     setLoading(true);
     const [usersRes, licensesRes, appsRes] = await Promise.all([
-      supabase.from("software_users").select("*").order("created_at", { ascending: false }),
+      supabase.from("software_users_safe").select("*").order("created_at", { ascending: false }),
       supabase.from("licenses").select("id, license_key, status, expires_at, activated_at"),
       supabase.from("applications").select("id, name").eq("owner_id", user.id),
     ]);
