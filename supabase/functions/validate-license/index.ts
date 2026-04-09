@@ -249,6 +249,10 @@ Deno.serve(async (req) => {
         status: "active", current_uses: license.current_uses + 1,
         claimed_by: hwid || "unknown", activated_at: new Date().toISOString(),
       };
+      // Calculate expires_at from remaining_seconds at activation time
+      if (license.remaining_seconds && license.remaining_seconds > 0) {
+        updates.expires_at = new Date(Date.now() + license.remaining_seconds * 1000).toISOString();
+      }
       if (hwid && !license.hwid) updates.hwid = hwid;
       const { data: claimed, error: claimErr } = await supabase
         .from("licenses").update(updates).eq("id", license.id).eq("status", "unused").select().single();
