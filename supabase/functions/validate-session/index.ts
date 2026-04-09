@@ -59,10 +59,21 @@ async function verifyAppAuth(supabase: any, body: Record<string, unknown>) {
   return { app: null, error: "Missing authentication" };
 }
 
+function deepSortKeys(obj: unknown): unknown {
+  if (Array.isArray(obj)) return obj.map(deepSortKeys);
+  if (obj !== null && typeof obj === "object") {
+    return Object.keys(obj as Record<string, unknown>).sort().reduce((acc, key) => {
+      acc[key] = deepSortKeys((obj as Record<string, unknown>)[key]);
+      return acc;
+    }, {} as Record<string, unknown>);
+  }
+  return obj;
+}
+
 async function signResponse(data: Record<string, unknown>, secretKey: string): Promise<Record<string, unknown>> {
   const ts = Date.now();
   const withTs = { ...data, _ts: ts };
-  const sorted = Object.keys(withTs).sort().reduce((obj, key) => { obj[key] = withTs[key]; return obj; }, {} as Record<string, unknown>);
+  const sorted = deepSortKeys(withTs) as Record<string, unknown>;
   const payload = JSON.stringify(sorted);
   const sig = await hmacSign(payload, secretKey);
   return { ...sorted, _sig: sig };
