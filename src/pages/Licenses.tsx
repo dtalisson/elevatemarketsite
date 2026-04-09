@@ -28,6 +28,13 @@ const statusColors: Record<string, string> = {
   banned: "bg-destructive/10 text-destructive",
 };
 
+function getEffectiveStatus(lic: { status: string; expires_at: string | null }): string {
+  if (lic.status === "active" && lic.expires_at && new Date(lic.expires_at) < new Date()) {
+    return "expired";
+  }
+  return lic.status;
+}
+
 const Licenses = () => {
   const { user } = useAuth();
   const [licenses, setLicenses] = useState<License[]>([]);
@@ -190,7 +197,7 @@ const Licenses = () => {
       const su = softwareUsers[lic.id];
       if (!lic.license_key.toLowerCase().includes(s) && !lic.claimed_by?.toLowerCase().includes(s) && !su?.username.toLowerCase().includes(s)) return false;
     }
-    if (filterStatus !== "all" && lic.status !== filterStatus) return false;
+    if (filterStatus !== "all" && getEffectiveStatus(lic) !== filterStatus) return false;
     return true;
   });
 
@@ -341,7 +348,7 @@ const Licenses = () => {
                 <div className="flex-1 min-w-0 cursor-pointer" onClick={() => { setSelectedLicense(lic); setShowPassword(false); }}>
                   <div className="flex items-center gap-2">
                     <code className="font-mono text-[11px] text-foreground/80">{lic.license_key.substring(0, 24)}...</code>
-                    <Badge variant="outline" className={`${statusColors[lic.status] || ""} text-[9px] px-1.5 py-0 border-0`}>{lic.status}</Badge>
+                    <Badge variant="outline" className={`${statusColors[getEffectiveStatus(lic)] || ""} text-[9px] px-1.5 py-0 border-0`}>{getEffectiveStatus(lic)}</Badge>
                   </div>
                   <div className="flex items-center gap-3 mt-0.5 flex-wrap">
                     {filterApp === "all" && <span className="text-[10px] text-muted-foreground">{getAppName(lic.application_id)}</span>}
@@ -368,7 +375,7 @@ const Licenses = () => {
           <DialogHeader>
             <DialogTitle className="font-heading flex items-center gap-2">
               Detalhes
-              {selectedLicense && <Badge variant="outline" className={`${statusColors[selectedLicense.status]} text-[10px] border-0`}>{selectedLicense.status}</Badge>}
+              {selectedLicense && <Badge variant="outline" className={`${statusColors[getEffectiveStatus(selectedLicense)]} text-[10px] border-0`}>{getEffectiveStatus(selectedLicense)}</Badge>}
             </DialogTitle>
           </DialogHeader>
           {selectedLicense && (() => {
@@ -401,7 +408,7 @@ const Licenses = () => {
                 <div className="grid grid-cols-2 gap-3">
                   <div className="rounded-lg border border-border/50 p-3 space-y-0">
                     <p className="text-[10px] uppercase tracking-wider text-muted-foreground/60 mb-1 font-semibold">Dispositivo</p>
-                    <InfoRow label="Status" value={selectedLicense.status} />
+                    <InfoRow label="Status" value={getEffectiveStatus(selectedLicense)} />
                     <InfoRow label="Usado por" value={selectedLicense.claimed_by} />
                     <InfoRow label="HWID" value={selectedLicense.hwid} copyable mono />
                   </div>
@@ -424,7 +431,7 @@ const Licenses = () => {
                 )}
 
                 <div className="flex gap-2">
-                  {selectedLicense.status === "active" || selectedLicense.status === "unused" ? (
+                  {getEffectiveStatus(selectedLicense) === "active" || getEffectiveStatus(selectedLicense) === "unused" ? (
                     <>
                       <Button variant="outline" className="flex-1 text-warning border-warning/30 hover:bg-warning/10" size="sm"
                         onClick={() => { setBanTargetId(selectedLicense.id); setBanReason(""); setShowBanDialog(true); }}>
