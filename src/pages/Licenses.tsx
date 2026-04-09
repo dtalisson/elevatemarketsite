@@ -408,7 +408,7 @@ const Licenses = () => {
                 <div className="grid grid-cols-2 gap-3">
                   <div className="rounded-lg border border-border/50 p-3 space-y-0">
                     <p className="text-[10px] uppercase tracking-wider text-muted-foreground/60 mb-1 font-semibold">Dispositivo</p>
-                    <InfoRow label="Status" value={selectedLicense.status} />
+                    <InfoRow label="Status" value={getEffectiveStatus(selectedLicense)} />
                     <InfoRow label="Usado por" value={selectedLicense.claimed_by} />
                     <InfoRow label="HWID" value={selectedLicense.hwid} copyable mono />
                   </div>
