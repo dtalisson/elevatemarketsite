@@ -14,6 +14,41 @@ export type Database = {
   }
   public: {
     Tables: {
+      account_lockouts: {
+        Row: {
+          application_id: string
+          failed_attempts: number
+          id: string
+          last_attempt_at: string | null
+          locked_until: string | null
+          username: string
+        }
+        Insert: {
+          application_id: string
+          failed_attempts?: number
+          id?: string
+          last_attempt_at?: string | null
+          locked_until?: string | null
+          username: string
+        }
+        Update: {
+          application_id?: string
+          failed_attempts?: number
+          id?: string
+          last_attempt_at?: string | null
+          locked_until?: string | null
+          username?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "account_lockouts_application_id_fkey"
+            columns: ["application_id"]
+            isOneToOne: false
+            referencedRelation: "applications"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       applications: {
         Row: {
           created_at: string
@@ -293,6 +328,27 @@ export type Database = {
         }
         Relationships: []
       }
+      rate_limits: {
+        Row: {
+          count: number
+          id: string
+          key: string
+          window_start: string
+        }
+        Insert: {
+          count?: number
+          id?: string
+          key: string
+          window_start?: string
+        }
+        Update: {
+          count?: number
+          id?: string
+          key?: string
+          window_start?: string
+        }
+        Relationships: []
+      }
       security_logs: {
         Row: {
           application_id: string
@@ -514,11 +570,36 @@ export type Database = {
       }
     }
     Functions: {
+      check_rate_limit: {
+        Args: {
+          p_key: string
+          p_max_requests: number
+          p_window_seconds: number
+        }
+        Returns: boolean
+      }
       cleanup_expired_sessions: { Args: never; Returns: undefined }
+      clear_lockout: {
+        Args: { p_app_id: string; p_username: string }
+        Returns: undefined
+      }
       has_role: {
         Args: {
           _role: Database["public"]["Enums"]["app_role"]
           _user_id: string
+        }
+        Returns: boolean
+      }
+      is_account_locked: {
+        Args: { p_app_id: string; p_username: string }
+        Returns: boolean
+      }
+      record_failed_login: {
+        Args: {
+          p_app_id: string
+          p_lockout_seconds?: number
+          p_max_attempts?: number
+          p_username: string
         }
         Returns: boolean
       }
