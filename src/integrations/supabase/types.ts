@@ -392,7 +392,6 @@ export type Database = {
           last_login_at: string | null
           license_id: string
           password_hash: string
-          password_plain: string | null
           updated_at: string
           username: string
         }
@@ -406,7 +405,6 @@ export type Database = {
           last_login_at?: string | null
           license_id: string
           password_hash: string
-          password_plain?: string | null
           updated_at?: string
           username: string
         }
@@ -420,7 +418,6 @@ export type Database = {
           last_login_at?: string | null
           license_id?: string
           password_hash?: string
-          password_plain?: string | null
           updated_at?: string
           username?: string
         }
