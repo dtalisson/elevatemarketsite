@@ -28,6 +28,13 @@ const statusColors: Record<string, string> = {
   banned: "bg-destructive/10 text-destructive",
 };
 
+function getEffectiveStatus(lic: { status: string; expires_at: string | null }): string {
+  if (lic.status === "active" && lic.expires_at && new Date(lic.expires_at) < new Date()) {
+    return "expired";
+  }
+  return lic.status;
+}
+
 const Licenses = () => {
   const { user } = useAuth();
   const [licenses, setLicenses] = useState<License[]>([]);
