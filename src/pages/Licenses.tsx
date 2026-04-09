@@ -348,7 +348,7 @@ const Licenses = () => {
                 <div className="flex-1 min-w-0 cursor-pointer" onClick={() => { setSelectedLicense(lic); setShowPassword(false); }}>
                   <div className="flex items-center gap-2">
                     <code className="font-mono text-[11px] text-foreground/80">{lic.license_key.substring(0, 24)}...</code>
-                    <Badge variant="outline" className={`${statusColors[lic.status] || ""} text-[9px] px-1.5 py-0 border-0`}>{lic.status}</Badge>
+                    <Badge variant="outline" className={`${statusColors[getEffectiveStatus(lic)] || ""} text-[9px] px-1.5 py-0 border-0`}>{getEffectiveStatus(lic)}</Badge>
                   </div>
                   <div className="flex items-center gap-3 mt-0.5 flex-wrap">
                     {filterApp === "all" && <span className="text-[10px] text-muted-foreground">{getAppName(lic.application_id)}</span>}
