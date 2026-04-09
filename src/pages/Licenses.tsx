@@ -197,7 +197,7 @@ const Licenses = () => {
       const su = softwareUsers[lic.id];
       if (!lic.license_key.toLowerCase().includes(s) && !lic.claimed_by?.toLowerCase().includes(s) && !su?.username.toLowerCase().includes(s)) return false;
     }
-    if (filterStatus !== "all" && lic.status !== filterStatus) return false;
+    if (filterStatus !== "all" && getEffectiveStatus(lic) !== filterStatus) return false;
     return true;
   });
 
