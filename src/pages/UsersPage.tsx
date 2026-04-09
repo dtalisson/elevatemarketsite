@@ -14,7 +14,7 @@ import {
 } from "@/components/ui/alert-dialog";
 
 interface SoftwareUser {
-  id: string; username: string; password_hash: string;
+  id: string; username: string;
   hwid: string | null; ip_address: string | null; last_ip: string | null;
   last_login_at: string | null; created_at: string; application_id: string; license_id: string;
 }

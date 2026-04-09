@@ -19,7 +19,7 @@ import type { Tables } from "@/integrations/supabase/types";
 
 type License = Tables<"licenses">;
 interface Application { id: string; name: string; }
-interface SoftwareUser { id: string; username: string; password_hash: string; hwid: string | null; license_id: string; }
+interface SoftwareUser { id: string; username: string; hwid: string | null; license_id: string; }
 
 const statusColors: Record<string, string> = {
   active: "bg-primary/10 text-primary",
@@ -54,7 +54,7 @@ const Licenses = () => {
     const [licRes, appRes, usersRes] = await Promise.all([
       supabase.from("licenses").select("*").order("created_at", { ascending: false }),
       supabase.from("applications").select("id, name"),
-      supabase.from("software_users").select("id, username, password_hash, hwid, license_id"),
+      supabase.from("software_users").select("id, username, hwid, license_id"),
     ]);
     if (licRes.data) setLicenses(licRes.data as License[]);
     if (appRes.data) setApps(appRes.data);
