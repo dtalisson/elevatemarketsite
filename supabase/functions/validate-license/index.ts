@@ -207,12 +207,20 @@ Deno.serve(async (req) => {
         );
       }
 
+      // RACE CONDITION FIX: atomic update with status check
       const updates: Record<string, unknown> = {
         status: "active", current_uses: license.current_uses + 1,
         claimed_by: hwid || "unknown", activated_at: new Date().toISOString(),
       };
       if (hwid && !license.hwid) updates.hwid = hwid;
-      await supabase.from("licenses").update(updates).eq("id", license.id);
+      const { data: claimed, error: claimErr } = await supabase
+        .from("licenses").update(updates).eq("id", license.id).eq("status", "unused").select().single();
+      if (claimErr || !claimed) {
+        return new Response(
+          JSON.stringify(await signResponse({ valid: false, message: "License already claimed" }, app.secret_key)),
+          { status: 409, headers: allHeaders }
+        );
+      }
     }
 
     await supabase.from("auth_logs").insert({
