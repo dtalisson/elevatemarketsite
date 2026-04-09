@@ -117,9 +117,16 @@ Deno.serve(async (req) => {
     const body = await req.json();
     const { license_key, hwid } = body;
 
-    if (!license_key) {
+    if (!license_key || typeof license_key !== "string" || license_key.length > 64) {
       return new Response(
-        JSON.stringify({ valid: false, message: "Missing license_key" }),
+        JSON.stringify({ valid: false, message: "Missing or invalid license_key" }),
+        { status: 400, headers: allHeaders }
+      );
+    }
+
+    if (hwid && (typeof hwid !== "string" || hwid.length > 128)) {
+      return new Response(
+        JSON.stringify({ valid: false, message: "Invalid input" }),
         { status: 400, headers: allHeaders }
       );
     }
@@ -127,6 +134,19 @@ Deno.serve(async (req) => {
     const supabaseUrl = Deno.env.get("SUPABASE_URL")!;
     const supabaseKey = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!;
     const supabase = createClient(supabaseUrl, supabaseKey);
+
+    // Rate limit
+    const { data: ipAllowed } = await supabase.rpc("check_rate_limit", {
+      p_key: `vlicense_ip:${ip}`,
+      p_max_requests: 20,
+      p_window_seconds: 300,
+    });
+    if (ipAllowed === false) {
+      return new Response(
+        JSON.stringify({ valid: false, message: "Too many requests" }),
+        { status: 429, headers: { ...allHeaders, "Retry-After": "300" } }
+      );
+    }
 
     const { app, error: authError } = await verifyAppAuth(supabase, body);
     if (!app) {
