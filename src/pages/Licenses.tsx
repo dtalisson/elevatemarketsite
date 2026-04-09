@@ -73,10 +73,10 @@ const Licenses = () => {
     if (!user || !selectedApp) return;
     setLoading(true);
     const qty = Math.min(Math.max(parseInt(quantity) || 1, 1), 100);
-    const multiplier = expUnit === "days" ? 86400000 : expUnit === "hours" ? 3600000 : 60000;
-    const expiresAt = expValue ? new Date(Date.now() + parseInt(expValue) * multiplier).toISOString() : null;
+    const multiplierSec = expUnit === "days" ? 86400 : expUnit === "hours" ? 3600 : 60;
+    const durationSeconds = expValue ? parseInt(expValue) * multiplierSec : null;
     const inserts = Array.from({ length: qty }, () => ({
-      application_id: selectedApp, created_by: user.id, max_uses: 1, expires_at: expiresAt, note: note || null,
+      application_id: selectedApp, created_by: user.id, max_uses: 1, remaining_seconds: durationSeconds, expires_at: null as string | null, note: note || null,
     }));
     const { error } = await supabase.from("licenses").insert(inserts);
     if (error) toast.error(error.message);
