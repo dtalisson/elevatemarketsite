@@ -35,7 +35,7 @@ const UsersPage = () => {
     if (!user) return;
     setLoading(true);
     const [usersRes, licensesRes, appsRes] = await Promise.all([
-      supabase.from("software_users").select("*").order("created_at", { ascending: false }),
+      supabase.from("software_users_safe").select("*").order("created_at", { ascending: false }),
       supabase.from("licenses").select("id, license_key, status, expires_at, activated_at"),
       supabase.from("applications").select("id, name").eq("owner_id", user.id),
     ]);
@@ -48,7 +48,7 @@ const UsersPage = () => {
   useEffect(() => { fetchData(); }, [user]);
 
   const handleDelete = async (userId: string) => {
-    const { error } = await supabase.from("software_users").delete().eq("id", userId);
+    const { error } = await supabase.from("software_users_safe").delete().eq("id", userId);
     if (error) toast.error("Erro ao excluir");
     else { toast.success("Excluído"); setSelectedUser(null); fetchData(); }
   };
