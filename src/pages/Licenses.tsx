@@ -35,7 +35,8 @@ const Licenses = () => {
   const [softwareUsers, setSoftwareUsers] = useState<Record<string, SoftwareUser>>({});
   const [selectedApp, setSelectedApp] = useState("");
   const [filterApp, setFilterApp] = useState("all");
-  const [expDays, setExpDays] = useState("");
+  const [expValue, setExpValue] = useState("");
+  const [expUnit, setExpUnit] = useState<"days" | "hours" | "minutes">("days");
   const [note, setNote] = useState("");
   const [quantity, setQuantity] = useState("1");
   const [loading, setLoading] = useState(false);
@@ -72,13 +73,14 @@ const Licenses = () => {
     if (!user || !selectedApp) return;
     setLoading(true);
     const qty = Math.min(Math.max(parseInt(quantity) || 1, 1), 100);
-    const expiresAt = expDays ? new Date(Date.now() + parseInt(expDays) * 86400000).toISOString() : null;
+    const multiplier = expUnit === "days" ? 86400000 : expUnit === "hours" ? 3600000 : 60000;
+    const expiresAt = expValue ? new Date(Date.now() + parseInt(expValue) * multiplier).toISOString() : null;
     const inserts = Array.from({ length: qty }, () => ({
       application_id: selectedApp, created_by: user.id, max_uses: 1, expires_at: expiresAt, note: note || null,
     }));
     const { error } = await supabase.from("licenses").insert(inserts);
     if (error) toast.error(error.message);
-    else { toast.success(`${qty} licença(s) criada(s)!`); setOpen(false); setNote(""); setExpDays(""); setQuantity("1"); fetchData(); }
+    else { toast.success(`${qty} licença(s) criada(s)!`); setOpen(false); setNote(""); setExpValue(""); setExpUnit("days"); setQuantity("1"); fetchData(); }
     setLoading(false);
   };
 
@@ -229,7 +231,20 @@ const Licenses = () => {
                 </Select>
               </div>
               <div className="space-y-2"><Label>Quantidade</Label><Input type="number" min="1" max="100" value={quantity} onChange={(e) => setQuantity(e.target.value)} /></div>
-              <div className="space-y-2"><Label>Expiração (dias)</Label><Input type="number" min="1" value={expDays} onChange={(e) => setExpDays(e.target.value)} placeholder="Sem expiração" /></div>
+              <div className="space-y-2">
+                <Label>Expiração</Label>
+                <div className="flex gap-2">
+                  <Input type="number" min="1" value={expValue} onChange={(e) => setExpValue(e.target.value)} placeholder="Sem expiração" className="flex-1" />
+                  <Select value={expUnit} onValueChange={(v) => setExpUnit(v as "days" | "hours" | "minutes")}>
+                    <SelectTrigger className="w-28"><SelectValue /></SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="days">Dias</SelectItem>
+                      <SelectItem value="hours">Horas</SelectItem>
+                      <SelectItem value="minutes">Minutos</SelectItem>
+                    </SelectContent>
+                  </Select>
+                </div>
+              </div>
               <div className="space-y-2"><Label>Nota</Label><Input value={note} onChange={(e) => setNote(e.target.value)} placeholder="Opcional" /></div>
               <Button type="submit" className="w-full" disabled={loading || !selectedApp}>{loading ? "Gerando..." : "Gerar"}</Button>
             </form>
