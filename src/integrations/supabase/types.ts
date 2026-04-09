@@ -151,6 +151,53 @@ export type Database = {
           },
         ]
       }
+      blacklist: {
+        Row: {
+          active: boolean
+          application_id: string
+          created_at: string
+          created_by: string
+          details: string | null
+          hwid: string | null
+          id: string
+          ip_address: string | null
+          reason: string | null
+          source_log_id: string | null
+        }
+        Insert: {
+          active?: boolean
+          application_id: string
+          created_at?: string
+          created_by: string
+          details?: string | null
+          hwid?: string | null
+          id?: string
+          ip_address?: string | null
+          reason?: string | null
+          source_log_id?: string | null
+        }
+        Update: {
+          active?: boolean
+          application_id?: string
+          created_at?: string
+          created_by?: string
+          details?: string | null
+          hwid?: string | null
+          id?: string
+          ip_address?: string | null
+          reason?: string | null
+          source_log_id?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "blacklist_application_id_fkey"
+            columns: ["application_id"]
+            isOneToOne: false
+            referencedRelation: "applications"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       downloads: {
         Row: {
           application_id: string
@@ -593,6 +640,13 @@ export type Database = {
       is_account_locked: {
         Args: { p_app_id: string; p_username: string }
         Returns: boolean
+      }
+      is_blacklisted: {
+        Args: { p_app_id: string; p_hwid?: string; p_ip?: string }
+        Returns: {
+          block_reason: string
+          blocked: boolean
+        }[]
       }
       record_failed_login: {
         Args: {

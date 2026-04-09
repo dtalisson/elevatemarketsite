@@ -274,6 +274,23 @@ Deno.serve(async (req) => {
       );
     }
 
+    // Check blacklist
+    const { data: blResult } = await supabase.rpc("is_blacklisted", {
+      p_app_id: app.id,
+      p_ip: ip || null,
+      p_hwid: hwid || null,
+    });
+    if (blResult && blResult.length > 0 && blResult[0].blocked) {
+      await supabase.from("auth_logs").insert({
+        application_id: app.id, event_type: "login_blacklisted", username: username?.toLowerCase(),
+        ip_address: ip, hwid, success: false, details: `Blacklisted: ${blResult[0].block_reason || "Blocked"}`,
+      });
+      return new Response(
+        JSON.stringify(await signResponse({ success: false, message: "Access denied" }, app.secret_key)),
+        { status: 403, headers: allHeaders }
+      );
+    }
+
     // Check version
     if (version && app.min_version && compareVersions(version, app.min_version) < 0) {
       await supabase.from("auth_logs").insert({

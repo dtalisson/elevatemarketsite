@@ -2,7 +2,7 @@ import { ReactNode, useState } from "react";
 import { Link, useLocation } from "react-router-dom";
 import { useAuth } from "@/contexts/AuthContext";
 import {
-  LayoutDashboard, ScrollText, Key, AppWindow, Users, LogOut, Code, Menu, X, Wifi, ShieldAlert, ShieldX, Download,
+  LayoutDashboard, ScrollText, Key, AppWindow, Users, LogOut, Code, Menu, X, Wifi, ShieldAlert, ShieldX, Download, Ban,
 } from "lucide-react";
 import { cn } from "@/lib/utils";
 
@@ -22,7 +22,13 @@ const navSections = [
     items: [
       { label: "Autenticação", icon: ScrollText, href: "/dashboard/logs" },
       { label: "HWID", icon: ShieldAlert, href: "/dashboard/hwid-logs" },
-      { label: "Segurança", icon: ShieldX, href: "/dashboard/security-logs" },
+    ],
+  },
+  {
+    label: "SEGURANÇA",
+    items: [
+      { label: "Alertas", icon: ShieldX, href: "/dashboard/security-logs" },
+      { label: "Blacklist", icon: Ban, href: "/dashboard/blacklist" },
     ],
   },
   {
