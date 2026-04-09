@@ -5,6 +5,15 @@ const corsHeaders = {
   "Access-Control-Allow-Headers": "authorization, x-client-info, apikey, content-type",
 };
 
+const securityHeaders = {
+  "X-Content-Type-Options": "nosniff",
+  "X-Frame-Options": "DENY",
+  "X-XSS-Protection": "0",
+  "Cache-Control": "no-store",
+};
+
+const allHeaders = { ...corsHeaders, ...securityHeaders, "Content-Type": "application/json" };
+
 function getClientIp(req: Request): string {
   return req.headers.get("x-forwarded-for")?.split(",")[0]?.trim()
     || req.headers.get("x-real-ip")
@@ -92,6 +101,9 @@ function generateToken(): string {
   return Array.from(bytes).map(b => b.toString(16).padStart(2, "0")).join("");
 }
 
+const RATE_LIMIT_IP_MAX = 15;
+const RATE_LIMIT_IP_WINDOW = 300;
+
 Deno.serve(async (req) => {
   if (req.method === "OPTIONS") {
     return new Response("ok", { headers: corsHeaders });
@@ -103,10 +115,17 @@ Deno.serve(async (req) => {
     const body = await req.json();
     const { username, hwid } = body;
 
-    if (!username) {
+    if (!username || typeof username !== "string" || username.length > 64) {
       return new Response(
-        JSON.stringify({ success: false, message: "Missing required fields: username" }),
-        { status: 400, headers: { ...corsHeaders, "Content-Type": "application/json" } }
+        JSON.stringify({ success: false, message: "Missing or invalid username" }),
+        { status: 400, headers: allHeaders }
+      );
+    }
+
+    if (hwid && (typeof hwid !== "string" || hwid.length > 128)) {
+      return new Response(
+        JSON.stringify({ success: false, message: "Invalid input" }),
+        { status: 400, headers: allHeaders }
       );
     }
 
@@ -114,18 +133,32 @@ Deno.serve(async (req) => {
     const supabaseKey = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!;
     const supabase = createClient(supabaseUrl, supabaseKey);
 
+    // Rate limit
+    const { data: ipAllowed } = await supabase.rpc("check_rate_limit", {
+      p_key: `preauth_ip:${ip}`,
+      p_max_requests: RATE_LIMIT_IP_MAX,
+      p_window_seconds: RATE_LIMIT_IP_WINDOW,
+    });
+
+    if (ipAllowed === false) {
+      return new Response(
+        JSON.stringify({ success: false, message: "Too many requests" }),
+        { status: 429, headers: { ...allHeaders, "Retry-After": String(RATE_LIMIT_IP_WINDOW) } }
+      );
+    }
+
     const { app, error: authError } = await verifyAppAuth(supabase, body);
     if (!app) {
       return new Response(
         JSON.stringify({ success: false, message: authError }),
-        { status: 401, headers: { ...corsHeaders, "Content-Type": "application/json" } }
+        { status: 401, headers: allHeaders }
       );
     }
 
     if (!app.enabled) {
       return new Response(
         JSON.stringify(await signResponse({ success: false, message: "Application is disabled" }, app.secret_key)),
-        { status: 403, headers: { ...corsHeaders, "Content-Type": "application/json" } }
+        { status: 403, headers: allHeaders }
       );
     }
 
@@ -137,10 +170,18 @@ Deno.serve(async (req) => {
       .eq("username", username.toLowerCase())
       .single();
 
+    // ANTI-ENUMERATION: Always generate a token, even if user doesn't exist
+    // This prevents attackers from discovering valid usernames
+    const token = generateToken();
+    const expiresAt = new Date(Date.now() + 60 * 1000).toISOString();
+
     if (userError || !user) {
+      // Return a fake token (will fail at login step anyway)
+      // Add artificial delay to match timing of real response
+      await new Promise(r => setTimeout(r, 50 + Math.random() * 100));
       return new Response(
-        JSON.stringify(await signResponse({ success: false, message: "User not found" }, app.secret_key)),
-        { status: 404, headers: { ...corsHeaders, "Content-Type": "application/json" } }
+        JSON.stringify(await signResponse({ success: true, token, message: "Challenge token generated" }, app.secret_key)),
+        { status: 200, headers: allHeaders }
       );
     }
 
@@ -149,18 +190,16 @@ Deno.serve(async (req) => {
       await supabase.from("auth_logs").insert({
         application_id: app.id, event_type: "pre_auth_hwid_mismatch",
         username: username.toLowerCase(), ip_address: ip, hwid,
-        success: false, details: `HWID mismatch at pre-auth: expected ${user.hwid}`,
+        success: false, details: `HWID mismatch at pre-auth`,
       });
+      // Still return fake success to prevent enumeration
       return new Response(
-        JSON.stringify(await signResponse({ success: false, message: "Device mismatch", status: "hwid_mismatch" }, app.secret_key)),
-        { status: 403, headers: { ...corsHeaders, "Content-Type": "application/json" } }
+        JSON.stringify(await signResponse({ success: true, token, message: "Challenge token generated" }, app.secret_key)),
+        { status: 200, headers: allHeaders }
       );
     }
 
-    // Generate challenge token
-    const token = generateToken();
-    const expiresAt = new Date(Date.now() + 60 * 1000).toISOString();
-
+    // Real token - clean old ones and insert
     await supabase.from("pre_auth_tokens").delete()
       .eq("application_id", app.id).eq("username", username.toLowerCase());
 
@@ -174,12 +213,12 @@ Deno.serve(async (req) => {
 
     return new Response(
       JSON.stringify(await signResponse({ success: true, token, message: "Challenge token generated" }, app.secret_key)),
-      { status: 200, headers: { ...corsHeaders, "Content-Type": "application/json" } }
+      { status: 200, headers: allHeaders }
     );
   } catch {
     return new Response(
       JSON.stringify({ success: false, message: "Internal server error" }),
-      { status: 500, headers: { ...corsHeaders, "Content-Type": "application/json" } }
+      { status: 500, headers: allHeaders }
     );
   }
 });

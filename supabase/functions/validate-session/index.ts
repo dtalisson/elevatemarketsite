@@ -5,6 +5,14 @@ const corsHeaders = {
   "Access-Control-Allow-Headers": "authorization, x-client-info, apikey, content-type",
 };
 
+const securityHeaders = {
+  "X-Content-Type-Options": "nosniff",
+  "X-Frame-Options": "DENY",
+  "Cache-Control": "no-store",
+};
+
+const allHeaders = { ...corsHeaders, ...securityHeaders, "Content-Type": "application/json" };
+
 async function hmacSign(message: string, secret: string): Promise<string> {
   const encoder = new TextEncoder();
   const key = await crypto.subtle.importKey(
@@ -90,10 +98,10 @@ Deno.serve(async (req) => {
     const body = await req.json();
     const { session_token } = body;
 
-    if (!session_token) {
+    if (!session_token || typeof session_token !== "string" || session_token.length > 128) {
       return new Response(
-        JSON.stringify({ valid: false, message: "Missing session_token" }),
-        { status: 400, headers: { ...corsHeaders, "Content-Type": "application/json" } }
+        JSON.stringify({ valid: false, message: "Missing or invalid session_token" }),
+        { status: 400, headers: allHeaders }
       );
     }
 
@@ -101,18 +109,31 @@ Deno.serve(async (req) => {
     const supabaseKey = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!;
     const supabase = createClient(supabaseUrl, supabaseKey);
 
+    // Rate limit
+    const { data: ipAllowed } = await supabase.rpc("check_rate_limit", {
+      p_key: `vsession:${session_token.slice(0, 8)}`,
+      p_max_requests: 60,
+      p_window_seconds: 300,
+    });
+    if (ipAllowed === false) {
+      return new Response(
+        JSON.stringify({ valid: false, message: "Too many requests" }),
+        { status: 429, headers: { ...allHeaders, "Retry-After": "300" } }
+      );
+    }
+
     const { app, error: authError } = await verifyAppAuth(supabase, body);
     if (!app) {
       return new Response(
         JSON.stringify({ valid: false, message: authError }),
-        { status: 401, headers: { ...corsHeaders, "Content-Type": "application/json" } }
+        { status: 401, headers: allHeaders }
       );
     }
 
     if (!app.enabled) {
       return new Response(
         JSON.stringify(await signResponse({ valid: false, message: "Application is disabled" }, app.secret_key)),
-        { status: 403, headers: { ...corsHeaders, "Content-Type": "application/json" } }
+        { status: 403, headers: allHeaders }
       );
     }
 
@@ -123,7 +144,7 @@ Deno.serve(async (req) => {
     if (sessionError || !session) {
       return new Response(
         JSON.stringify(await signResponse({ valid: false, message: "Invalid or revoked session token" }, app.secret_key)),
-        { status: 401, headers: { ...corsHeaders, "Content-Type": "application/json" } }
+        { status: 401, headers: allHeaders }
       );
     }
 
@@ -131,7 +152,7 @@ Deno.serve(async (req) => {
       await supabase.from("session_tokens").update({ revoked: true }).eq("id", session.id);
       return new Response(
         JSON.stringify(await signResponse({ valid: false, message: "Session expired", expired: true }, app.secret_key)),
-        { status: 401, headers: { ...corsHeaders, "Content-Type": "application/json" } }
+        { status: 401, headers: allHeaders }
       );
     }
 
@@ -143,12 +164,12 @@ Deno.serve(async (req) => {
         valid: true, message: "Session is valid",
         username: session.username, expires_at: newExpiresAt, ttl_seconds: SESSION_TTL_SECONDS,
       }, app.secret_key)),
-      { status: 200, headers: { ...corsHeaders, "Content-Type": "application/json" } }
+      { status: 200, headers: allHeaders }
     );
   } catch {
     return new Response(
       JSON.stringify({ valid: false, message: "Internal server error" }),
-      { status: 500, headers: { ...corsHeaders, "Content-Type": "application/json" } }
+      { status: 500, headers: allHeaders }
     );
   }
 });

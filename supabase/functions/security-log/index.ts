@@ -5,6 +5,14 @@ const corsHeaders = {
   "Access-Control-Allow-Headers": "authorization, x-client-info, apikey, content-type",
 };
 
+const securityHeaders = {
+  "X-Content-Type-Options": "nosniff",
+  "X-Frame-Options": "DENY",
+  "Cache-Control": "no-store",
+};
+
+const allHeaders = { ...corsHeaders, ...securityHeaders, "Content-Type": "application/json" };
+
 function getClientIp(req: Request): string {
   return req.headers.get("x-forwarded-for")?.split(",")[0]?.trim()
     || req.headers.get("x-real-ip")
@@ -91,6 +99,10 @@ const VALID_EVENTS = [
   "SESSION_INVALIDATED", "INTEGRITY_VIOLATION", "MEMORY_TAMPERING",
 ];
 
+const RATE_LIMIT_IP_MAX = 30;
+const RATE_LIMIT_IP_WINDOW = 300;
+const MAX_DETAILS_LENGTH = 500;
+
 Deno.serve(async (req) => {
   if (req.method === "OPTIONS") {
     return new Response("ok", { headers: corsHeaders });
@@ -102,50 +114,75 @@ Deno.serve(async (req) => {
     const body = await req.json();
     const { username, hwid, event_type, details, timestamp: clientTs } = body;
 
-    if (!event_type) {
+    if (!event_type || typeof event_type !== "string") {
       return new Response(
         JSON.stringify({ success: false, message: "Missing required field: event_type" }),
-        { status: 400, headers: { ...corsHeaders, "Content-Type": "application/json" } }
+        { status: 400, headers: allHeaders }
       );
     }
 
     if (!VALID_EVENTS.includes(event_type)) {
       return new Response(
-        JSON.stringify({ success: false, message: `Invalid event_type. Valid: ${VALID_EVENTS.join(", ")}` }),
-        { status: 400, headers: { ...corsHeaders, "Content-Type": "application/json" } }
+        JSON.stringify({ success: false, message: "Invalid event_type" }),
+        { status: 400, headers: allHeaders }
       );
     }
+
+    // Input validation
+    if (username && (typeof username !== "string" || username.length > 64)) {
+      return new Response(JSON.stringify({ success: false, message: "Invalid input" }), { status: 400, headers: allHeaders });
+    }
+    if (hwid && (typeof hwid !== "string" || hwid.length > 128)) {
+      return new Response(JSON.stringify({ success: false, message: "Invalid input" }), { status: 400, headers: allHeaders });
+    }
+
+    // Sanitize details - truncate and strip potential injection
+    const safeDetails = details ? String(details).slice(0, MAX_DETAILS_LENGTH) : null;
 
     const supabaseUrl = Deno.env.get("SUPABASE_URL")!;
     const supabaseKey = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!;
     const supabase = createClient(supabaseUrl, supabaseKey);
 
+    // Rate limit
+    const { data: ipAllowed } = await supabase.rpc("check_rate_limit", {
+      p_key: `seclog_ip:${ip}`,
+      p_max_requests: RATE_LIMIT_IP_MAX,
+      p_window_seconds: RATE_LIMIT_IP_WINDOW,
+    });
+
+    if (ipAllowed === false) {
+      return new Response(
+        JSON.stringify({ success: false, message: "Too many requests" }),
+        { status: 429, headers: allHeaders }
+      );
+    }
+
     const { app, error: authError } = await verifyAppAuth(supabase, body);
     if (!app) {
       return new Response(
         JSON.stringify({ success: false, message: authError }),
-        { status: 401, headers: { ...corsHeaders, "Content-Type": "application/json" } }
+        { status: 401, headers: allHeaders }
       );
     }
 
     await supabase.from("security_logs").insert({
       application_id: app.id,
-      username: username || null,
-      hwid: hwid || null,
+      username: username ? String(username).slice(0, 64) : null,
+      hwid: hwid ? String(hwid).slice(0, 128) : null,
       event_type,
-      details: details || null,
-      client_timestamp: clientTs || null,
+      details: safeDetails,
+      client_timestamp: clientTs ? Number(clientTs) || null : null,
       ip_address: ip,
     });
 
     return new Response(
       JSON.stringify(await signResponse({ success: true, message: "Security event logged" }, app.secret_key)),
-      { status: 200, headers: { ...corsHeaders, "Content-Type": "application/json" } }
+      { status: 200, headers: allHeaders }
     );
   } catch {
     return new Response(
       JSON.stringify({ success: false, message: "Internal server error" }),
-      { status: 500, headers: { ...corsHeaders, "Content-Type": "application/json" } }
+      { status: 500, headers: allHeaders }
     );
   }
 });

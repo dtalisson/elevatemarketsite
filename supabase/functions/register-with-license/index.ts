@@ -17,6 +17,17 @@ const corsHeaders = {
   "Access-Control-Allow-Headers": "authorization, x-client-info, apikey, content-type",
 };
 
+const securityHeaders = {
+  "X-Content-Type-Options": "nosniff",
+  "X-Frame-Options": "DENY",
+  "X-XSS-Protection": "0",
+  "Referrer-Policy": "strict-origin-when-cross-origin",
+  "Cache-Control": "no-store, no-cache, must-revalidate",
+  "Pragma": "no-cache",
+};
+
+const allHeaders = { ...corsHeaders, ...securityHeaders, "Content-Type": "application/json" };
+
 function getClientIp(req: Request): string {
   return req.headers.get("x-forwarded-for")?.split(",")[0]?.trim()
     || req.headers.get("x-real-ip")
@@ -98,6 +109,21 @@ async function signResponse(data: Record<string, unknown>, secretKey: string): P
   return { ...sorted, _sig: sig };
 }
 
+// Input limits
+const MAX_USERNAME_LENGTH = 32;
+const MIN_USERNAME_LENGTH = 3;
+const MAX_PASSWORD_LENGTH = 256;
+const MIN_PASSWORD_LENGTH = 6;
+const MAX_HWID_LENGTH = 128;
+const MAX_LICENSE_KEY_LENGTH = 64;
+
+// Rate limits: 5 register attempts per IP per 10 minutes
+const RATE_LIMIT_IP_MAX = 5;
+const RATE_LIMIT_IP_WINDOW = 600;
+
+// Username validation: only alphanumeric, underscore, hyphen
+const USERNAME_REGEX = /^[a-zA-Z0-9_-]+$/;
+
 Deno.serve(async (req) => {
   if (req.method === "OPTIONS") {
     return new Response("ok", { headers: corsHeaders });
@@ -109,24 +135,60 @@ Deno.serve(async (req) => {
     const body = await req.json();
     const { license_key, username, password, hwid, version } = body;
 
+    // Input validation
     if (!license_key || !username || !password) {
       return new Response(
         JSON.stringify({ success: false, message: "Missing required fields: license_key, username, password" }),
-        { status: 400, headers: { ...corsHeaders, "Content-Type": "application/json" } }
+        { status: 400, headers: allHeaders }
       );
     }
 
-    if (username.length < 3 || username.length > 32) {
+    if (typeof username !== "string" || typeof password !== "string" || typeof license_key !== "string") {
       return new Response(
-        JSON.stringify({ success: false, message: "Username must be between 3 and 32 characters" }),
-        { status: 400, headers: { ...corsHeaders, "Content-Type": "application/json" } }
+        JSON.stringify({ success: false, message: "Invalid input types" }),
+        { status: 400, headers: allHeaders }
       );
     }
 
-    if (password.length < 1) {
+    if (username.length < MIN_USERNAME_LENGTH || username.length > MAX_USERNAME_LENGTH) {
       return new Response(
-        JSON.stringify({ success: false, message: "Password cannot be empty" }),
-        { status: 400, headers: { ...corsHeaders, "Content-Type": "application/json" } }
+        JSON.stringify({ success: false, message: `Username must be between ${MIN_USERNAME_LENGTH} and ${MAX_USERNAME_LENGTH} characters` }),
+        { status: 400, headers: allHeaders }
+      );
+    }
+
+    if (!USERNAME_REGEX.test(username)) {
+      return new Response(
+        JSON.stringify({ success: false, message: "Username can only contain letters, numbers, underscores and hyphens" }),
+        { status: 400, headers: allHeaders }
+      );
+    }
+
+    if (password.length < MIN_PASSWORD_LENGTH) {
+      return new Response(
+        JSON.stringify({ success: false, message: `Password must be at least ${MIN_PASSWORD_LENGTH} characters` }),
+        { status: 400, headers: allHeaders }
+      );
+    }
+
+    if (password.length > MAX_PASSWORD_LENGTH) {
+      return new Response(
+        JSON.stringify({ success: false, message: "Password too long" }),
+        { status: 400, headers: allHeaders }
+      );
+    }
+
+    if (license_key.length > MAX_LICENSE_KEY_LENGTH) {
+      return new Response(
+        JSON.stringify({ success: false, message: "Invalid license key" }),
+        { status: 400, headers: allHeaders }
+      );
+    }
+
+    if (hwid && (typeof hwid !== "string" || hwid.length > MAX_HWID_LENGTH)) {
+      return new Response(
+        JSON.stringify({ success: false, message: "Invalid HWID" }),
+        { status: 400, headers: allHeaders }
       );
     }
 
@@ -134,11 +196,25 @@ Deno.serve(async (req) => {
     const supabaseKey = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!;
     const supabase = createClient(supabaseUrl, supabaseKey);
 
+    // Rate limit by IP
+    const { data: ipAllowed } = await supabase.rpc("check_rate_limit", {
+      p_key: `register_ip:${ip}`,
+      p_max_requests: RATE_LIMIT_IP_MAX,
+      p_window_seconds: RATE_LIMIT_IP_WINDOW,
+    });
+
+    if (ipAllowed === false) {
+      return new Response(
+        JSON.stringify({ success: false, message: "Too many registration attempts. Try again later." }),
+        { status: 429, headers: { ...allHeaders, "Retry-After": String(RATE_LIMIT_IP_WINDOW) } }
+      );
+    }
+
     const { app, error: authError } = await verifyAppAuth(supabase, body);
     if (!app) {
       return new Response(
         JSON.stringify({ success: false, message: authError }),
-        { status: 401, headers: { ...corsHeaders, "Content-Type": "application/json" } }
+        { status: 401, headers: allHeaders }
       );
     }
 
@@ -149,7 +225,7 @@ Deno.serve(async (req) => {
       });
       return new Response(
         JSON.stringify(await signResponse({ success: false, message: "Application is disabled" }, app.secret_key)),
-        { status: 403, headers: { ...corsHeaders, "Content-Type": "application/json" } }
+        { status: 403, headers: allHeaders }
       );
     }
 
@@ -164,7 +240,7 @@ Deno.serve(async (req) => {
           message: `Update required. Minimum version: ${app.min_version}, your version: ${version}`,
           update_required: true, current_version: app.current_version, min_version: app.min_version,
         }, app.secret_key)),
-        { status: 403, headers: { ...corsHeaders, "Content-Type": "application/json" } }
+        { status: 403, headers: allHeaders }
       );
     }
 
@@ -179,7 +255,7 @@ Deno.serve(async (req) => {
       });
       return new Response(
         JSON.stringify(await signResponse({ success: false, message: "Invalid license key" }, app.secret_key)),
-        { status: 404, headers: { ...corsHeaders, "Content-Type": "application/json" } }
+        { status: 404, headers: allHeaders }
       );
     }
 
@@ -190,7 +266,7 @@ Deno.serve(async (req) => {
       });
       return new Response(
         JSON.stringify(await signResponse({ success: false, message: "License is banned" }, app.secret_key)),
-        { status: 403, headers: { ...corsHeaders, "Content-Type": "application/json" } }
+        { status: 403, headers: allHeaders }
       );
     }
 
@@ -201,25 +277,23 @@ Deno.serve(async (req) => {
       });
       return new Response(
         JSON.stringify(await signResponse({ success: false, message: "License has expired" }, app.secret_key)),
-        { status: 403, headers: { ...corsHeaders, "Content-Type": "application/json" } }
+        { status: 403, headers: allHeaders }
       );
     }
 
-    const { data: existingUser } = await supabase
-      .from("software_users").select("id")
-      .eq("license_id", license.id).single();
-
-    if (existingUser) {
+    // Check if license already claimed (atomic check via current_uses)
+    if (license.status !== "unused" || license.current_uses >= license.max_uses) {
       await supabase.from("auth_logs").insert({
         application_id: app.id, event_type: "register_failed", username: username.toLowerCase(),
-        ip_address: ip, hwid, success: false, details: "License already has a user", license_id: license.id,
+        ip_address: ip, hwid, success: false, details: "License already claimed", license_id: license.id,
       });
       return new Response(
         JSON.stringify(await signResponse({ success: false, message: "License already has a registered user" }, app.secret_key)),
-        { status: 409, headers: { ...corsHeaders, "Content-Type": "application/json" } }
+        { status: 409, headers: allHeaders }
       );
     }
 
+    // Check username taken
     const { data: existingUsername } = await supabase
       .from("software_users").select("id")
       .eq("application_id", app.id).eq("username", username.toLowerCase()).single();
@@ -231,17 +305,45 @@ Deno.serve(async (req) => {
       });
       return new Response(
         JSON.stringify(await signResponse({ success: false, message: "Username already taken" }, app.secret_key)),
-        { status: 409, headers: { ...corsHeaders, "Content-Type": "application/json" } }
+        { status: 409, headers: allHeaders }
       );
     }
 
-    // Hash password
+    // Hash password with salt (username as salt)
     const encoder = new TextEncoder();
-    const data = encoder.encode(password);
+    const salted = password + username.toLowerCase();
+    const data = encoder.encode(salted);
     const hashBuffer = await crypto.subtle.digest("SHA-256", data);
     const hashArray = Array.from(new Uint8Array(hashBuffer));
     const passwordHash = hashArray.map(b => b.toString(16).padStart(2, "0")).join("");
 
+    // RACE CONDITION FIX: Atomically claim the license first
+    // Only update if status is still 'unused' (prevents double-claim)
+    const { data: claimedLicense, error: claimError } = await supabase
+      .from("licenses")
+      .update({
+        status: "active", current_uses: license.current_uses + 1,
+        claimed_by: username.toLowerCase(), hwid: hwid || license.hwid,
+        activated_at: new Date().toISOString(),
+      })
+      .eq("id", license.id)
+      .eq("status", "unused") // Atomic check - prevents race condition
+      .select()
+      .single();
+
+    if (claimError || !claimedLicense) {
+      // License was claimed by another request between our check and update
+      await supabase.from("auth_logs").insert({
+        application_id: app.id, event_type: "register_failed", username: username.toLowerCase(),
+        ip_address: ip, hwid, success: false, details: "License claimed by another request (race)", license_id: license.id,
+      });
+      return new Response(
+        JSON.stringify(await signResponse({ success: false, message: "License already claimed" }, app.secret_key)),
+        { status: 409, headers: allHeaders }
+      );
+    }
+
+    // Now create the user
     const { error: insertError } = await supabase
       .from("software_users")
       .insert({
@@ -252,17 +354,17 @@ Deno.serve(async (req) => {
       });
 
     if (insertError) {
+      // Rollback license claim
+      await supabase.from("licenses").update({
+        status: "unused", current_uses: license.current_uses,
+        claimed_by: null, hwid: null, activated_at: null,
+      }).eq("id", license.id);
+
       return new Response(
         JSON.stringify(await signResponse({ success: false, message: "Failed to create user" }, app.secret_key)),
-        { status: 500, headers: { ...corsHeaders, "Content-Type": "application/json" } }
+        { status: 500, headers: allHeaders }
       );
     }
-
-    await supabase.from("licenses").update({
-      status: "active", current_uses: license.current_uses + 1,
-      claimed_by: username.toLowerCase(), hwid: hwid || license.hwid,
-      activated_at: new Date().toISOString(),
-    }).eq("id", license.id);
 
     await supabase.from("auth_logs").insert({
       application_id: app.id, event_type: "register_success", username: username.toLowerCase(),
@@ -274,12 +376,12 @@ Deno.serve(async (req) => {
         success: true, message: "User registered successfully",
         user: { username: username.toLowerCase() },
       }, app.secret_key)),
-      { status: 201, headers: { ...corsHeaders, "Content-Type": "application/json" } }
+      { status: 201, headers: allHeaders }
     );
   } catch {
     return new Response(
       JSON.stringify({ success: false, message: "Internal server error" }),
-      { status: 500, headers: { ...corsHeaders, "Content-Type": "application/json" } }
+      { status: 500, headers: allHeaders }
     );
   }
 });

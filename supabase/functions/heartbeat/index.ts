@@ -5,6 +5,14 @@ const corsHeaders = {
   "Access-Control-Allow-Headers": "authorization, x-client-info, apikey, content-type",
 };
 
+const securityHeaders = {
+  "X-Content-Type-Options": "nosniff",
+  "X-Frame-Options": "DENY",
+  "Cache-Control": "no-store",
+};
+
+const allHeaders = { ...corsHeaders, ...securityHeaders, "Content-Type": "application/json" };
+
 function getClientIp(req: Request): string {
   return req.headers.get("x-forwarded-for")?.split(",")[0]?.trim()
     || req.headers.get("x-real-ip")
@@ -100,7 +108,7 @@ Deno.serve(async (req) => {
     if (!username) {
       return new Response(
         JSON.stringify({ success: false, message: "Missing required fields" }),
-        { status: 400, headers: { ...corsHeaders, "Content-Type": "application/json" } }
+        { status: 400, headers: allHeaders }
       );
     }
 
@@ -112,14 +120,14 @@ Deno.serve(async (req) => {
     if (!app) {
       return new Response(
         JSON.stringify({ success: false, message: authError }),
-        { status: 401, headers: { ...corsHeaders, "Content-Type": "application/json" } }
+        { status: 401, headers: allHeaders }
       );
     }
 
     if (!app.enabled) {
       return new Response(
         JSON.stringify(await signResponse({ success: false, message: "Application is disabled", action: "close" }, app.secret_key)),
-        { status: 403, headers: { ...corsHeaders, "Content-Type": "application/json" } }
+        { status: 403, headers: allHeaders }
       );
     }
 
@@ -132,7 +140,7 @@ Deno.serve(async (req) => {
       if (sessionError || !session) {
         return new Response(
           JSON.stringify(await signResponse({ success: false, message: "Invalid or revoked session", action: "reauth" }, app.secret_key)),
-          { status: 401, headers: { ...corsHeaders, "Content-Type": "application/json" } }
+          { status: 401, headers: allHeaders }
         );
       }
 
@@ -140,7 +148,7 @@ Deno.serve(async (req) => {
         await supabase.from("session_tokens").update({ revoked: true }).eq("id", session.id);
         return new Response(
           JSON.stringify(await signResponse({ success: false, message: "Session expired", action: "reauth", expired: true }, app.secret_key)),
-          { status: 401, headers: { ...corsHeaders, "Content-Type": "application/json" } }
+          { status: 401, headers: allHeaders }
         );
       }
 
@@ -157,14 +165,14 @@ Deno.serve(async (req) => {
     if (userError || !user) {
       return new Response(
         JSON.stringify(await signResponse({ success: false, message: "User not found", action: "close" }, app.secret_key)),
-        { status: 404, headers: { ...corsHeaders, "Content-Type": "application/json" } }
+        { status: 404, headers: allHeaders }
       );
     }
 
     if (user.hwid && hwid && user.hwid !== hwid) {
       return new Response(
         JSON.stringify(await signResponse({ success: false, message: "Device mismatch", action: "close", status: "hwid_mismatch" }, app.secret_key)),
-        { status: 403, headers: { ...corsHeaders, "Content-Type": "application/json" } }
+        { status: 403, headers: allHeaders }
       );
     }
 
@@ -173,21 +181,21 @@ Deno.serve(async (req) => {
     if (!license) {
       return new Response(
         JSON.stringify(await signResponse({ success: false, message: "No license", action: "close" }, app.secret_key)),
-        { status: 403, headers: { ...corsHeaders, "Content-Type": "application/json" } }
+        { status: 403, headers: allHeaders }
       );
     }
 
     if (license.status === "banned") {
       return new Response(
         JSON.stringify(await signResponse({ success: false, message: "License banned", action: "close", status: "banned" }, app.secret_key)),
-        { status: 403, headers: { ...corsHeaders, "Content-Type": "application/json" } }
+        { status: 403, headers: allHeaders }
       );
     }
 
     if (license.status === "expired" || (license.expires_at && new Date(license.expires_at) < new Date())) {
       return new Response(
         JSON.stringify(await signResponse({ success: false, message: "License expired", action: "close", status: "expired" }, app.secret_key)),
-        { status: 403, headers: { ...corsHeaders, "Content-Type": "application/json" } }
+        { status: 403, headers: allHeaders }
       );
     }
 
@@ -198,12 +206,12 @@ Deno.serve(async (req) => {
 
     return new Response(
       JSON.stringify(await signResponse({ success: true, message: "Heartbeat OK" }, app.secret_key)),
-      { status: 200, headers: { ...corsHeaders, "Content-Type": "application/json" } }
+      { status: 200, headers: allHeaders }
     );
   } catch {
     return new Response(
       JSON.stringify({ success: false, message: "Internal server error" }),
-      { status: 500, headers: { ...corsHeaders, "Content-Type": "application/json" } }
+      { status: 500, headers: allHeaders }
     );
   }
 });
