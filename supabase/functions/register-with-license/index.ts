@@ -319,13 +319,18 @@ Deno.serve(async (req) => {
 
     // RACE CONDITION FIX: Atomically claim the license first
     // Only update if status is still 'unused' (prevents double-claim)
+    const licenseUpdates: Record<string, unknown> = {
+      status: "active", current_uses: license.current_uses + 1,
+      claimed_by: username.toLowerCase(), hwid: hwid || license.hwid,
+      activated_at: new Date().toISOString(),
+    };
+    // Calculate expires_at from remaining_seconds at activation time
+    if (license.remaining_seconds && license.remaining_seconds > 0) {
+      licenseUpdates.expires_at = new Date(Date.now() + license.remaining_seconds * 1000).toISOString();
+    }
     const { data: claimedLicense, error: claimError } = await supabase
       .from("licenses")
-      .update({
-        status: "active", current_uses: license.current_uses + 1,
-        claimed_by: username.toLowerCase(), hwid: hwid || license.hwid,
-        activated_at: new Date().toISOString(),
-      })
+      .update(licenseUpdates)
       .eq("id", license.id)
       .eq("status", "unused") // Atomic check - prevents race condition
       .select()
