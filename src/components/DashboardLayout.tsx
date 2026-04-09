@@ -58,7 +58,7 @@ export const DashboardLayout = ({ children }: { children: ReactNode }) => {
         )}
       >
         <div className="flex h-14 items-center justify-between border-b border-border/80 px-5">
-          <span className="text-lg font-heading font-bold text-foreground tracking-tight">
+           <span className="text-xl font-heading font-bold text-foreground tracking-tight">
             Elevate<span className="text-primary">Auth</span>
           </span>
           <button className="lg:hidden text-muted-foreground hover:text-foreground" onClick={() => setSidebarOpen(false)}>
@@ -124,7 +124,7 @@ export const DashboardLayout = ({ children }: { children: ReactNode }) => {
           <button onClick={() => setSidebarOpen(true)} className="rounded-md p-2 text-muted-foreground hover:bg-muted hover:text-foreground">
             <Menu className="h-5 w-5" />
           </button>
-          <span className="text-lg font-heading font-bold text-foreground">
+          <span className="text-xl font-heading font-bold text-foreground">
             Elevate<span className="text-primary">Auth</span>
           </span>
         </header>
