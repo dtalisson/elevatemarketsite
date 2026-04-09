@@ -375,7 +375,7 @@ const Licenses = () => {
           <DialogHeader>
             <DialogTitle className="font-heading flex items-center gap-2">
               Detalhes
-              {selectedLicense && <Badge variant="outline" className={`${statusColors[selectedLicense.status]} text-[10px] border-0`}>{selectedLicense.status}</Badge>}
+              {selectedLicense && <Badge variant="outline" className={`${statusColors[getEffectiveStatus(selectedLicense)]} text-[10px] border-0`}>{getEffectiveStatus(selectedLicense)}</Badge>}
             </DialogTitle>
           </DialogHeader>
           {selectedLicense && (() => {
