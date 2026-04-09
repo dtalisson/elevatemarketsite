@@ -431,7 +431,7 @@ const Licenses = () => {
                 )}
 
                 <div className="flex gap-2">
-                  {selectedLicense.status === "active" || selectedLicense.status === "unused" ? (
+                  {getEffectiveStatus(selectedLicense) === "active" || getEffectiveStatus(selectedLicense) === "unused" ? (
                     <>
                       <Button variant="outline" className="flex-1 text-warning border-warning/30 hover:bg-warning/10" size="sm"
                         onClick={() => { setBanTargetId(selectedLicense.id); setBanReason(""); setShowBanDialog(true); }}>
