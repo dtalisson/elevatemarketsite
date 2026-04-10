@@ -68,6 +68,17 @@ async function verifyAppAuth(supabase: any, body: Record<string, unknown>) {
       return { app: null, error: "Invalid signature" };
     return { app };
   }
+  // Fallback: app_id + app_secret (plain secret key)
+  if (body.app_id && body.app_secret) {
+    const { data: app, error } = await supabase
+      .from("applications").select("id, name, enabled, current_version, min_version, msg_disabled, msg_maintenance, msg_outdated, secret_key")
+      .eq("id", body.app_id).single();
+    if (error || !app) return { app: null, error: "Invalid app_id" };
+    if (!constantTimeCompare(app.secret_key, body.app_secret as string))
+      return { app: null, error: "Invalid app_secret" };
+    return { app };
+  }
+  // Fallback: app_secret only (lookup by secret)
   if (body.app_secret) {
     const { data: app, error } = await supabase
       .from("applications").select("id, name, enabled, current_version, min_version, msg_disabled, msg_maintenance, msg_outdated, secret_key")
