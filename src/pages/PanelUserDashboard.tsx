@@ -399,6 +399,28 @@ const PanelUserDashboard = () => {
           </Tabs>
         )}
       </main>
+
+      <LicenseDetailModal
+        license={selectedLicenseDetail ? {
+          license_key: selectedLicenseDetail.license_key,
+          status: selectedLicenseDetail.status,
+          expires_at: selectedLicenseDetail.expires_at,
+          activated_at: selectedLicenseDetail.activated_at,
+          created_at: selectedLicenseDetail.created_at,
+          hwid: selectedLicenseDetail.hwid,
+          claimed_by: selectedLicenseDetail.claimed_by,
+          note: selectedLicenseDetail.note,
+          remaining_seconds: selectedLicenseDetail.remaining_seconds,
+          ban_reason: selectedLicenseDetail.ban_reason,
+          application_name: getAppName(selectedLicenseDetail.application_id),
+          software_user: users.find(u => u.license_id === selectedLicenseDetail.id) ? (() => {
+            const su = users.find(u => u.license_id === selectedLicenseDetail.id)!;
+            return { username: su.username, hwid: su.hwid, ip_address: su.ip_address, last_login_at: su.last_login_at, created_at: su.created_at };
+          })() : null,
+        } : null}
+        open={!!selectedLicenseDetail}
+        onClose={() => setSelectedLicenseDetail(null)}
+      />
     </div>
   );
 };
