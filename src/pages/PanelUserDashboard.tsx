@@ -19,6 +19,8 @@ interface SoftwareUser { id: string; username: string; hwid: string | null; ip_a
 
 const PanelUserDashboard = () => {
   const { panelUser, logoutPanelUser, secureApiCall } = usePanelUser();
+  const navigate = useNavigate();
+  const handleLogout = () => { logoutPanelUser(); navigate("/panel/login"); };
   const [apps, setApps] = useState<App[]>([]);
   const [licenses, setLicenses] = useState<License[]>([]);
   const [users, setUsers] = useState<SoftwareUser[]>([]);
