@@ -20,6 +20,7 @@ import ApiDocs from "./pages/ApiDocs";
 import OnlinePage from "./pages/OnlinePage";
 import DownloadsPage from "./pages/DownloadsPage";
 import BlacklistPage from "./pages/BlacklistPage";
+import SiteSecurityPage from "./pages/SiteSecurityPage";
 
 const queryClient = new QueryClient();
 
@@ -48,6 +49,7 @@ const App = () => (
             <Route path={`${ADMIN_BASE}/downloads`} element={<ProtectedRoute><DownloadsPage /></ProtectedRoute>} />
             <Route path={`${ADMIN_BASE}/blacklist`} element={<ProtectedRoute><BlacklistPage /></ProtectedRoute>} />
             <Route path={`${ADMIN_BASE}/docs`} element={<ProtectedRoute><ApiDocs /></ProtectedRoute>} />
+            <Route path={`${ADMIN_BASE}/site-security`} element={<ProtectedRoute><SiteSecurityPage /></ProtectedRoute>} />
             <Route path="*" element={<NotFound />} />
           </Routes>
         </BrowserRouter>
