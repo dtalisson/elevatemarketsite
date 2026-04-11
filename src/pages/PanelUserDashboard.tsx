@@ -32,6 +32,7 @@ const PanelUserDashboard = () => {
   const [createQty, setCreateQty] = useState("1");
   const [createNote, setCreateNote] = useState("");
   const [creating, setCreating] = useState(false);
+  const [selectedLicenseDetail, setSelectedLicenseDetail] = useState<License | null>(null);
 
   const canvasRef = useRef<HTMLCanvasElement>(null);
 
