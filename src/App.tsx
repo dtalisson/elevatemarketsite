@@ -43,6 +43,7 @@ const App = () => (
               <Route path="/download" element={<PublicDownload />} />
               
               {/* Panel user (sub-user/reseller) routes */}
+              <Route path="/panel/login" element={<PanelUserLogin />} />
               <Route path="/panel" element={<PanelProtectedRoute><PanelUserDashboard /></PanelProtectedRoute>} />
               
               {/* Admin routes */}
