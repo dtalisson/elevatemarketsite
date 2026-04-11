@@ -41,7 +41,6 @@ function getFingerprint(): string {
     Intl.DateTimeFormat().resolvedOptions().timeZone,
     nav.hardwareConcurrency,
   ].join("|");
-  // Simple hash
   let hash = 0;
   for (let i = 0; i < raw.length; i++) {
     const chr = raw.charCodeAt(i);
@@ -63,6 +62,40 @@ function buildSecurityHeaders(token?: string | null): Record<string, string> {
   return headers;
 }
 
+// ── Token integrity: simple hash to detect localStorage tampering ──
+const INTEGRITY_KEY = "panel_token_sig";
+function computeIntegrity(token: string): string {
+  let h = 0x811c9dc5;
+  for (let i = 0; i < token.length; i++) {
+    h ^= token.charCodeAt(i);
+    h = Math.imul(h, 0x01000193);
+  }
+  return (h >>> 0).toString(36) + "_" + getFingerprint();
+}
+
+function saveTokenSecure(token: string) {
+  localStorage.setItem("panel_token", token);
+  localStorage.setItem(INTEGRITY_KEY, computeIntegrity(token));
+}
+
+function loadTokenSecure(): string | null {
+  const token = localStorage.getItem("panel_token");
+  const sig = localStorage.getItem(INTEGRITY_KEY);
+  if (!token || !sig) return null;
+  if (sig !== computeIntegrity(token)) {
+    // Token was tampered with — clear it
+    localStorage.removeItem("panel_token");
+    localStorage.removeItem(INTEGRITY_KEY);
+    return null;
+  }
+  return token;
+}
+
+function clearTokenSecure() {
+  localStorage.removeItem("panel_token");
+  localStorage.removeItem(INTEGRITY_KEY);
+}
+
 export const PanelUserProvider = ({ children }: { children: ReactNode }) => {
   const [panelUser, setPanelUser] = useState<PanelUser | null>(null);
   const [panelToken, setPanelToken] = useState<string | null>(null);
@@ -76,7 +109,15 @@ export const PanelUserProvider = ({ children }: { children: ReactNode }) => {
   const updateToken = useCallback((newToken: string) => {
     tokenRef.current = newToken;
     setPanelToken(newToken);
-    localStorage.setItem("panel_token", newToken);
+    saveTokenSecure(newToken);
+  }, []);
+
+  const logoutPanelUser = useCallback(() => {
+    setPanelUser(null);
+    setPanelToken(null);
+    tokenRef.current = null;
+    setAllowedApps([]);
+    clearTokenSecure();
   }, []);
 
   // ── Secure API call with auto token rotation ──
@@ -90,25 +131,22 @@ export const PanelUserProvider = ({ children }: { children: ReactNode }) => {
     });
     const data = await res.json();
     
-    // Token rotation — always use the new token from response
+    // Token rotation
     if (data.token) {
       updateToken(data.token);
     }
     
     // If unauthorized, logout
     if (res.status === 401) {
-      setPanelUser(null);
-      setPanelToken(null);
-      setAllowedApps([]);
-      localStorage.removeItem("panel_token");
+      logoutPanelUser();
     }
     
     return data;
-  }, [updateToken]);
+  }, [updateToken, logoutPanelUser]);
 
   // Restore session
   useEffect(() => {
-    const token = localStorage.getItem("panel_token");
+    const token = loadTokenSecure();
     if (!token) { setLoading(false); return; }
 
     const headers = buildSecurityHeaders(token);
@@ -118,16 +156,15 @@ export const PanelUserProvider = ({ children }: { children: ReactNode }) => {
         if (data.valid) {
           setPanelUser(data.user);
           setAllowedApps(data.allowed_apps || []);
-          // Use rotated token if available
           const newToken = data.token || token;
           setPanelToken(newToken);
           tokenRef.current = newToken;
-          localStorage.setItem("panel_token", newToken);
+          saveTokenSecure(newToken);
         } else {
-          localStorage.removeItem("panel_token");
+          clearTokenSecure();
         }
       })
-      .catch(() => localStorage.removeItem("panel_token"))
+      .catch(() => clearTokenSecure())
       .finally(() => setLoading(false));
   }, []);
 
@@ -144,18 +181,10 @@ export const PanelUserProvider = ({ children }: { children: ReactNode }) => {
       setPanelToken(data.token);
       tokenRef.current = data.token;
       setAllowedApps(data.allowed_apps || []);
-      localStorage.setItem("panel_token", data.token);
+      saveTokenSecure(data.token);
       return true;
     }
     return false;
-  };
-
-  const logoutPanelUser = () => {
-    setPanelUser(null);
-    setPanelToken(null);
-    tokenRef.current = null;
-    setAllowedApps([]);
-    localStorage.removeItem("panel_token");
   };
 
   return (
