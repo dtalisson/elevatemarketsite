@@ -33,10 +33,28 @@ const Login = () => {
   const handleLogin = async (e: React.FormEvent) => {
     e.preventDefault();
     setLoading(true);
-    const email = `${username.toLowerCase()}@elevateauth.local`;
-    const { error } = await supabase.auth.signInWithPassword({ email, password });
-    if (error) toast.error("Usuário ou senha incorretos");
-    else navigate("/dashboard");
+    try {
+      const res = await fetch(`${API_BASE}/admin-login`, {
+        method: "POST",
+        headers: buildSecurityHeaders(),
+        body: JSON.stringify({ username, password }),
+      });
+      const data = await res.json();
+      if (!data.success) {
+        toast.error(data.message || "Usuário ou senha incorretos");
+        setLoading(false);
+        return;
+      }
+      // Set the session using the tokens from the secure endpoint
+      const { error } = await supabase.auth.setSession({
+        access_token: data.access_token,
+        refresh_token: data.refresh_token,
+      });
+      if (error) toast.error("Erro ao iniciar sessão");
+      else navigate("/dashboard");
+    } catch {
+      toast.error("Erro de conexão");
+    }
     setLoading(false);
   };
 
