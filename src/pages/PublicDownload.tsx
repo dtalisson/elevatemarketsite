@@ -86,8 +86,14 @@ const PublicDownload = () => {
         const data = await response.json();
         setResult({ success: false, message: data.message || "Licença inválida" });
       } else if (response.ok) {
-        // It's the file — download it
-        const fileName = response.headers.get("x-file-name") || "download";
+        // Extract filename from headers
+        let fileName = response.headers.get("x-file-name") || "";
+        if (!fileName) {
+          const cd = response.headers.get("content-disposition") || "";
+          const match = cd.match(/filename="?([^";\s]+)"?/);
+          if (match) fileName = match[1];
+        }
+        if (!fileName) fileName = "download.zip";
         const fileSize = parseInt(response.headers.get("x-file-size") || "0", 10);
         const appName = response.headers.get("x-app-name") || "App";
 
