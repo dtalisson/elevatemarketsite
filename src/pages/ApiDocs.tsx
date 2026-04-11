@@ -2,7 +2,7 @@ import { DashboardLayout } from "@/components/DashboardLayout";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
-import { Shield, Wifi, LogIn, UserPlus, Key, AlertTriangle, Lock, Bot, Code, BookOpen } from "lucide-react";
+import { Shield, Wifi, LogIn, UserPlus, Key, AlertTriangle, Lock, Bot, Code, BookOpen, Download } from "lucide-react";
 
 const ApiDocs = () => {
   const baseUrl = `https://${import.meta.env.VITE_SUPABASE_PROJECT_ID || "your-project"}.supabase.co/functions/v1`;
@@ -518,6 +518,60 @@ const ApiDocs = () => {
   ]
 }`}
                     </pre>
+                  </div>
+                </div>
+              </CardContent>
+            </Card>
+
+            {/* DOWNLOAD WITH LICENSE */}
+            <Card className="border-border/50 bg-card">
+              <CardHeader>
+                <div className="flex items-center gap-2">
+                  <Download className="h-4 w-4 text-emerald-400" />
+                  <Badge className="bg-emerald-600 hover:bg-emerald-700">POST</Badge>
+                  <CardTitle className="text-base">Download com Licença</CardTitle>
+                </div>
+                <p className="text-xs text-muted-foreground mt-1">Retorna URL de download assinada para o arquivo da aplicação vinculada à licença. <strong>Não requer HMAC</strong> — ideal para bots e páginas públicas.</p>
+              </CardHeader>
+              <CardContent>
+                <div className="space-y-4">
+                  <div>
+                    <p className="mb-2 text-xs font-medium text-muted-foreground">ENDPOINT</p>
+                    <code className="block rounded-lg bg-muted p-3 font-mono text-sm text-foreground">POST {baseUrl}/download-with-license</code>
+                  </div>
+                  <div>
+                    <p className="mb-2 text-xs font-medium text-muted-foreground">BODY</p>
+                    <pre className="rounded-lg bg-muted p-3 font-mono text-sm text-foreground">
+{`{
+  "license_key": "ABC123XYZ456"
+}`}
+                    </pre>
+                  </div>
+                  <div>
+                    <p className="mb-2 text-xs font-medium text-muted-foreground">RESPOSTA (200)</p>
+                    <pre className="rounded-lg bg-muted p-3 font-mono text-sm text-success">
+{`{
+  "success": true,
+  "download": {
+    "url": "https://...signed-url...",
+    "file_name": "MeuApp-v1.2.exe",
+    "file_size": 5242880,
+    "version": "1.2.0",
+    "app_name": "Aimbot"
+  }
+}`}
+                    </pre>
+                  </div>
+                  <div>
+                    <p className="mb-2 text-xs font-medium text-muted-foreground">ERROS</p>
+                    <pre className="rounded-lg bg-muted p-3 font-mono text-sm text-destructive">
+{`400 — Chave de licença inválida
+404 — Licença não encontrada / Nenhum download disponível
+403 — Licença suspensa ou expirada`}
+                    </pre>
+                  </div>
+                  <div className="rounded-lg border border-primary/30 bg-primary/10 p-3 text-sm text-muted-foreground">
+                    <strong className="text-primary">💡 Como funciona:</strong> O endpoint identifica a <code className="text-primary">application_id</code> da licença e busca o arquivo mais recente cadastrado em <strong className="text-foreground">Downloads</strong> no painel. A URL assinada expira em <strong>5 minutos</strong>.
                   </div>
                 </div>
               </CardContent>
@@ -1330,6 +1384,93 @@ app.listen(3001, () => console.log('Webhook server na porta 3001'));`}
             </Card>
 
 
+            {/* Download Command */}
+            <Card className="border-border/50 bg-card">
+              <CardHeader>
+                <CardTitle className="text-base">📥 Comando: Download com Licença</CardTitle>
+                <p className="text-xs text-muted-foreground mt-1">Permite que o usuário baixe o loader/app diretamente pelo Discord usando sua license key</p>
+              </CardHeader>
+              <CardContent>
+                <div className="space-y-4">
+                  <div className="rounded-lg bg-primary/10 border border-primary/30 p-3 text-sm text-muted-foreground">
+                    <strong className="text-primary">💡 Como funciona:</strong> O bot chama <code className="text-primary">POST /download-with-license</code> com a key do usuário. A API identifica a aplicação da licença e retorna o download correspondente. Se a key é do <strong className="text-foreground">Aimbot</strong>, baixa o Aimbot. Se é do <strong className="text-foreground">ESP</strong>, baixa o ESP.
+                  </div>
+
+                  <div>
+                    <p className="mb-2 text-xs font-medium text-muted-foreground">ADICIONAR AO ARRAY DE COMMANDS</p>
+                    <pre className="rounded-lg bg-muted p-3 font-mono text-xs text-foreground overflow-x-auto whitespace-pre">
+{`// Adicione junto com o comando /criarkey no array commands[]
+new SlashCommandBuilder()
+  .setName('download')
+  .setDescription('Baixar o loader usando sua license key')
+  .addStringOption(opt =>
+    opt.setName('key')
+      .setDescription('Sua license key')
+      .setRequired(true)),`}
+                    </pre>
+                  </div>
+
+                  <div>
+                    <p className="mb-2 text-xs font-medium text-muted-foreground">HANDLER DO COMANDO</p>
+                    <pre className="rounded-lg bg-muted p-3 font-mono text-xs text-foreground overflow-x-auto whitespace-pre">
+{`// Adicione dentro do client.on('interactionCreate', ...)
+
+if (interaction.commandName === 'download') {
+  await interaction.deferReply({ ephemeral: true });
+
+  const licenseKey = interaction.options.getString('key');
+
+  try {
+    const { data } = await axios.post(ELEVATE_API + '/download-with-license', {
+      license_key: licenseKey
+    });
+
+    if (!data.success) {
+      return interaction.editReply(\`❌ \${data.message || 'Key inválida'}\`);
+    }
+
+    const dl = data.download;
+    const sizeMB = (dl.file_size / 1048576).toFixed(1);
+
+    await interaction.editReply(
+      \`✅ **Download pronto!**\\n\\n\` +
+      \`📦 **\${dl.app_name}** \${dl.version ? \`v\${dl.version}\` : ''}\\n\` +
+      \`📁 \${dl.file_name} (\${sizeMB} MB)\\n\\n\` +
+      \`🔗 [Clique para baixar](\${dl.url})\\n\\n\` +
+      \`⚠️ O link expira em **5 minutos**. Não compartilhe!\`
+    );
+  } catch (err) {
+    const msg = err.response?.data?.message || err.message;
+    await interaction.editReply(\`❌ Erro: \${msg}\`);
+  }
+}`}
+                    </pre>
+                  </div>
+
+                  <div>
+                    <p className="mb-2 text-xs font-medium text-muted-foreground">FLUXO COMPLETO</p>
+                    <div className="flex flex-col gap-2 text-sm text-muted-foreground">
+                      <div className="flex items-start gap-3">
+                        <Badge variant="outline" className="shrink-0 mt-0.5 border-emerald-500/50 text-emerald-400">1</Badge>
+                        <span>Usuário digita <code className="text-primary">/download key:SUA-KEY-AQUI</code></span>
+                      </div>
+                      <div className="flex items-start gap-3">
+                        <Badge variant="outline" className="shrink-0 mt-0.5 border-emerald-500/50 text-emerald-400">2</Badge>
+                        <span>Bot envia a key para <code className="text-primary">/download-with-license</code></span>
+                      </div>
+                      <div className="flex items-start gap-3">
+                        <Badge variant="outline" className="shrink-0 mt-0.5 border-emerald-500/50 text-emerald-400">3</Badge>
+                        <span>API valida a licença e retorna o download da <strong className="text-foreground">aplicação vinculada</strong></span>
+                      </div>
+                      <div className="flex items-start gap-3">
+                        <Badge variant="outline" className="shrink-0 mt-0.5 border-emerald-500/50 text-emerald-400">4</Badge>
+                        <span>Bot envia o link <strong className="text-foreground">ephemeral</strong> (só o usuário vê) com expiração de 5 min</span>
+                      </div>
+                    </div>
+                  </div>
+                </div>
+              </CardContent>
+            </Card>
 
             {/* Tips */}
             <Card className="border-border/50 bg-card">
