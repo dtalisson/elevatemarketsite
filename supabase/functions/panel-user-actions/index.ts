@@ -146,7 +146,13 @@ Deno.serve(async (req) => {
     const rlKey = `panel_action:${panelUser.id}:${clientIp}`;
     const { data: rlAllowed } = await supabase.rpc("check_rate_limit", { p_key: rlKey, p_max_requests: 30, p_window_seconds: 60 });
     if (rlAllowed === false) {
-      return new Response(JSON.stringify({ success: false, message: "Rate limit atingido", token: newToken }), { status: 429, headers: allHeaders });
+      return new Response(JSON.stringify({
+        success: false,
+        message: "Rate limit atingido",
+        rate_limited: true,
+        fallback: true,
+        token: newToken,
+      }), { status: 200, headers: allHeaders });
     }
 
     switch (action) {
@@ -253,6 +259,11 @@ Deno.serve(async (req) => {
     }
   } catch (err) {
     console.error("Action error:", err);
-    return new Response(JSON.stringify({ success: false, message: "Erro interno" }), { status: 500, headers: allHeaders });
+    return new Response(JSON.stringify({
+      success: false,
+      message: "Erro interno",
+      fallback: true,
+      token: newToken,
+    }), { status: 200, headers: allHeaders });
   }
 });
