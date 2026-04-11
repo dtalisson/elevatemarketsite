@@ -60,6 +60,7 @@ const panelEventLabels: Record<string, { label: string; color: string; descripti
   license_created: { label: "Key Criada", color: "bg-primary/10 text-primary", description: "Revendedor criou nova(s) licença(s)." },
   user_deleted: { label: "User Deletado", color: "bg-destructive/10 text-destructive", description: "Revendedor deletou um usuário de software." },
   hwid_reset: { label: "HWID Reset", color: "bg-warning/10 text-warning", description: "Revendedor resetou o HWID de um usuário." },
+  license_deleted: { label: "Key Deletada", color: "bg-destructive/10 text-destructive", description: "Revendedor deletou uma licença." },
 };
 
 const LogsPage = () => {
