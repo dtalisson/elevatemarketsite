@@ -93,7 +93,7 @@ Deno.serve(async (req) => {
       .select("license_key, status, remaining_seconds, note, created_at");
 
     if (insertErr) {
-      console.error("Insert error:", insertErr);
+      
       return new Response(
         JSON.stringify({ success: false, message: "Failed to create licenses" }),
         { status: 500, headers: allHeaders }
