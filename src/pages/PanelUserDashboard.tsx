@@ -290,6 +290,7 @@ const PanelUserDashboard = () => {
                           <th className="px-4 py-3 text-left text-xs font-medium text-muted-foreground">Status</th>
                           <th className="px-4 py-3 text-left text-xs font-medium text-muted-foreground">Nota</th>
                           <th className="px-4 py-3 text-left text-xs font-medium text-muted-foreground">Criada</th>
+                          <th className="px-4 py-3 text-right text-xs font-medium text-muted-foreground">Ações</th>
                         </tr>
                       </thead>
                       <tbody>
@@ -306,6 +307,25 @@ const PanelUserDashboard = () => {
                             </td>
                             <td className="px-4 py-3 text-xs text-muted-foreground max-w-[200px] truncate">{l.note || "—"}</td>
                             <td className="px-4 py-3 text-xs text-muted-foreground">{new Date(l.created_at).toLocaleDateString("pt-BR")}</td>
+                            <td className="px-4 py-3 text-right">
+                              <AlertDialog>
+                                <AlertDialogTrigger asChild>
+                                  <Button size="sm" variant="ghost" className="h-7 w-7 p-0 text-destructive hover:text-destructive">
+                                    <Trash2 className="h-3.5 w-3.5" />
+                                  </Button>
+                                </AlertDialogTrigger>
+                                <AlertDialogContent>
+                                  <AlertDialogHeader>
+                                    <AlertDialogTitle>Excluir licença?</AlertDialogTitle>
+                                    <AlertDialogDescription>A licença e usuários associados serão removidos permanentemente.</AlertDialogDescription>
+                                  </AlertDialogHeader>
+                                  <AlertDialogFooter>
+                                    <AlertDialogCancel>Cancelar</AlertDialogCancel>
+                                    <AlertDialogAction onClick={() => handleDeleteLicense(l.id)} className="bg-destructive hover:bg-destructive/90">Excluir</AlertDialogAction>
+                                  </AlertDialogFooter>
+                                </AlertDialogContent>
+                              </AlertDialog>
+                            </td>
                           </tr>
                         ))}
                       </tbody>
