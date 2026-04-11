@@ -4,6 +4,25 @@ import { supabase } from "@/integrations/supabase/client";
 import { toast } from "sonner";
 import { ArrowRight } from "lucide-react";
 
+const API_BASE = `${import.meta.env.VITE_SUPABASE_URL}/functions/v1`;
+
+function getFingerprint(): string {
+  const nav = navigator;
+  const raw = [nav.userAgent, nav.language, screen.width + "x" + screen.height, screen.colorDepth, Intl.DateTimeFormat().resolvedOptions().timeZone, nav.hardwareConcurrency].join("|");
+  let hash = 0;
+  for (let i = 0; i < raw.length; i++) { hash = ((hash << 5) - hash) + raw.charCodeAt(i); hash |= 0; }
+  return Math.abs(hash).toString(36);
+}
+
+function buildSecurityHeaders(): Record<string, string> {
+  return {
+    "Content-Type": "application/json",
+    "x-request-timestamp": Date.now().toString(),
+    "x-request-nonce": crypto.randomUUID(),
+    "x-client-fingerprint": getFingerprint(),
+  };
+}
+
 const Login = () => {
   const [username, setUsername] = useState("");
   const [password, setPassword] = useState("");
