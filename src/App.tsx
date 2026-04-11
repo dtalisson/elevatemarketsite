@@ -24,8 +24,6 @@ import SiteSecurityPage from "./pages/SiteSecurityPage";
 
 const queryClient = new QueryClient();
 
-const ADMIN_BASE = "/sys-ctrl";
-
 const AdminRoutes = () => (
   <AuthProvider>
     <Routes>
@@ -54,7 +52,7 @@ const App = () => (
       <BrowserRouter>
         <Routes>
           <Route path="/" element={<PublicDownload />} />
-          <Route path={`${ADMIN_BASE}/*`} element={<AdminRoutes />} />
+          <Route path="/dashboard/*" element={<AdminRoutes />} />
           <Route path="*" element={<NotFound />} />
         </Routes>
       </BrowserRouter>
