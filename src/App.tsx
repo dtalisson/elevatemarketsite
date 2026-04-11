@@ -4,6 +4,7 @@ import { Toaster as Sonner } from "@/components/ui/sonner";
 import { Toaster } from "@/components/ui/toaster";
 import { TooltipProvider } from "@/components/ui/tooltip";
 import { AuthProvider } from "@/contexts/AuthContext";
+import { PanelUserProvider } from "@/contexts/PanelUserContext";
 import { ProtectedRoute } from "@/components/ProtectedRoute";
 import Index from "./pages/Index";
 import NotFound from "./pages/NotFound";
@@ -21,36 +22,48 @@ import OnlinePage from "./pages/OnlinePage";
 import DownloadsPage from "./pages/DownloadsPage";
 import BlacklistPage from "./pages/BlacklistPage";
 import PublicDownload from "./pages/PublicDownload";
+import PanelUsersPage from "./pages/PanelUsersPage";
+import PanelUserLogin from "./pages/PanelUserLogin";
+import PanelUserDashboard from "./pages/PanelUserDashboard";
+import { PanelProtectedRoute } from "@/components/PanelProtectedRoute";
 
 const queryClient = new QueryClient();
 
 const App = () => (
   <QueryClientProvider client={queryClient}>
     <AuthProvider>
-      <TooltipProvider>
-        <Toaster />
-        <Sonner />
-        <BrowserRouter>
-          <Routes>
-            <Route path="/" element={<Index />} />
-            <Route path="/login" element={<Login />} />
-            <Route path="/download" element={<PublicDownload />} />
-            
-            <Route path="/dashboard" element={<ProtectedRoute><Dashboard /></ProtectedRoute>} />
-            <Route path="/dashboard/applications" element={<ProtectedRoute><Applications /></ProtectedRoute>} />
-            <Route path="/dashboard/licenses" element={<ProtectedRoute><Licenses /></ProtectedRoute>} />
-            <Route path="/dashboard/users" element={<ProtectedRoute><UsersPage /></ProtectedRoute>} />
-            <Route path="/dashboard/logs" element={<ProtectedRoute><LogsPage /></ProtectedRoute>} />
-            <Route path="/dashboard/hwid-logs" element={<ProtectedRoute><HwidLogsPage /></ProtectedRoute>} />
-            <Route path="/dashboard/online" element={<ProtectedRoute><OnlinePage /></ProtectedRoute>} />
-            <Route path="/dashboard/security-logs" element={<ProtectedRoute><SecurityLogsPage /></ProtectedRoute>} />
-            <Route path="/dashboard/downloads" element={<ProtectedRoute><DownloadsPage /></ProtectedRoute>} />
-            <Route path="/dashboard/blacklist" element={<ProtectedRoute><BlacklistPage /></ProtectedRoute>} />
-            <Route path="/dashboard/docs" element={<ProtectedRoute><ApiDocs /></ProtectedRoute>} />
-            <Route path="*" element={<NotFound />} />
-          </Routes>
-        </BrowserRouter>
-      </TooltipProvider>
+      <PanelUserProvider>
+        <TooltipProvider>
+          <Toaster />
+          <Sonner />
+          <BrowserRouter>
+            <Routes>
+              <Route path="/" element={<Index />} />
+              <Route path="/login" element={<Login />} />
+              <Route path="/download" element={<PublicDownload />} />
+              
+              {/* Panel user (sub-user/reseller) routes */}
+              <Route path="/panel/login" element={<PanelUserLogin />} />
+              <Route path="/panel" element={<PanelProtectedRoute><PanelUserDashboard /></PanelProtectedRoute>} />
+              
+              {/* Admin routes */}
+              <Route path="/dashboard" element={<ProtectedRoute><Dashboard /></ProtectedRoute>} />
+              <Route path="/dashboard/applications" element={<ProtectedRoute><Applications /></ProtectedRoute>} />
+              <Route path="/dashboard/licenses" element={<ProtectedRoute><Licenses /></ProtectedRoute>} />
+              <Route path="/dashboard/users" element={<ProtectedRoute><UsersPage /></ProtectedRoute>} />
+              <Route path="/dashboard/panel-users" element={<ProtectedRoute><PanelUsersPage /></ProtectedRoute>} />
+              <Route path="/dashboard/logs" element={<ProtectedRoute><LogsPage /></ProtectedRoute>} />
+              <Route path="/dashboard/hwid-logs" element={<ProtectedRoute><HwidLogsPage /></ProtectedRoute>} />
+              <Route path="/dashboard/online" element={<ProtectedRoute><OnlinePage /></ProtectedRoute>} />
+              <Route path="/dashboard/security-logs" element={<ProtectedRoute><SecurityLogsPage /></ProtectedRoute>} />
+              <Route path="/dashboard/downloads" element={<ProtectedRoute><DownloadsPage /></ProtectedRoute>} />
+              <Route path="/dashboard/blacklist" element={<ProtectedRoute><BlacklistPage /></ProtectedRoute>} />
+              <Route path="/dashboard/docs" element={<ProtectedRoute><ApiDocs /></ProtectedRoute>} />
+              <Route path="*" element={<NotFound />} />
+            </Routes>
+          </BrowserRouter>
+        </TooltipProvider>
+      </PanelUserProvider>
     </AuthProvider>
   </QueryClientProvider>
 );

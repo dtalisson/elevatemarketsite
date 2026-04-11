@@ -2,7 +2,7 @@ import { ReactNode, useState } from "react";
 import { Link, useLocation } from "react-router-dom";
 import { useAuth } from "@/contexts/AuthContext";
 import {
-  LayoutDashboard, ScrollText, Key, AppWindow, Users, LogOut, Code, Menu, X, Wifi, ShieldAlert, ShieldX, Download, Ban,
+  LayoutDashboard, ScrollText, Key, AppWindow, Users, LogOut, Code, Menu, X, Wifi, ShieldAlert, ShieldX, Download, Ban, UserCog,
 } from "lucide-react";
 import { cn } from "@/lib/utils";
 
@@ -15,6 +15,7 @@ const navSections = [
       { label: "Licenças", icon: Key, href: "/dashboard/licenses" },
       { label: "Usuários", icon: Users, href: "/dashboard/users" },
       { label: "Online", icon: Wifi, href: "/dashboard/online" },
+      { label: "Painel Users", icon: UserCog, href: "/dashboard/panel-users" },
     ],
   },
   {
