@@ -5,9 +5,9 @@ import { Toaster } from "@/components/ui/toaster";
 import { TooltipProvider } from "@/components/ui/tooltip";
 import { AuthProvider } from "@/contexts/AuthContext";
 import { ProtectedRoute } from "@/components/ProtectedRoute";
+import Index from "./pages/Index";
 import NotFound from "./pages/NotFound";
 import Login from "./pages/Login";
-import PublicDownload from "./pages/PublicDownload";
 
 import Dashboard from "./pages/Dashboard";
 import Applications from "./pages/Applications";
@@ -20,43 +20,38 @@ import ApiDocs from "./pages/ApiDocs";
 import OnlinePage from "./pages/OnlinePage";
 import DownloadsPage from "./pages/DownloadsPage";
 import BlacklistPage from "./pages/BlacklistPage";
-import SiteSecurityPage from "./pages/SiteSecurityPage";
+import PublicDownload from "./pages/PublicDownload";
 
 const queryClient = new QueryClient();
 
-const AdminRoutes = () => (
-  <AuthProvider>
-    <Routes>
-      <Route path="login" element={<Login />} />
-      <Route path="" element={<ProtectedRoute><Dashboard /></ProtectedRoute>} />
-      <Route path="applications" element={<ProtectedRoute><Applications /></ProtectedRoute>} />
-      <Route path="licenses" element={<ProtectedRoute><Licenses /></ProtectedRoute>} />
-      <Route path="users" element={<ProtectedRoute><UsersPage /></ProtectedRoute>} />
-      <Route path="logs" element={<ProtectedRoute><LogsPage /></ProtectedRoute>} />
-      <Route path="hwid-logs" element={<ProtectedRoute><HwidLogsPage /></ProtectedRoute>} />
-      <Route path="online" element={<ProtectedRoute><OnlinePage /></ProtectedRoute>} />
-      <Route path="security-logs" element={<ProtectedRoute><SecurityLogsPage /></ProtectedRoute>} />
-      <Route path="downloads" element={<ProtectedRoute><DownloadsPage /></ProtectedRoute>} />
-      <Route path="blacklist" element={<ProtectedRoute><BlacklistPage /></ProtectedRoute>} />
-      <Route path="docs" element={<ProtectedRoute><ApiDocs /></ProtectedRoute>} />
-      <Route path="site-security" element={<ProtectedRoute><SiteSecurityPage /></ProtectedRoute>} />
-    </Routes>
-  </AuthProvider>
-);
-
 const App = () => (
   <QueryClientProvider client={queryClient}>
-    <TooltipProvider>
-      <Toaster />
-      <Sonner />
-      <BrowserRouter>
-        <Routes>
-          <Route path="/download" element={<PublicDownload />} />
-          <Route path="/*" element={<AdminRoutes />} />
-          <Route path="*" element={<NotFound />} />
-        </Routes>
-      </BrowserRouter>
-    </TooltipProvider>
+    <AuthProvider>
+      <TooltipProvider>
+        <Toaster />
+        <Sonner />
+        <BrowserRouter>
+          <Routes>
+            <Route path="/" element={<Index />} />
+            <Route path="/login" element={<Login />} />
+            <Route path="/download" element={<PublicDownload />} />
+            
+            <Route path="/dashboard" element={<ProtectedRoute><Dashboard /></ProtectedRoute>} />
+            <Route path="/dashboard/applications" element={<ProtectedRoute><Applications /></ProtectedRoute>} />
+            <Route path="/dashboard/licenses" element={<ProtectedRoute><Licenses /></ProtectedRoute>} />
+            <Route path="/dashboard/users" element={<ProtectedRoute><UsersPage /></ProtectedRoute>} />
+            <Route path="/dashboard/logs" element={<ProtectedRoute><LogsPage /></ProtectedRoute>} />
+            <Route path="/dashboard/hwid-logs" element={<ProtectedRoute><HwidLogsPage /></ProtectedRoute>} />
+            <Route path="/dashboard/online" element={<ProtectedRoute><OnlinePage /></ProtectedRoute>} />
+            <Route path="/dashboard/security-logs" element={<ProtectedRoute><SecurityLogsPage /></ProtectedRoute>} />
+            <Route path="/dashboard/downloads" element={<ProtectedRoute><DownloadsPage /></ProtectedRoute>} />
+            <Route path="/dashboard/blacklist" element={<ProtectedRoute><BlacklistPage /></ProtectedRoute>} />
+            <Route path="/dashboard/docs" element={<ProtectedRoute><ApiDocs /></ProtectedRoute>} />
+            <Route path="*" element={<NotFound />} />
+          </Routes>
+        </BrowserRouter>
+      </TooltipProvider>
+    </AuthProvider>
   </QueryClientProvider>
 );
 

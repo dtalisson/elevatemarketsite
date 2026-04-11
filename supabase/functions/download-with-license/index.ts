@@ -3,9 +3,9 @@ import { createClient } from "https://esm.sh/@supabase/supabase-js@2.49.4";
 const corsHeaders = {
   "Access-Control-Allow-Origin": "*",
   "Access-Control-Allow-Headers": "authorization, x-client-info, apikey, content-type",
-  "Access-Control-Expose-Headers": "Content-Disposition, X-File-Name, X-File-Size, X-App-Name, X-File-Version",
 };
-const jsonHeaders = { ...corsHeaders, "Content-Type": "application/json" };
+
+const allHeaders = { ...corsHeaders, "Content-Type": "application/json" };
 
 Deno.serve(async (req) => {
   if (req.method === "OPTIONS") {
@@ -19,7 +19,7 @@ Deno.serve(async (req) => {
     if (!license_key || typeof license_key !== "string" || license_key.length > 64) {
       return new Response(
         JSON.stringify({ success: false, message: "Chave de licença inválida" }),
-        { status: 400, headers: jsonHeaders }
+        { status: 400, headers: allHeaders }
       );
     }
 
@@ -37,21 +37,21 @@ Deno.serve(async (req) => {
     if (licErr || !license) {
       return new Response(
         JSON.stringify({ success: false, message: "Licença não encontrada" }),
-        { status: 404, headers: jsonHeaders }
+        { status: 404, headers: allHeaders }
       );
     }
 
     if (license.status === "banned") {
       return new Response(
         JSON.stringify({ success: false, message: "Licença suspensa" }),
-        { status: 403, headers: jsonHeaders }
+        { status: 403, headers: allHeaders }
       );
     }
 
     if (license.status === "expired" || (license.expires_at && new Date(license.expires_at) < new Date())) {
       return new Response(
         JSON.stringify({ success: false, message: "Licença expirada" }),
-        { status: 403, headers: jsonHeaders }
+        { status: 403, headers: allHeaders }
       );
     }
 
@@ -67,41 +67,39 @@ Deno.serve(async (req) => {
     if (dlErr || !dl) {
       return new Response(
         JSON.stringify({ success: false, message: "Nenhum download disponível para esta aplicação" }),
-        { status: 404, headers: jsonHeaders }
+        { status: 404, headers: allHeaders }
       );
     }
 
-    // Download file directly from storage (stream it through the edge function)
-    const { data: fileData, error: fileErr } = await supabase.storage
+    // Generate a signed URL (valid for 5 minutes)
+    const { data: signedUrl, error: urlErr } = await supabase.storage
       .from("downloads")
-      .download(dl.file_path);
+      .createSignedUrl(dl.file_path, 300);
 
-    if (fileErr || !fileData) {
+    if (urlErr || !signedUrl) {
       return new Response(
-        JSON.stringify({ success: false, message: "Erro ao obter arquivo" }),
-        { status: 500, headers: jsonHeaders }
+        JSON.stringify({ success: false, message: "Erro ao gerar link de download" }),
+        { status: 500, headers: allHeaders }
       );
     }
 
-    const fileName = dl.file_name || "download";
-
-    return new Response(fileData, {
-      status: 200,
-      headers: {
-        ...corsHeaders,
-        "Content-Type": "application/octet-stream",
-        "Content-Disposition": `attachment; filename="${fileName}"`,
-        "Content-Length": String(dl.file_size || fileData.size),
-        "X-File-Name": fileName,
-        "X-File-Size": String(dl.file_size || fileData.size),
-        "X-App-Name": (dl as any).applications?.name || "App",
-        "X-File-Version": dl.version || "",
-      },
-    });
+    return new Response(
+      JSON.stringify({
+        success: true,
+        download: {
+          url: signedUrl.signedUrl,
+          file_name: dl.file_name,
+          file_size: dl.file_size,
+          version: dl.version,
+          app_name: (dl as any).applications?.name || "App",
+        },
+      }),
+      { status: 200, headers: allHeaders }
+    );
   } catch {
     return new Response(
       JSON.stringify({ success: false, message: "Erro interno" }),
-      { status: 500, headers: jsonHeaders }
+      { status: 500, headers: allHeaders }
     );
   }
 });

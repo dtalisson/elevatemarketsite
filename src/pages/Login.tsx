@@ -2,83 +2,22 @@ import { useState, useEffect, useRef } from "react";
 import { useNavigate } from "react-router-dom";
 import { supabase } from "@/integrations/supabase/client";
 import { toast } from "sonner";
-import { ArrowRight, ShieldAlert } from "lucide-react";
-
-function generateFingerprint(): string {
-  const canvas = document.createElement("canvas");
-  const ctx = canvas.getContext("2d");
-  if (ctx) {
-    ctx.textBaseline = "top";
-    ctx.font = "14px Arial";
-    ctx.fillText("fp", 2, 2);
-  }
-  const parts = [
-    navigator.userAgent,
-    navigator.language,
-    screen.width + "x" + screen.height,
-    screen.colorDepth,
-    new Date().getTimezoneOffset(),
-    navigator.hardwareConcurrency || 0,
-    canvas.toDataURL().slice(-32),
-  ];
-  // Simple hash
-  let hash = 0;
-  const str = parts.join("|");
-  for (let i = 0; i < str.length; i++) {
-    const chr = str.charCodeAt(i);
-    hash = ((hash << 5) - hash) + chr;
-    hash |= 0;
-  }
-  return Math.abs(hash).toString(16).padStart(8, "0");
-}
+import { ArrowRight } from "lucide-react";
 
 const Login = () => {
   const [username, setUsername] = useState("");
   const [password, setPassword] = useState("");
   const [loading, setLoading] = useState(false);
-  const [attempts, setAttempts] = useState(0);
-  const [blocked, setBlocked] = useState(false);
   const navigate = useNavigate();
   const canvasRef = useRef<HTMLCanvasElement>(null);
 
   const handleLogin = async (e: React.FormEvent) => {
     e.preventDefault();
-    if (blocked) return;
     setLoading(true);
-
-    try {
-      const fingerprint = generateFingerprint();
-
-      const { data, error } = await supabase.functions.invoke("admin-login", {
-        body: { username: username.trim(), password, fingerprint },
-      });
-
-      if (error || !data?.success) {
-        const msg = data?.message || "Credenciais inválidas";
-        toast.error(msg);
-        setAttempts((a) => a + 1);
-
-        if (msg.includes("Muitas tentativas") || msg.includes("bloqueada")) {
-          setBlocked(true);
-          setTimeout(() => setBlocked(false), 60000);
-        }
-      } else if (data.session) {
-        // Set session from returned tokens
-        const { error: sessionError } = await supabase.auth.setSession({
-          access_token: data.session.access_token,
-          refresh_token: data.session.refresh_token,
-        });
-
-        if (sessionError) {
-          toast.error("Erro ao iniciar sessão");
-        } else {
-          navigate("/");
-        }
-      }
-    } catch {
-      toast.error("Erro de conexão");
-    }
-
+    const email = `${username.toLowerCase()}@elevateauth.local`;
+    const { error } = await supabase.auth.signInWithPassword({ email, password });
+    if (error) toast.error("Usuário ou senha incorretos");
+    else navigate("/dashboard");
     setLoading(false);
   };
 
@@ -148,64 +87,45 @@ const Login = () => {
         </div>
 
         <div className="rounded-xl border border-border/80 bg-card/80 p-6 backdrop-blur-xl">
-          {blocked ? (
-            <div className="flex flex-col items-center gap-3 py-4 text-center">
-              <ShieldAlert className="h-8 w-8 text-destructive" />
-              <p className="text-sm text-destructive font-medium">Acesso temporariamente bloqueado</p>
-              <p className="text-xs text-muted-foreground">Muitas tentativas. Aguarde antes de tentar novamente.</p>
+          <form onSubmit={handleLogin} className="space-y-4">
+            <div className="space-y-1.5">
+              <label htmlFor="username" className="block text-xs font-medium text-muted-foreground">Usuário</label>
+              <input
+                id="username"
+                placeholder="seu_usuario"
+                value={username}
+                onChange={(e) => setUsername(e.target.value)}
+                required
+                className="w-full h-10 px-3 rounded-lg text-sm bg-secondary border border-border text-foreground placeholder:text-muted-foreground/50 outline-none focus:border-primary/50 focus:ring-1 focus:ring-primary/20 transition-colors"
+              />
             </div>
-          ) : (
-            <form onSubmit={handleLogin} className="space-y-4">
-              <div className="space-y-1.5">
-                <label htmlFor="username" className="block text-xs font-medium text-muted-foreground">Usuário</label>
-                <input
-                  id="username"
-                  placeholder="seu_usuario"
-                  value={username}
-                  onChange={(e) => setUsername(e.target.value)}
-                  required
-                  maxLength={32}
-                  autoComplete="off"
-                  className="w-full h-10 px-3 rounded-lg text-sm bg-secondary border border-border text-foreground placeholder:text-muted-foreground/50 outline-none focus:border-primary/50 focus:ring-1 focus:ring-primary/20 transition-colors"
-                />
-              </div>
-              <div className="space-y-1.5">
-                <label htmlFor="password" className="block text-xs font-medium text-muted-foreground">Senha</label>
-                <input
-                  id="password"
-                  type="password"
-                  placeholder="••••••••"
-                  value={password}
-                  onChange={(e) => setPassword(e.target.value)}
-                  required
-                  maxLength={128}
-                  autoComplete="off"
-                  className="w-full h-10 px-3 rounded-lg text-sm bg-secondary border border-border text-foreground placeholder:text-muted-foreground/50 outline-none focus:border-primary/50 focus:ring-1 focus:ring-primary/20 transition-colors"
-                />
-              </div>
-
-              {attempts >= 2 && (
-                <p className="text-[11px] text-amber-400/80 text-center">
-                  ⚠️ {5 - attempts > 0 ? `${5 - attempts} tentativas restantes` : "Última tentativa"}
-                </p>
+            <div className="space-y-1.5">
+              <label htmlFor="password" className="block text-xs font-medium text-muted-foreground">Senha</label>
+              <input
+                id="password"
+                type="password"
+                placeholder="••••••••"
+                value={password}
+                onChange={(e) => setPassword(e.target.value)}
+                required
+                className="w-full h-10 px-3 rounded-lg text-sm bg-secondary border border-border text-foreground placeholder:text-muted-foreground/50 outline-none focus:border-primary/50 focus:ring-1 focus:ring-primary/20 transition-colors"
+              />
+            </div>
+            <button
+              type="submit"
+              disabled={loading}
+              className="w-full h-10 rounded-lg text-sm font-semibold bg-primary text-primary-foreground hover:brightness-110 transition-all disabled:opacity-50 flex items-center justify-center gap-2"
+            >
+              {loading ? (
+                <span className="flex items-center gap-2">
+                  <span className="h-4 w-4 animate-spin rounded-full border-2 border-primary-foreground/30 border-t-primary-foreground" />
+                  Entrando...
+                </span>
+              ) : (
+                <>Entrar <ArrowRight className="h-4 w-4" /></>
               )}
-
-              <button
-                type="submit"
-                disabled={loading}
-                className="w-full h-10 rounded-lg text-sm font-semibold bg-primary text-primary-foreground hover:brightness-110 transition-all disabled:opacity-50 flex items-center justify-center gap-2"
-              >
-                {loading ? (
-                  <span className="flex items-center gap-2">
-                    <span className="h-4 w-4 animate-spin rounded-full border-2 border-primary-foreground/30 border-t-primary-foreground" />
-                    Verificando...
-                  </span>
-                ) : (
-                  <>Entrar <ArrowRight className="h-4 w-4" /></>
-                )}
-              </button>
-            </form>
-          )}
+            </button>
+          </form>
         </div>
 
         <p className="mt-6 text-center text-[11px] text-muted-foreground/40">

@@ -49,45 +49,6 @@ export type Database = {
           },
         ]
       }
-      admin_login_logs: {
-        Row: {
-          city: string | null
-          country: string | null
-          created_at: string
-          failure_reason: string | null
-          fingerprint: string | null
-          id: string
-          ip_address: string | null
-          success: boolean
-          user_agent: string | null
-          username_attempted: string
-        }
-        Insert: {
-          city?: string | null
-          country?: string | null
-          created_at?: string
-          failure_reason?: string | null
-          fingerprint?: string | null
-          id?: string
-          ip_address?: string | null
-          success?: boolean
-          user_agent?: string | null
-          username_attempted: string
-        }
-        Update: {
-          city?: string | null
-          country?: string | null
-          created_at?: string
-          failure_reason?: string | null
-          fingerprint?: string | null
-          id?: string
-          ip_address?: string | null
-          success?: boolean
-          user_agent?: string | null
-          username_attempted?: string
-        }
-        Relationships: []
-      }
       applications: {
         Row: {
           created_at: string

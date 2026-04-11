@@ -2,43 +2,40 @@ import { ReactNode, useState } from "react";
 import { Link, useLocation } from "react-router-dom";
 import { useAuth } from "@/contexts/AuthContext";
 import {
-  LayoutDashboard, ScrollText, Key, AppWindow, Users, LogOut, Code, Menu, X, Wifi, ShieldAlert, ShieldX, Download, Ban, Globe,
+  LayoutDashboard, ScrollText, Key, AppWindow, Users, LogOut, Code, Menu, X, Wifi, ShieldAlert, ShieldX, Download, Ban,
 } from "lucide-react";
 import { cn } from "@/lib/utils";
-
-const B = "";
 
 const navSections = [
   {
     label: "PRINCIPAL",
     items: [
-      { label: "Dashboard", icon: LayoutDashboard, href: B },
-      { label: "Aplicações", icon: AppWindow, href: `${B}/applications` },
-      { label: "Licenças", icon: Key, href: `${B}/licenses` },
-      { label: "Usuários", icon: Users, href: `${B}/users` },
-      { label: "Online", icon: Wifi, href: `${B}/online` },
+      { label: "Dashboard", icon: LayoutDashboard, href: "/dashboard" },
+      { label: "Aplicações", icon: AppWindow, href: "/dashboard/applications" },
+      { label: "Licenças", icon: Key, href: "/dashboard/licenses" },
+      { label: "Usuários", icon: Users, href: "/dashboard/users" },
+      { label: "Online", icon: Wifi, href: "/dashboard/online" },
     ],
   },
   {
     label: "LOGS",
     items: [
-      { label: "Autenticação", icon: ScrollText, href: `${B}/logs` },
-      { label: "HWID", icon: ShieldAlert, href: `${B}/hwid-logs` },
+      { label: "Autenticação", icon: ScrollText, href: "/dashboard/logs" },
+      { label: "HWID", icon: ShieldAlert, href: "/dashboard/hwid-logs" },
     ],
   },
   {
     label: "SEGURANÇA",
     items: [
-      { label: "Alertas", icon: ShieldX, href: `${B}/security-logs` },
-      { label: "Blacklist", icon: Ban, href: `${B}/blacklist` },
-      { label: "Site", icon: Globe, href: `${B}/site-security` },
+      { label: "Alertas", icon: ShieldX, href: "/dashboard/security-logs" },
+      { label: "Blacklist", icon: Ban, href: "/dashboard/blacklist" },
     ],
   },
   {
     label: "FERRAMENTAS",
     items: [
-      { label: "Downloads", icon: Download, href: `${B}/downloads` },
-      { label: "API Docs", icon: Code, href: `${B}/docs` },
+      { label: "Downloads", icon: Download, href: "/dashboard/downloads" },
+      { label: "API Docs", icon: Code, href: "/dashboard/docs" },
     ],
   },
 ];
