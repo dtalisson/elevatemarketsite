@@ -293,6 +293,7 @@ export type Database = {
           license_key: string
           max_uses: number
           note: string | null
+          panel_user_id: string | null
           remaining_seconds: number | null
           status: Database["public"]["Enums"]["license_status"]
           updated_at: string
@@ -311,6 +312,7 @@ export type Database = {
           license_key?: string
           max_uses?: number
           note?: string | null
+          panel_user_id?: string | null
           remaining_seconds?: number | null
           status?: Database["public"]["Enums"]["license_status"]
           updated_at?: string
@@ -329,6 +331,7 @@ export type Database = {
           license_key?: string
           max_uses?: number
           note?: string | null
+          panel_user_id?: string | null
           remaining_seconds?: number | null
           status?: Database["public"]["Enums"]["license_status"]
           updated_at?: string
@@ -341,7 +344,80 @@ export type Database = {
             referencedRelation: "applications"
             referencedColumns: ["id"]
           },
+          {
+            foreignKeyName: "licenses_panel_user_id_fkey"
+            columns: ["panel_user_id"]
+            isOneToOne: false
+            referencedRelation: "panel_users"
+            referencedColumns: ["id"]
+          },
         ]
+      }
+      panel_user_applications: {
+        Row: {
+          application_id: string
+          id: string
+          panel_user_id: string
+        }
+        Insert: {
+          application_id: string
+          id?: string
+          panel_user_id: string
+        }
+        Update: {
+          application_id?: string
+          id?: string
+          panel_user_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "panel_user_applications_application_id_fkey"
+            columns: ["application_id"]
+            isOneToOne: false
+            referencedRelation: "applications"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "panel_user_applications_panel_user_id_fkey"
+            columns: ["panel_user_id"]
+            isOneToOne: false
+            referencedRelation: "panel_users"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      panel_users: {
+        Row: {
+          created_at: string
+          created_by: string
+          expires_at: string
+          id: string
+          is_active: boolean
+          password_hash: string
+          updated_at: string
+          username: string
+        }
+        Insert: {
+          created_at?: string
+          created_by: string
+          expires_at: string
+          id?: string
+          is_active?: boolean
+          password_hash: string
+          updated_at?: string
+          username: string
+        }
+        Update: {
+          created_at?: string
+          created_by?: string
+          expires_at?: string
+          id?: string
+          is_active?: boolean
+          password_hash?: string
+          updated_at?: string
+          username?: string
+        }
+        Relationships: []
       }
       pre_auth_tokens: {
         Row: {
