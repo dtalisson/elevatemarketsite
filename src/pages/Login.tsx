@@ -72,7 +72,7 @@ const Login = () => {
         if (sessionError) {
           toast.error("Erro ao iniciar sessão");
         } else {
-          navigate("/dashboard");
+          navigate("/");
         }
       }
     } catch {
