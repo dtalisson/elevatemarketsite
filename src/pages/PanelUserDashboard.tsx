@@ -1,4 +1,5 @@
 import { useState, useEffect, useRef, useCallback } from "react";
+import { useNavigate } from "react-router-dom";
 import { usePanelUser } from "@/contexts/PanelUserContext";
 import { toast } from "sonner";
 import { Key, Trash2, RotateCcw, LogOut, Plus, Users, Search, Copy, Clock, Eye } from "lucide-react";
