@@ -2,7 +2,7 @@ import { DashboardLayout } from "@/components/DashboardLayout";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
-import { Shield, Wifi, LogIn, UserPlus, Key, AlertTriangle, Lock, Bot, Code, BookOpen, Download } from "lucide-react";
+import { Shield, Wifi, LogIn, UserPlus, Key, AlertTriangle, Lock, Bot, Code, BookOpen, Download, RotateCcw } from "lucide-react";
 
 const ApiDocs = () => {
   const baseUrl = `https://${import.meta.env.VITE_SUPABASE_PROJECT_ID || "your-project"}.supabase.co/functions/v1`;
@@ -1216,6 +1216,13 @@ const commands = [
         .setRequired(false)
         .setMinValue(1)
         .setMaxValue(50)),
+  new SlashCommandBuilder()
+    .setName('resethwid')
+    .setDescription('Resetar o HWID de uma licença')
+    .addStringOption(opt =>
+      opt.setName('key')
+        .setDescription('License key para resetar')
+        .setRequired(true)),
 ];
 
 // ========== HANDLER ==========
@@ -1278,9 +1285,46 @@ client.on('interactionCreate', async interaction => {
       await interaction.editReply(\`❌ Erro ao criar key: \${msg}\`);
     }
   }
+
+  // ========== /resethwid ==========
+  if (interaction.commandName === 'resethwid') {
+    if (!interaction.member.permissions.has('Administrator')) {
+      return interaction.reply({
+        content: '❌ Apenas administradores podem resetar HWID.',
+        ephemeral: true
+      });
+    }
+
+    await interaction.deferReply({ ephemeral: true });
+    const licenseKey = interaction.options.getString('key');
+
+    try {
+      const { data } = await axios.post(ELEVATE_API + '/reset-hwid', {
+        app_secret: APP_SECRET,
+        license_key: licenseKey
+      });
+
+      if (!data.success) {
+        return interaction.editReply(\`❌ \${data.message}\`);
+      }
+
+      const users = data.users_reset.length > 0
+        ? \`\\n👤 Usuários resetados: \${data.users_reset.join(', ')}\`
+        : '';
+
+      await interaction.editReply(
+        \`✅ **HWID resetado com sucesso!**\\n\` +
+        \`🔑 Key: \\\`\${data.license_key}\\\`\${users}\\n\\n\` +
+        \`O próximo login vinculará o novo hardware.\`
+      );
+    } catch (err) {
+      const msg = err.response?.data?.message || err.message;
+      await interaction.editReply(\`❌ Erro ao resetar HWID: \${msg}\`);
+    }
+  }
 });
 
-// ========== START ==========
+
 client.once('ready', async () => {
   console.log(\`Bot online: \${client.user.tag}\`);
 
@@ -1465,6 +1509,93 @@ if (interaction.commandName === 'download') {
                       <div className="flex items-start gap-3">
                         <Badge variant="outline" className="shrink-0 mt-0.5 border-emerald-500/50 text-emerald-400">4</Badge>
                         <span>Bot envia o link <strong className="text-foreground">ephemeral</strong> (só o usuário vê) com expiração de 5 min</span>
+                      </div>
+                    </div>
+                  </div>
+                </div>
+              </CardContent>
+            </Card>
+
+            {/* Reset HWID Command */}
+            <Card className="border-border/50 bg-card">
+              <CardHeader>
+                <CardTitle className="text-base">🔄 Comando: Reset HWID</CardTitle>
+                <p className="text-xs text-muted-foreground mt-1">Permite que o admin resete o HWID de uma licença diretamente pelo Discord</p>
+              </CardHeader>
+              <CardContent>
+                <div className="space-y-4">
+                  <div>
+                    <p className="mb-2 text-xs font-medium text-muted-foreground">ADICIONAR AO ARRAY DE COMMANDS</p>
+                    <pre className="rounded-lg bg-muted p-3 font-mono text-xs text-foreground overflow-x-auto whitespace-pre">
+{`new SlashCommandBuilder()
+  .setName('resethwid')
+  .setDescription('Resetar o HWID de uma licença')
+  .addStringOption(opt =>
+    opt.setName('key')
+      .setDescription('License key para resetar')
+      .setRequired(true)),`}
+                    </pre>
+                  </div>
+
+                  <div>
+                    <p className="mb-2 text-xs font-medium text-muted-foreground">HANDLER DO COMANDO</p>
+                    <pre className="rounded-lg bg-muted p-3 font-mono text-xs text-foreground overflow-x-auto whitespace-pre">
+{`if (interaction.commandName === 'resethwid') {
+  if (!interaction.member.permissions.has('Administrator')) {
+    return interaction.reply({
+      content: '❌ Apenas administradores podem resetar HWID.',
+      ephemeral: true
+    });
+  }
+
+  await interaction.deferReply({ ephemeral: true });
+  const licenseKey = interaction.options.getString('key');
+
+  try {
+    const { data } = await axios.post(ELEVATE_API + '/reset-hwid', {
+      app_secret: APP_SECRET,
+      license_key: licenseKey
+    });
+
+    if (!data.success) {
+      return interaction.editReply(\`❌ \${data.message}\`);
+    }
+
+    const users = data.users_reset.length > 0
+      ? \`\\n👤 Usuários resetados: \${data.users_reset.join(', ')}\`
+      : '';
+
+    await interaction.editReply(
+      \`✅ **HWID resetado com sucesso!**\\n\` +
+      \`🔑 Key: \\\`\${data.license_key}\\\`\${users}\\n\\n\` +
+      \`O próximo login vinculará o novo hardware.\`
+    );
+  } catch (err) {
+    const msg = err.response?.data?.message || err.message;
+    await interaction.editReply(\`❌ Erro ao resetar HWID: \${msg}\`);
+  }
+}`}
+                    </pre>
+                  </div>
+
+                  <div>
+                    <p className="mb-2 text-xs font-medium text-muted-foreground">FLUXO</p>
+                    <div className="flex flex-col gap-2 text-sm text-muted-foreground">
+                      <div className="flex items-start gap-3">
+                        <Badge variant="outline" className="shrink-0 mt-0.5 border-orange-500/50 text-orange-400">1</Badge>
+                        <span>Admin digita <code className="text-primary">/resethwid key:ABC123XYZ456</code></span>
+                      </div>
+                      <div className="flex items-start gap-3">
+                        <Badge variant="outline" className="shrink-0 mt-0.5 border-orange-500/50 text-orange-400">2</Badge>
+                        <span>Bot chama <code className="text-primary">POST /reset-hwid</code> com app_secret + license_key</span>
+                      </div>
+                      <div className="flex items-start gap-3">
+                        <Badge variant="outline" className="shrink-0 mt-0.5 border-orange-500/50 text-orange-400">3</Badge>
+                        <span>API limpa o HWID da licença e do <strong className="text-foreground">software_user</strong> vinculado</span>
+                      </div>
+                      <div className="flex items-start gap-3">
+                        <Badge variant="outline" className="shrink-0 mt-0.5 border-orange-500/50 text-orange-400">4</Badge>
+                        <span>Próximo login do usuário vincula o <strong className="text-foreground">novo hardware</strong> automaticamente</span>
                       </div>
                     </div>
                   </div>
