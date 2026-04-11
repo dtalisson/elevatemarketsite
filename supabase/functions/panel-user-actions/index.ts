@@ -268,6 +268,25 @@ Deno.serve(async (req) => {
         return new Response(JSON.stringify({ success: true, message: "HWID resetado", token: newToken }), { headers: allHeaders });
       }
 
+      case "delete-license": {
+        const { license_id } = body;
+        if (!license_id) return new Response(JSON.stringify({ success: false, message: "license_id obrigatório", token: newToken }), { status: 400, headers: allHeaders });
+        const { data: lic } = await supabase.from("licenses").select("id, license_key, panel_user_id, application_id").eq("id", license_id).single();
+        if (!lic) return new Response(JSON.stringify({ success: false, message: "Licença não encontrada", token: newToken }), { status: 404, headers: allHeaders });
+        if (lic.panel_user_id !== panelUser.id) {
+          return new Response(JSON.stringify({ success: false, message: "Sem permissão", token: newToken }), { status: 403, headers: allHeaders });
+        }
+        // Delete associated software users first
+        await supabase.from("software_users").delete().eq("license_id", license_id);
+        await supabase.from("licenses").delete().eq("id", license_id);
+
+        await logPanelEvent(supabase, panelUser.id, "license_deleted", `Deletou licença ${lic.license_key}`, clientIp, {
+          license_key: lic.license_key, application_id: lic.application_id,
+        });
+
+        return new Response(JSON.stringify({ success: true, message: "Licença deletada", token: newToken }), { headers: allHeaders });
+      }
+
       case "get-apps": {
         const appIds = Array.from(allowedApps);
         if (appIds.length === 0) return new Response(JSON.stringify({ success: true, apps: [], token: newToken }), { headers: allHeaders });
