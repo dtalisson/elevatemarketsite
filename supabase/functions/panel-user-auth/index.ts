@@ -27,10 +27,10 @@ async function hmacVerify(data: string, signature: string, secret: string): Prom
 async function createToken(userId: string, fingerprint: string, secret: string): Promise<string> {
   const payload = {
     sub: userId,
-    fp: fingerprint,           // client fingerprint baked in
-    exp: Date.now() + 3600000, // 1h expiry (was 24h)
+    fp: fingerprint,
+    exp: Date.now() + 3600000,
     iat: Date.now(),
-    jti: crypto.randomUUID(),  // unique token id
+    jti: crypto.randomUUID(),
   };
   const payloadStr = JSON.stringify(payload);
   const sig = await hmacSign(payloadStr, secret);
@@ -53,12 +53,11 @@ async function verifyToken(token: string, secret: string): Promise<TokenPayload 
   } catch { return null; }
 }
 
-// ── Nonce store (in-memory, resets on cold start — acceptable for edge) ──
+// ── Nonce store ──
 const usedNonces = new Map<string, number>();
 function checkNonce(nonce: string): boolean {
-  // Clean old nonces every 100 entries
   if (usedNonces.size > 500) {
-    const cutoff = Date.now() - 120000; // 2 min
+    const cutoff = Date.now() - 120000;
     for (const [k, v] of usedNonces) { if (v < cutoff) usedNonces.delete(k); }
   }
   if (usedNonces.has(nonce)) return false;
@@ -66,14 +65,12 @@ function checkNonce(nonce: string): boolean {
   return true;
 }
 
-// ── Request security validation ──────────────────────────────
-async function validateRequestSecurity(req: Request, serviceKey: string): Promise<{ error?: string; fingerprint?: string }> {
+// ── Request security validation ──
+async function validateRequestSecurity(req: Request, _serviceKey: string): Promise<{ error?: string; fingerprint?: string }> {
   const timestamp = req.headers.get("x-request-timestamp");
   const nonce = req.headers.get("x-request-nonce");
-  const payloadSig = req.headers.get("x-payload-signature");
   const fingerprint = req.headers.get("x-client-fingerprint");
 
-  // Timestamp check — reject requests older than 60s
   if (timestamp) {
     const ts = parseInt(timestamp);
     if (isNaN(ts) || Math.abs(Date.now() - ts) > 60000) {
@@ -81,7 +78,6 @@ async function validateRequestSecurity(req: Request, serviceKey: string): Promis
     }
   }
 
-  // Nonce check — prevent replay
   if (nonce) {
     if (!checkNonce(nonce)) {
       return { error: "Request duplicado (replay detectado)" };
@@ -91,11 +87,23 @@ async function validateRequestSecurity(req: Request, serviceKey: string): Promis
   return { fingerprint: fingerprint || "unknown" };
 }
 
-// ── Payload signature verification ──────────────────────────
 async function verifyPayloadSignature(bodyStr: string, signature: string, secret: string): Promise<boolean> {
   try {
     return await hmacVerify(bodyStr, signature, secret);
   } catch { return false; }
+}
+
+// ── Log helper ──
+async function logPanelEvent(supabase: any, panelUserId: string, eventType: string, details: string, ip: string, metadata: Record<string, unknown> = {}) {
+  try {
+    await supabase.from("panel_user_logs").insert({
+      panel_user_id: panelUserId,
+      event_type: eventType,
+      details,
+      ip_address: ip,
+      metadata,
+    });
+  } catch (e) { console.error("Log error:", e); }
 }
 
 Deno.serve(async (req) => {
@@ -105,8 +113,8 @@ Deno.serve(async (req) => {
     const supabaseUrl = Deno.env.get("SUPABASE_URL")!;
     const serviceKey = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!;
     const supabase = createClient(supabaseUrl, serviceKey);
+    const clientIp = req.headers.get("x-forwarded-for")?.split(",")[0]?.trim() || "unknown";
 
-    // ── Security headers validation ──
     const secCheck = await validateRequestSecurity(req, serviceKey);
     if (secCheck.error) {
       return new Response(JSON.stringify({ success: false, message: secCheck.error }), { status: 403, headers: allHeaders });
@@ -121,7 +129,6 @@ Deno.serve(async (req) => {
       const decoded = await verifyToken(token, serviceKey);
       if (!decoded) return new Response(JSON.stringify({ valid: false }), { status: 401, headers: allHeaders });
 
-      // Fingerprint check
       if (decoded.fp !== secCheck.fingerprint && decoded.fp !== "unknown") {
         return new Response(JSON.stringify({ valid: false, message: "Fingerprint mismatch" }), { status: 401, headers: allHeaders });
       }
@@ -132,8 +139,6 @@ Deno.serve(async (req) => {
       }
 
       const { data: appLinks } = await supabase.from("panel_user_applications").select("application_id").eq("panel_user_id", pu.id);
-
-      // Token rotation — issue new token on each verify
       const newToken = await createToken(pu.id, secCheck.fingerprint || decoded.fp, serviceKey);
 
       return new Response(JSON.stringify({
@@ -146,8 +151,6 @@ Deno.serve(async (req) => {
 
     // ── POST = login ──
     const bodyStr = await req.text();
-
-    // Verify payload signature if present
     const payloadSig = req.headers.get("x-payload-signature");
     if (payloadSig) {
       const valid = await verifyPayloadSignature(bodyStr, payloadSig, serviceKey);
@@ -162,8 +165,7 @@ Deno.serve(async (req) => {
       return new Response(JSON.stringify({ success: false, message: "Usuário e senha obrigatórios" }), { status: 400, headers: allHeaders });
     }
 
-    // Rate limit login: 5 attempts per minute per IP
-    const clientIp = req.headers.get("x-forwarded-for")?.split(",")[0]?.trim() || "unknown";
+    // Rate limit
     const rlKey = `panel_login:${clientIp}`;
     const { data: rlAllowed } = await supabase.rpc("check_rate_limit", { p_key: rlKey, p_max_requests: 5, p_window_seconds: 60 });
     if (rlAllowed === false) {
@@ -172,10 +174,13 @@ Deno.serve(async (req) => {
 
     const { data: panelUser } = await supabase.from("panel_users").select("*").eq("username", username.toLowerCase()).eq("is_active", true).single();
     if (!panelUser) {
+      // Log failed login - user not found
+      await logPanelEvent(supabase, "00000000-0000-0000-0000-000000000000", "login_failed", `Tentativa de login com usuário inexistente: ${username}`, clientIp, { username_attempted: username.toLowerCase(), reason: "user_not_found" });
       return new Response(JSON.stringify({ success: false, message: "Credenciais inválidas" }), { status: 401, headers: allHeaders });
     }
 
     if (new Date(panelUser.expires_at) < new Date()) {
+      await logPanelEvent(supabase, panelUser.id, "login_expired", `Login bloqueado — conta expirada`, clientIp, { username: panelUser.username });
       return new Response(JSON.stringify({ success: false, message: "Acesso expirado" }), { status: 403, headers: allHeaders });
     }
 
@@ -184,6 +189,7 @@ Deno.serve(async (req) => {
     const hashHex = Array.from(new Uint8Array(hashBuffer)).map(b => b.toString(16).padStart(2, "0")).join("");
 
     if (hashHex !== panelUser.password_hash) {
+      await logPanelEvent(supabase, panelUser.id, "login_failed", `Senha incorreta para ${panelUser.username}`, clientIp, { username: panelUser.username, reason: "wrong_password" });
       return new Response(JSON.stringify({ success: false, message: "Credenciais inválidas" }), { status: 401, headers: allHeaders });
     }
 
@@ -191,6 +197,9 @@ Deno.serve(async (req) => {
 
     const fp = secCheck.fingerprint || "unknown";
     const token = await createToken(panelUser.id, fp, serviceKey);
+
+    // Log successful login
+    await logPanelEvent(supabase, panelUser.id, "login_success", `Login bem-sucedido para ${panelUser.username}`, clientIp, { username: panelUser.username, fingerprint: fp });
 
     return new Response(JSON.stringify({
       success: true,

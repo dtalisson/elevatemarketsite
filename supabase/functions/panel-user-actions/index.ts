@@ -7,7 +7,7 @@ const corsHeaders = {
 };
 const allHeaders = { ...corsHeaders, "Content-Type": "application/json" };
 
-// ── Crypto helpers ──────────────────────────────────────────────
+// ── Crypto helpers ──
 async function hmacVerify(data: string, signature: string, secret: string): Promise<boolean> {
   try {
     const key = await crypto.subtle.importKey(
@@ -49,7 +49,7 @@ async function createToken(userId: string, fingerprint: string, secret: string):
   return encode(new TextEncoder().encode(payloadStr)) + "." + sig;
 }
 
-// ── Nonce anti-replay ──────────────────────────────────────────
+// ── Nonce anti-replay ──
 const usedNonces = new Map<string, number>();
 function checkNonce(nonce: string): boolean {
   if (usedNonces.size > 500) {
@@ -61,7 +61,6 @@ function checkNonce(nonce: string): boolean {
   return true;
 }
 
-// ── Security validation ──────────────────────────────────────
 function validateHeaders(req: Request): { error?: string; fingerprint: string } {
   const timestamp = req.headers.get("x-request-timestamp");
   const nonce = req.headers.get("x-request-nonce");
@@ -81,6 +80,19 @@ function validateHeaders(req: Request): { error?: string; fingerprint: string } 
   return { fingerprint };
 }
 
+// ── Log helper ──
+async function logPanelEvent(supabase: any, panelUserId: string, eventType: string, details: string, ip: string, metadata: Record<string, unknown> = {}) {
+  try {
+    await supabase.from("panel_user_logs").insert({
+      panel_user_id: panelUserId,
+      event_type: eventType,
+      details,
+      ip_address: ip,
+      metadata,
+    });
+  } catch (e) { console.error("Log error:", e); }
+}
+
 const PLANS: Record<string, { label: string; seconds: number }> = {
   "1day": { label: "1 Dia", seconds: 86400 },
   "trial": { label: "Trial (3 Dias)", seconds: 259200 },
@@ -96,13 +108,11 @@ Deno.serve(async (req) => {
   const serviceKey = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!;
   const supabase = createClient(supabaseUrl, serviceKey);
 
-  // ── Security headers ──
   const sec = validateHeaders(req);
   if (sec.error) {
     return new Response(JSON.stringify({ success: false, message: sec.error }), { status: 403, headers: allHeaders });
   }
 
-  // ── Auth ──
   const authHeader = req.headers.get("authorization") || "";
   const token = authHeader.replace("Bearer ", "");
   const decoded = await verifyToken(token, serviceKey);
@@ -110,12 +120,10 @@ Deno.serve(async (req) => {
     return new Response(JSON.stringify({ success: false, message: "Não autorizado" }), { status: 401, headers: allHeaders });
   }
 
-  // Fingerprint match
   if (decoded.fp !== "unknown" && decoded.fp !== sec.fingerprint) {
     return new Response(JSON.stringify({ success: false, message: "Sessão inválida (fingerprint)" }), { status: 401, headers: allHeaders });
   }
 
-  // Get panel user
   const { data: panelUser } = await supabase.from("panel_users").select("*").eq("id", decoded.sub).single();
   if (!panelUser || !panelUser.is_active || new Date(panelUser.expires_at) < new Date()) {
     return new Response(JSON.stringify({ success: false, message: "Acesso expirado ou desativado" }), { status: 403, headers: allHeaders });
@@ -124,7 +132,6 @@ Deno.serve(async (req) => {
   const { data: appLinks } = await supabase.from("panel_user_applications").select("application_id").eq("panel_user_id", panelUser.id);
   const allowedApps = new Set(appLinks?.map(a => a.application_id) || []);
 
-  // ── Verify payload signature ──
   const bodyStr = await req.text();
   const payloadSig = req.headers.get("x-payload-signature");
   if (payloadSig) {
@@ -134,15 +141,14 @@ Deno.serve(async (req) => {
     }
   }
 
-  // ── Token rotation — new token for each request ──
   const newToken = await createToken(panelUser.id, sec.fingerprint, serviceKey);
+  const clientIp = req.headers.get("x-forwarded-for")?.split(",")[0]?.trim() || "unknown";
 
   try {
     const body = JSON.parse(bodyStr);
     const { action } = body;
 
     // Rate limit: 30 actions per minute
-    const clientIp = req.headers.get("x-forwarded-for")?.split(",")[0]?.trim() || "unknown";
     const rlKey = `panel_action:${panelUser.id}:${clientIp}`;
     const { data: rlAllowed } = await supabase.rpc("check_rate_limit", { p_key: rlKey, p_max_requests: 30, p_window_seconds: 60 });
     if (rlAllowed === false) {
@@ -167,7 +173,7 @@ Deno.serve(async (req) => {
         const count = Math.min(Math.max(parseInt(quantity) || 1, 1), 50);
         const selectedPlan = PLANS[plan];
 
-        const { data: app } = await supabase.from("applications").select("owner_id").eq("id", application_id).single();
+        const { data: app } = await supabase.from("applications").select("owner_id, name").eq("id", application_id).single();
         if (!app) {
           return new Response(JSON.stringify({ success: false, message: "Aplicação não encontrada", token: newToken }), { status: 404, headers: allHeaders });
         }
@@ -182,11 +188,16 @@ Deno.serve(async (req) => {
           max_uses: 1,
         }));
 
-        const { data: licenses, error } = await supabase.from("licenses").insert(licensesToInsert).select("license_key, status, remaining_seconds, note, created_at");
+        const { data: licenses, error } = await supabase.from("licenses").insert(licensesToInsert).select("id, license_key, status, remaining_seconds, note, created_at");
         if (error) {
           console.error("Insert error:", error);
           return new Response(JSON.stringify({ success: false, message: "Erro ao criar licenças", token: newToken }), { status: 500, headers: allHeaders });
         }
+
+        // Log license creation
+        await logPanelEvent(supabase, panelUser.id, "license_created", `Criou ${count} licença(s) [${selectedPlan.label}] para ${app.name}`, clientIp, {
+          application_id, app_name: app.name, plan, quantity: count, license_keys: licenses?.map(l => l.license_key),
+        });
 
         return new Response(JSON.stringify({
           success: true, token: newToken,
@@ -223,27 +234,37 @@ Deno.serve(async (req) => {
       case "delete-user": {
         const { user_id } = body;
         if (!user_id) return new Response(JSON.stringify({ success: false, message: "user_id obrigatório", token: newToken }), { status: 400, headers: allHeaders });
-        const { data: su } = await supabase.from("software_users").select("id, license_id").eq("id", user_id).single();
+        const { data: su } = await supabase.from("software_users").select("id, username, license_id").eq("id", user_id).single();
         if (!su) return new Response(JSON.stringify({ success: false, message: "Usuário não encontrado", token: newToken }), { status: 404, headers: allHeaders });
-        const { data: lic } = await supabase.from("licenses").select("panel_user_id").eq("id", su.license_id).single();
+        const { data: lic } = await supabase.from("licenses").select("panel_user_id, license_key").eq("id", su.license_id).single();
         if (!lic || lic.panel_user_id !== panelUser.id) {
           return new Response(JSON.stringify({ success: false, message: "Sem permissão", token: newToken }), { status: 403, headers: allHeaders });
         }
         await supabase.from("software_users").delete().eq("id", user_id);
+
+        await logPanelEvent(supabase, panelUser.id, "user_deleted", `Deletou usuário ${su.username} (key: ${lic.license_key})`, clientIp, {
+          deleted_username: su.username, license_key: lic.license_key,
+        });
+
         return new Response(JSON.stringify({ success: true, message: "Usuário deletado", token: newToken }), { headers: allHeaders });
       }
 
       case "reset-hwid": {
         const { user_id } = body;
         if (!user_id) return new Response(JSON.stringify({ success: false, message: "user_id obrigatório", token: newToken }), { status: 400, headers: allHeaders });
-        const { data: su } = await supabase.from("software_users").select("id, license_id").eq("id", user_id).single();
+        const { data: su } = await supabase.from("software_users").select("id, username, license_id").eq("id", user_id).single();
         if (!su) return new Response(JSON.stringify({ success: false, message: "Usuário não encontrado", token: newToken }), { status: 404, headers: allHeaders });
-        const { data: lic } = await supabase.from("licenses").select("panel_user_id").eq("id", su.license_id).single();
+        const { data: lic } = await supabase.from("licenses").select("panel_user_id, license_key").eq("id", su.license_id).single();
         if (!lic || lic.panel_user_id !== panelUser.id) {
           return new Response(JSON.stringify({ success: false, message: "Sem permissão", token: newToken }), { status: 403, headers: allHeaders });
         }
         await supabase.from("software_users").update({ hwid: null }).eq("id", user_id);
         await supabase.from("licenses").update({ hwid: null }).eq("id", su.license_id);
+
+        await logPanelEvent(supabase, panelUser.id, "hwid_reset", `Resetou HWID do usuário ${su.username} (key: ${lic.license_key})`, clientIp, {
+          target_username: su.username, license_key: lic.license_key,
+        });
+
         return new Response(JSON.stringify({ success: true, message: "HWID resetado", token: newToken }), { headers: allHeaders });
       }
 
