@@ -20,6 +20,7 @@ import ApiDocs from "./pages/ApiDocs";
 import OnlinePage from "./pages/OnlinePage";
 import DownloadsPage from "./pages/DownloadsPage";
 import BlacklistPage from "./pages/BlacklistPage";
+import PublicDownload from "./pages/PublicDownload";
 
 const queryClient = new QueryClient();
 
@@ -33,6 +34,7 @@ const App = () => (
           <Routes>
             <Route path="/" element={<Index />} />
             <Route path="/login" element={<Login />} />
+            <Route path="/download" element={<PublicDownload />} />
             
             <Route path="/dashboard" element={<ProtectedRoute><Dashboard /></ProtectedRoute>} />
             <Route path="/dashboard/applications" element={<ProtectedRoute><Applications /></ProtectedRoute>} />
