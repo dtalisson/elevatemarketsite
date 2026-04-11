@@ -1,7 +1,7 @@
 import { useState, useEffect, useRef, useCallback } from "react";
 import { usePanelUser } from "@/contexts/PanelUserContext";
 import { toast } from "sonner";
-import { Key, Trash2, RotateCcw, LogOut, Plus, Users, Search, Copy, Clock } from "lucide-react";
+import { Key, Trash2, RotateCcw, LogOut, Plus, Users, Search, Copy, Clock, Eye } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -10,11 +10,10 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog";
 import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle, AlertDialogTrigger } from "@/components/ui/alert-dialog";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
-
-
+import { LicenseDetailModal } from "@/components/LicenseDetailModal";
 
 interface App { id: string; name: string; }
-interface License { id: string; license_key: string; status: string; remaining_seconds: number | null; note: string | null; created_at: string; application_id: string; }
+interface License { id: string; license_key: string; status: string; remaining_seconds: number | null; note: string | null; created_at: string; application_id: string; expires_at?: string | null; hwid?: string | null; claimed_by?: string | null; activated_at?: string | null; ban_reason?: string | null; }
 interface SoftwareUser { id: string; username: string; hwid: string | null; ip_address: string | null; last_login_at: string | null; created_at: string; application_id: string; license_id: string; }
 
 const PanelUserDashboard = () => {
