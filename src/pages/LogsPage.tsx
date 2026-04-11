@@ -333,6 +333,7 @@ const LogsPage = () => {
                 <SelectItem value="license_created">Key Criada</SelectItem>
                 <SelectItem value="user_deleted">User Deletado</SelectItem>
                 <SelectItem value="hwid_reset">HWID Reset</SelectItem>
+                <SelectItem value="license_deleted">Key Deletada</SelectItem>
               </SelectContent>
             </Select>
             <Select value={panelFilterUser} onValueChange={setPanelFilterUser}>
