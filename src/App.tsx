@@ -23,7 +23,6 @@ import DownloadsPage from "./pages/DownloadsPage";
 import BlacklistPage from "./pages/BlacklistPage";
 import PublicDownload from "./pages/PublicDownload";
 import PanelUsersPage from "./pages/PanelUsersPage";
-import PanelUserLogin from "./pages/PanelUserLogin";
 import PanelUserDashboard from "./pages/PanelUserDashboard";
 import { PanelProtectedRoute } from "@/components/PanelProtectedRoute";
 

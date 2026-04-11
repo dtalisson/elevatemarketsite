@@ -1,4 +1,4 @@
-import { useState, useEffect, useRef } from "react";
+import { useState, useEffect, useRef, useCallback } from "react";
 import { usePanelUser } from "@/contexts/PanelUserContext";
 import { toast } from "sonner";
 import { Key, Trash2, RotateCcw, LogOut, Plus, Users, Search, Copy, Clock } from "lucide-react";
@@ -18,7 +18,7 @@ interface License { id: string; license_key: string; status: string; remaining_s
 interface SoftwareUser { id: string; username: string; hwid: string | null; ip_address: string | null; last_login_at: string | null; created_at: string; application_id: string; license_id: string; }
 
 const PanelUserDashboard = () => {
-  const { panelUser, panelToken, logoutPanelUser, secureApiCall } = usePanelUser();
+  const { panelUser, logoutPanelUser, secureApiCall } = usePanelUser();
   const [apps, setApps] = useState<App[]>([]);
   const [licenses, setLicenses] = useState<License[]>([]);
   const [users, setUsers] = useState<SoftwareUser[]>([]);
@@ -36,27 +36,41 @@ const PanelUserDashboard = () => {
 
   const canvasRef = useRef<HTMLCanvasElement>(null);
 
-  const apiCall = async (action: string, extra: Record<string, any> = {}) => {
+  const apiCall = useCallback(async (action: string, extra: Record<string, any> = {}) => {
     return secureApiCall("/panel-user-actions", {
       method: "POST",
       body: JSON.stringify({ action, ...extra }),
     });
-  };
+  }, [secureApiCall]);
 
-  const fetchData = async () => {
+  const fetchData = useCallback(async () => {
     setLoading(true);
-    const [appsRes, licensesRes, usersRes] = await Promise.all([
-      apiCall("get-apps"),
-      apiCall("list-licenses"),
-      apiCall("list-users"),
-    ]);
-    if (appsRes.success) setApps(appsRes.apps);
-    if (licensesRes.success) setLicenses(licensesRes.licenses);
-    if (usersRes.success) setUsers(usersRes.users);
-    setLoading(false);
-  };
+    try {
+      const [appsRes, licensesRes, usersRes] = await Promise.all([
+        apiCall("get-apps"),
+        apiCall("list-licenses"),
+        apiCall("list-users"),
+      ]);
 
-  useEffect(() => { if (panelToken) fetchData(); }, [panelToken]);
+      if (appsRes.success) setApps(appsRes.apps || []);
+      if (licensesRes.success) setLicenses(licensesRes.licenses || []);
+      if (usersRes.success) setUsers(usersRes.users || []);
+
+      if ([appsRes, licensesRes, usersRes].some((res) => res?.rate_limited)) {
+        toast.error("Muitas requisições. Aguarde alguns segundos.");
+      }
+    } catch {
+      toast.error("Erro ao carregar dados do painel");
+    } finally {
+      setLoading(false);
+    }
+  }, [apiCall]);
+
+  useEffect(() => {
+    if (panelUser?.id) {
+      fetchData();
+    }
+  }, [panelUser?.id, fetchData]);
 
   // Particles
   useEffect(() => {
