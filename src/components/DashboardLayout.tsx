@@ -6,7 +6,7 @@ import {
 } from "lucide-react";
 import { cn } from "@/lib/utils";
 
-const B = "/dashboard";
+const B = "";
 
 const navSections = [
   {
