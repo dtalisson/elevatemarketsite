@@ -123,6 +123,12 @@ const PanelUserDashboard = () => {
     setCreating(false);
   };
 
+  const handleDeleteLicense = async (licenseId: string) => {
+    const res = await apiCall("delete-license", { license_id: licenseId });
+    if (res.success) { toast.success("Licença deletada"); fetchData(); }
+    else toast.error(res.message);
+  };
+
   const handleDeleteUser = async (userId: string) => {
     const res = await apiCall("delete-user", { user_id: userId });
     if (res.success) { toast.success("Usuário deletado"); fetchData(); }
