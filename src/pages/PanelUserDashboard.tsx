@@ -297,9 +297,14 @@ const PanelUserDashboard = () => {
                         {filteredLicenses.map(l => (
                           <tr key={l.id} className="border-b border-border/50 hover:bg-muted/10">
                             <td className="px-4 py-3">
-                              <button className="flex items-center gap-1.5 font-mono text-xs text-foreground hover:text-primary transition-colors" onClick={() => { navigator.clipboard.writeText(l.license_key); toast.success("Copiada!"); }}>
-                                <Copy className="h-3 w-3" /> {l.license_key}
-                              </button>
+                              <div className="flex items-center gap-1.5">
+                                <button className="font-mono text-xs text-foreground hover:text-primary transition-colors" onClick={() => setSelectedLicenseDetail(l)}>
+                                  {l.license_key}
+                                </button>
+                                <button className="text-muted-foreground hover:text-primary" onClick={() => { navigator.clipboard.writeText(l.license_key); toast.success("Copiada!"); }}>
+                                  <Copy className="h-3 w-3" />
+                                </button>
+                              </div>
                             </td>
                             <td className="px-4 py-3 text-xs text-muted-foreground">{getAppName(l.application_id)}</td>
                             <td className="px-4 py-3">
