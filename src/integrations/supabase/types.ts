@@ -386,6 +386,44 @@ export type Database = {
           },
         ]
       }
+      panel_user_logs: {
+        Row: {
+          created_at: string
+          details: string | null
+          event_type: string
+          id: string
+          ip_address: string | null
+          metadata: Json | null
+          panel_user_id: string
+        }
+        Insert: {
+          created_at?: string
+          details?: string | null
+          event_type: string
+          id?: string
+          ip_address?: string | null
+          metadata?: Json | null
+          panel_user_id: string
+        }
+        Update: {
+          created_at?: string
+          details?: string | null
+          event_type?: string
+          id?: string
+          ip_address?: string | null
+          metadata?: Json | null
+          panel_user_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "panel_user_logs_panel_user_id_fkey"
+            columns: ["panel_user_id"]
+            isOneToOne: false
+            referencedRelation: "panel_users"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       panel_users: {
         Row: {
           created_at: string
