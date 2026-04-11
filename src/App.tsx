@@ -25,6 +25,7 @@ import PublicDownload from "./pages/PublicDownload";
 import PanelUsersPage from "./pages/PanelUsersPage";
 import PanelUserDashboard from "./pages/PanelUserDashboard";
 import { PanelProtectedRoute } from "@/components/PanelProtectedRoute";
+import PanelUserLogin from "./pages/PanelUserLogin";
 
 const queryClient = new QueryClient();
 
@@ -42,6 +43,7 @@ const App = () => (
               <Route path="/download" element={<PublicDownload />} />
               
               {/* Panel user (sub-user/reseller) routes */}
+              <Route path="/panel/login" element={<PanelUserLogin />} />
               <Route path="/panel" element={<PanelProtectedRoute><PanelUserDashboard /></PanelProtectedRoute>} />
               
               {/* Admin routes */}
