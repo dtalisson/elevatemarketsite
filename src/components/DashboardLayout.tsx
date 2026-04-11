@@ -100,7 +100,7 @@ export const DashboardLayout = ({ children }: { children: ReactNode }) => {
 
         <div className="border-t border-border/80 px-3 pb-3 pt-2">
           <div className="mb-1 flex items-center gap-2.5 px-3 py-2">
-            <div className="flex h-7 w-7 items-center justify-center rounded-md bg-primary/15 text-[11px] font-bold text-primary">
+            <div className="flex h-7 w-7 items-center justify-center rounded-full bg-primary/15 text-[11px] font-bold text-primary">
               {(user?.user_metadata?.username || "U")[0].toUpperCase()}
             </div>
             <div className="min-w-0 flex-1">
