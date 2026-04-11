@@ -1,6 +1,7 @@
 import { useState, useEffect, useRef } from "react";
 import { useNavigate } from "react-router-dom";
 import { supabase } from "@/integrations/supabase/client";
+import { usePanelUser } from "@/contexts/PanelUserContext";
 import { toast } from "sonner";
 import { ArrowRight } from "lucide-react";
 
@@ -29,29 +30,42 @@ const Login = () => {
   const [loading, setLoading] = useState(false);
   const navigate = useNavigate();
   const canvasRef = useRef<HTMLCanvasElement>(null);
+  const { loginPanelUser } = usePanelUser();
 
   const handleLogin = async (e: React.FormEvent) => {
     e.preventDefault();
     setLoading(true);
     try {
+      // 1) Tentar login como admin
       const res = await fetch(`${API_BASE}/admin-login`, {
         method: "POST",
         headers: buildSecurityHeaders(),
         body: JSON.stringify({ username, password }),
       });
       const data = await res.json();
-      if (!data.success) {
-        toast.error(data.message || "Usuário ou senha incorretos");
+
+      if (data.success) {
+        // Admin login OK
+        const { error } = await supabase.auth.setSession({
+          access_token: data.access_token,
+          refresh_token: data.refresh_token,
+        });
+        if (error) toast.error("Erro ao iniciar sessão");
+        else navigate("/dashboard");
         setLoading(false);
         return;
       }
-      // Set the session using the tokens from the secure endpoint
-      const { error } = await supabase.auth.setSession({
-        access_token: data.access_token,
-        refresh_token: data.refresh_token,
-      });
-      if (error) toast.error("Erro ao iniciar sessão");
-      else navigate("/dashboard");
+
+      // 2) Admin falhou → tentar como panel user (revendedor)
+      const panelOk = await loginPanelUser(username, password);
+      if (panelOk) {
+        navigate("/panel");
+        setLoading(false);
+        return;
+      }
+
+      // Ambos falharam
+      toast.error("Usuário ou senha incorretos");
     } catch {
       toast.error("Erro de conexão");
     }
