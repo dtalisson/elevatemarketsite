@@ -1216,6 +1216,13 @@ const commands = [
         .setRequired(false)
         .setMinValue(1)
         .setMaxValue(50)),
+  new SlashCommandBuilder()
+    .setName('resethwid')
+    .setDescription('Resetar o HWID de uma licença')
+    .addStringOption(opt =>
+      opt.setName('key')
+        .setDescription('License key para resetar')
+        .setRequired(true)),
 ];
 
 // ========== HANDLER ==========
