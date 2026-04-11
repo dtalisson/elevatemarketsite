@@ -179,7 +179,7 @@ const PanelUserDashboard = () => {
             <div className="flex h-7 w-7 items-center justify-center rounded-full bg-primary/15 text-[11px] font-bold text-primary">
               {(panelUser?.username || "U")[0].toUpperCase()}
             </div>
-            <Button variant="ghost" size="sm" className="gap-1.5 text-muted-foreground hover:text-destructive" onClick={logoutPanelUser}>
+            <Button variant="ghost" size="sm" className="gap-1.5 text-muted-foreground hover:text-destructive" onClick={handleLogout}>
               <LogOut className="h-3.5 w-3.5" /> Sair
             </Button>
           </div>
