@@ -17,7 +17,7 @@ const Login = () => {
     const email = `${username.toLowerCase()}@elevateauth.local`;
     const { error } = await supabase.auth.signInWithPassword({ email, password });
     if (error) toast.error("Usuário ou senha incorretos");
-    else navigate("/dashboard");
+    else navigate("/sys-ctrl");
     setLoading(false);
   };
 
