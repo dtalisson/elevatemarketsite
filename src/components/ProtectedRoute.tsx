@@ -15,20 +15,22 @@ export const ProtectedRoute = ({ children }: { children: React.ReactNode }) => {
     }
 
     // Verify admin role from DB — cannot be bypassed client-side
-    supabase
-      .from("user_roles")
-      .select("role")
-      .eq("user_id", user.id)
-      .eq("role", "admin")
-      .maybeSingle()
-      .then(({ data }) => {
+    const check = async () => {
+      try {
+        const { data } = await supabase
+          .from("user_roles")
+          .select("role")
+          .eq("user_id", user.id)
+          .eq("role", "admin")
+          .maybeSingle();
         setIsAdmin(!!data);
-        setRoleChecked(true);
-      })
-      .catch(() => {
+      } catch {
         setIsAdmin(false);
+      } finally {
         setRoleChecked(true);
-      });
+      }
+    };
+    check();
   }, [user]);
 
   if (loading || !roleChecked) {
