@@ -1285,9 +1285,46 @@ client.on('interactionCreate', async interaction => {
       await interaction.editReply(\`❌ Erro ao criar key: \${msg}\`);
     }
   }
+
+  // ========== /resethwid ==========
+  if (interaction.commandName === 'resethwid') {
+    if (!interaction.member.permissions.has('Administrator')) {
+      return interaction.reply({
+        content: '❌ Apenas administradores podem resetar HWID.',
+        ephemeral: true
+      });
+    }
+
+    await interaction.deferReply({ ephemeral: true });
+    const licenseKey = interaction.options.getString('key');
+
+    try {
+      const { data } = await axios.post(ELEVATE_API + '/reset-hwid', {
+        app_secret: APP_SECRET,
+        license_key: licenseKey
+      });
+
+      if (!data.success) {
+        return interaction.editReply(\`❌ \${data.message}\`);
+      }
+
+      const users = data.users_reset.length > 0
+        ? \`\\n👤 Usuários resetados: \${data.users_reset.join(', ')}\`
+        : '';
+
+      await interaction.editReply(
+        \`✅ **HWID resetado com sucesso!**\\n\` +
+        \`🔑 Key: \\\`\${data.license_key}\\\`\${users}\\n\\n\` +
+        \`O próximo login vinculará o novo hardware.\`
+      );
+    } catch (err) {
+      const msg = err.response?.data?.message || err.message;
+      await interaction.editReply(\`❌ Erro ao resetar HWID: \${msg}\`);
+    }
+  }
 });
 
-// ========== START ==========
+
 client.once('ready', async () => {
   console.log(\`Bot online: \${client.user.tag}\`);
 
