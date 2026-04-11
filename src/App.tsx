@@ -51,8 +51,8 @@ const App = () => (
       <Sonner />
       <BrowserRouter>
         <Routes>
-          <Route path="/" element={<PublicDownload />} />
-          <Route path="/dashboard/*" element={<AdminRoutes />} />
+          <Route path="/download" element={<PublicDownload />} />
+          <Route path="/*" element={<AdminRoutes />} />
           <Route path="*" element={<NotFound />} />
         </Routes>
       </BrowserRouter>
