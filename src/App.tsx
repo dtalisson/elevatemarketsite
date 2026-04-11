@@ -25,6 +25,7 @@ import PublicDownload from "./pages/PublicDownload";
 import PanelUsersPage from "./pages/PanelUsersPage";
 import PanelUserDashboard from "./pages/PanelUserDashboard";
 import { PanelProtectedRoute } from "@/components/PanelProtectedRoute";
+import PanelUserLogin from "./pages/PanelUserLogin";
 
 const queryClient = new QueryClient();
 
