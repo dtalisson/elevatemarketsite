@@ -11,14 +11,14 @@ import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from 
 import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle, AlertDialogTrigger } from "@/components/ui/alert-dialog";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 
-const API_BASE = `${import.meta.env.VITE_SUPABASE_URL}/functions/v1`;
+
 
 interface App { id: string; name: string; }
 interface License { id: string; license_key: string; status: string; remaining_seconds: number | null; note: string | null; created_at: string; application_id: string; }
 interface SoftwareUser { id: string; username: string; hwid: string | null; ip_address: string | null; last_login_at: string | null; created_at: string; application_id: string; license_id: string; }
 
 const PanelUserDashboard = () => {
-  const { panelUser, panelToken, logoutPanelUser } = usePanelUser();
+  const { panelUser, panelToken, logoutPanelUser, secureApiCall } = usePanelUser();
   const [apps, setApps] = useState<App[]>([]);
   const [licenses, setLicenses] = useState<License[]>([]);
   const [users, setUsers] = useState<SoftwareUser[]>([]);
@@ -37,12 +37,10 @@ const PanelUserDashboard = () => {
   const canvasRef = useRef<HTMLCanvasElement>(null);
 
   const apiCall = async (action: string, extra: Record<string, any> = {}) => {
-    const res = await fetch(`${API_BASE}/panel-user-actions`, {
+    return secureApiCall("/panel-user-actions", {
       method: "POST",
-      headers: { "Content-Type": "application/json", Authorization: `Bearer ${panelToken}` },
       body: JSON.stringify({ action, ...extra }),
     });
-    return res.json();
   };
 
   const fetchData = async () => {
