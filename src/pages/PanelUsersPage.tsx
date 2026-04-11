@@ -9,10 +9,11 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog";
 import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle, AlertDialogTrigger } from "@/components/ui/alert-dialog";
 import { Checkbox } from "@/components/ui/checkbox";
+import { LicenseDetailModal } from "@/components/LicenseDetailModal";
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/contexts/AuthContext";
 import { toast } from "sonner";
-import { Plus, Trash2, Users, Search, Eye, EyeOff, Key, Copy, RotateCcw, Ban, CheckCircle2, Settings, ShieldCheck } from "lucide-react";
+import { Plus, Trash2, Users, Search, Eye, EyeOff, Key, Copy, RotateCcw, Ban, CheckCircle2, Settings, ShieldCheck, Pencil } from "lucide-react";
 import type { Tables } from "@/integrations/supabase/types";
 
 type License = Tables<"licenses">;
@@ -25,17 +26,8 @@ interface PanelUser {
   created_at: string;
 }
 
-interface Application {
-  id: string;
-  name: string;
-}
-
-interface SoftwareUser {
-  id: string;
-  username: string;
-  hwid: string | null;
-  license_id: string;
-}
+interface Application { id: string; name: string; }
+interface SoftwareUser { id: string; username: string; hwid: string | null; ip_address: string | null; last_login_at: string | null; created_at: string; license_id: string; }
 
 function getEffectiveStatus(lic: { status: string; expires_at: string | null }): string {
   if (lic.status === "active" && lic.expires_at && new Date(lic.expires_at) < new Date()) return "expired";
@@ -66,6 +58,15 @@ const PanelUsersPage = () => {
   const [selectedApps, setSelectedApps] = useState<string[]>([]);
   const [creating, setCreating] = useState(false);
 
+  // Edit form
+  const [editOpen, setEditOpen] = useState(false);
+  const [editUser, setEditUser] = useState<PanelUser | null>(null);
+  const [editApps, setEditApps] = useState<string[]>([]);
+  const [editDays, setEditDays] = useState("");
+  const [editPassword, setEditPassword] = useState("");
+  const [showEditPassword, setShowEditPassword] = useState(false);
+  const [saving, setSaving] = useState(false);
+
   // Services tab
   const [selectedPanelUser, setSelectedPanelUser] = useState<string>("all");
   const [panelLicenses, setPanelLicenses] = useState<License[]>([]);
@@ -75,6 +76,9 @@ const PanelUsersPage = () => {
   const [servicesFilterStatus, setServicesFilterStatus] = useState("all");
   const [servicesSelected, setServicesSelected] = useState<Set<string>>(new Set());
   const [bulkLoading, setBulkLoading] = useState(false);
+
+  // License detail modal
+  const [selectedLicense, setSelectedLicense] = useState<License | null>(null);
 
   const fetchData = async () => {
     if (!user) return;
@@ -101,12 +105,10 @@ const PanelUsersPage = () => {
     if (!user) return;
     setServicesLoading(true);
     const query = supabase.from("licenses").select("*").not("panel_user_id", "is", null).order("created_at", { ascending: false });
-    if (selectedPanelUser !== "all") {
-      query.eq("panel_user_id", selectedPanelUser);
-    }
+    if (selectedPanelUser !== "all") query.eq("panel_user_id", selectedPanelUser);
     const [licRes, usersRes] = await Promise.all([
       query,
-      supabase.from("software_users_safe").select("id, username, hwid, license_id"),
+      supabase.from("software_users_safe").select("id, username, hwid, ip_address, last_login_at, created_at, license_id"),
     ]);
     if (licRes.data) setPanelLicenses(licRes.data as License[]);
     if (usersRes.data) {
@@ -146,6 +148,48 @@ const PanelUsersPage = () => {
     fetchData();
   };
 
+  const openEdit = (pu: PanelUser) => {
+    setEditUser(pu);
+    setEditApps(userApps[pu.id] || []);
+    const daysLeft = Math.max(0, Math.ceil((new Date(pu.expires_at).getTime() - Date.now()) / 86400000));
+    setEditDays(String(daysLeft));
+    setEditPassword("");
+    setShowEditPassword(false);
+    setEditOpen(true);
+  };
+
+  const handleSaveEdit = async () => {
+    if (!editUser) return;
+    setSaving(true);
+
+    // Update expiry
+    const newExpiry = new Date();
+    newExpiry.setDate(newExpiry.getDate() + parseInt(editDays || "0"));
+    const updates: any = { expires_at: newExpiry.toISOString() };
+
+    // Update password if provided
+    if (editPassword.length > 0) {
+      if (editPassword.length < 4) { toast.error("Senha deve ter pelo menos 4 caracteres"); setSaving(false); return; }
+      const hashBuffer = await crypto.subtle.digest("SHA-256", new TextEncoder().encode(editPassword));
+      updates.password_hash = Array.from(new Uint8Array(hashBuffer)).map(b => b.toString(16).padStart(2, "0")).join("");
+    }
+
+    await supabase.from("panel_users").update(updates).eq("id", editUser.id);
+
+    // Update applications: delete old, insert new
+    await supabase.from("panel_user_applications").delete().eq("panel_user_id", editUser.id);
+    if (editApps.length > 0) {
+      await supabase.from("panel_user_applications").insert(
+        editApps.map(appId => ({ panel_user_id: editUser.id, application_id: appId }))
+      );
+    }
+
+    toast.success("Revendedor atualizado!");
+    setEditOpen(false);
+    setSaving(false);
+    fetchData();
+  };
+
   const handleDelete = async (id: string) => {
     await supabase.from("panel_users").delete().eq("id", id);
     toast.success("Usuário removido"); fetchData();
@@ -162,7 +206,6 @@ const PanelUsersPage = () => {
   };
 
   const isExpired = (expiresAt: string) => new Date(expiresAt) < new Date();
-
   const filteredUsers = panelUsers.filter(pu => pu.username.toLowerCase().includes(search.toLowerCase()));
 
   // Services helpers
@@ -217,35 +260,35 @@ const PanelUsersPage = () => {
   const toggleServiceSelect = (id: string) => setServicesSelected(prev => { const n = new Set(prev); if (n.has(id)) n.delete(id); else n.add(id); return n; });
   const toggleAllServices = () => { if (servicesSelected.size === filteredLicenses.length) setServicesSelected(new Set()); else setServicesSelected(new Set(filteredLicenses.map(l => l.id))); };
 
-  const bulkDeleteLicenses = async () => {
-    setBulkLoading(true);
-    await supabase.from("licenses").delete().in("id", Array.from(servicesSelected));
-    toast.success(`${servicesSelected.size} excluída(s)`); setServicesSelected(new Set()); fetchPanelLicenses(); setBulkLoading(false);
-  };
+  const bulkDeleteLicenses = async () => { setBulkLoading(true); await supabase.from("licenses").delete().in("id", Array.from(servicesSelected)); toast.success(`${servicesSelected.size} excluída(s)`); setServicesSelected(new Set()); fetchPanelLicenses(); setBulkLoading(false); };
+  const bulkBanLicenses = async () => { setBulkLoading(true); for (const id of servicesSelected) await deactivateLicense(id); setServicesSelected(new Set()); fetchPanelLicenses(); setBulkLoading(false); };
+  const bulkActivateLicenses = async () => { setBulkLoading(true); for (const id of servicesSelected) await activateLicense(id); setServicesSelected(new Set()); fetchPanelLicenses(); setBulkLoading(false); };
+  const bulkResetHwid = async () => { setBulkLoading(true); for (const id of servicesSelected) await resetHwid(id); setServicesSelected(new Set()); fetchPanelLicenses(); setBulkLoading(false); };
 
-  const bulkBanLicenses = async () => {
-    setBulkLoading(true);
-    for (const id of servicesSelected) await deactivateLicense(id);
-    setServicesSelected(new Set()); fetchPanelLicenses(); setBulkLoading(false);
-  };
-
-  const bulkActivateLicenses = async () => {
-    setBulkLoading(true);
-    for (const id of servicesSelected) await activateLicense(id);
-    setServicesSelected(new Set()); fetchPanelLicenses(); setBulkLoading(false);
-  };
-
-  const bulkResetHwid = async () => {
-    setBulkLoading(true);
-    for (const id of servicesSelected) await resetHwid(id);
-    setServicesSelected(new Set()); fetchPanelLicenses(); setBulkLoading(false);
-  };
-
-  // Stats for reseller tab
   const totalKeys = panelLicenses.length;
   const activeKeys = panelLicenses.filter(l => getEffectiveStatus(l) === "active").length;
   const bannedKeys = panelLicenses.filter(l => getEffectiveStatus(l) === "banned").length;
-  const unusedKeys = panelLicenses.filter(l => getEffectiveStatus(l) === "unused").length;
+
+  const openLicenseDetail = (lic: License) => setSelectedLicense(lic);
+
+  const buildLicenseDetail = (lic: License) => {
+    const su = softwareUsers[lic.id];
+    return {
+      license_key: lic.license_key,
+      status: lic.status,
+      expires_at: lic.expires_at,
+      activated_at: lic.activated_at,
+      created_at: lic.created_at,
+      hwid: lic.hwid,
+      claimed_by: lic.claimed_by,
+      note: lic.note,
+      remaining_seconds: lic.remaining_seconds,
+      ban_reason: lic.ban_reason,
+      application_name: getAppName(lic.application_id),
+      panel_user_name: getPanelUserName(lic.panel_user_id),
+      software_user: su ? { username: su.username, hwid: su.hwid, ip_address: su.ip_address, last_login_at: su.last_login_at, created_at: su.created_at } : null,
+    };
+  };
 
   return (
     <DashboardLayout>
@@ -282,7 +325,6 @@ const PanelUsersPage = () => {
             </div>
           </div>
 
-          {/* Per-reseller summary */}
           <div className="rounded-lg border border-border overflow-hidden">
             <table className="w-full text-sm">
               <thead>
@@ -308,13 +350,9 @@ const PanelUsersPage = () => {
                       <td className="px-4 py-3 text-center text-foreground">{puKeys.length}</td>
                       <td className="px-4 py-3 text-center text-primary">{puActive}</td>
                       <td className="px-4 py-3 text-center">
-                        {isExpired(pu.expires_at) ? (
-                          <Badge variant="destructive" className="text-[10px]">Expirado</Badge>
-                        ) : pu.is_active ? (
-                          <Badge className="bg-primary/10 text-primary text-[10px]">Ativo</Badge>
-                        ) : (
-                          <Badge variant="secondary" className="text-[10px]">Desativado</Badge>
-                        )}
+                        {isExpired(pu.expires_at) ? <Badge variant="destructive" className="text-[10px]">Expirado</Badge>
+                        : pu.is_active ? <Badge className="bg-primary/10 text-primary text-[10px]">Ativo</Badge>
+                        : <Badge variant="secondary" className="text-[10px]">Desativado</Badge>}
                       </td>
                       <td className="px-4 py-3 text-muted-foreground text-xs">{new Date(pu.expires_at).toLocaleDateString("pt-BR")}</td>
                     </tr>
@@ -401,16 +439,15 @@ const PanelUsersPage = () => {
                         <td className="px-4 py-3 text-muted-foreground text-xs max-w-[200px] truncate">{getAppNames(pu.id) || "—"}</td>
                         <td className="px-4 py-3 text-muted-foreground text-xs">{new Date(pu.expires_at).toLocaleDateString("pt-BR")}</td>
                         <td className="px-4 py-3">
-                          {isExpired(pu.expires_at) ? (
-                            <Badge variant="destructive" className="text-[10px]">Expirado</Badge>
-                          ) : pu.is_active ? (
-                            <Badge className="bg-primary/10 text-primary text-[10px]">Ativo</Badge>
-                          ) : (
-                            <Badge variant="secondary" className="text-[10px]">Desativado</Badge>
-                          )}
+                          {isExpired(pu.expires_at) ? <Badge variant="destructive" className="text-[10px]">Expirado</Badge>
+                          : pu.is_active ? <Badge className="bg-primary/10 text-primary text-[10px]">Ativo</Badge>
+                          : <Badge variant="secondary" className="text-[10px]">Desativado</Badge>}
                         </td>
                         <td className="px-4 py-3 text-right">
                           <div className="flex items-center justify-end gap-1">
+                            <Button size="sm" variant="ghost" className="h-7 w-7 p-0" onClick={() => openEdit(pu)} title="Editar">
+                              <Pencil className="h-3.5 w-3.5" />
+                            </Button>
                             <Button size="sm" variant="ghost" className="h-7 text-xs" onClick={() => toggleActive(pu)}>
                               {pu.is_active ? "Desativar" : "Ativar"}
                             </Button>
@@ -512,10 +549,10 @@ const PanelUsersPage = () => {
                 return (
                   <div key={lic.id} className={`flex items-center gap-3 rounded-lg border px-4 py-3 transition-colors ${isSelected ? "border-primary/30 bg-primary/5" : "border-border bg-card hover:border-primary/20"}`}>
                     <Checkbox checked={isSelected} onCheckedChange={() => toggleServiceSelect(lic.id)} className="data-[state=checked]:bg-primary data-[state=checked]:border-primary" />
-                    <div className="flex-1 min-w-0">
+                    <div className="flex-1 min-w-0 cursor-pointer" onClick={() => openLicenseDetail(lic)}>
                       <div className="flex items-center gap-2 mb-1">
-                        <code className="text-xs font-mono text-foreground truncate max-w-[180px]">{lic.license_key}</code>
-                        <button onClick={() => copyKey(lic.license_key)} className="text-muted-foreground hover:text-primary"><Copy className="h-3 w-3" /></button>
+                        <code className="text-xs font-mono text-foreground truncate max-w-[180px] hover:text-primary transition-colors">{lic.license_key}</code>
+                        <button onClick={(e) => { e.stopPropagation(); copyKey(lic.license_key); }} className="text-muted-foreground hover:text-primary"><Copy className="h-3 w-3" /></button>
                         <Badge className={`${statusColors[effectiveStatus] || statusColors.unused} text-[10px]`}>{effectiveStatus}</Badge>
                       </div>
                       <div className="flex items-center gap-3 text-[11px] text-muted-foreground">
@@ -555,6 +592,51 @@ const PanelUsersPage = () => {
           )}
         </TabsContent>
       </Tabs>
+
+      {/* Edit Panel User Dialog */}
+      <Dialog open={editOpen} onOpenChange={setEditOpen}>
+        <DialogContent className="sm:max-w-md">
+          <DialogHeader><DialogTitle className="font-heading">Editar Revendedor — {editUser?.username}</DialogTitle></DialogHeader>
+          {editUser && (
+            <div className="space-y-4 mt-2">
+              <div className="space-y-2">
+                <Label>Dias de acesso (a partir de agora)</Label>
+                <Input type="number" min="0" max="9999" value={editDays} onChange={e => setEditDays(e.target.value)} />
+                <p className="text-[11px] text-muted-foreground">Atual: {new Date(editUser.expires_at).toLocaleDateString("pt-BR")}</p>
+              </div>
+              <div className="space-y-2">
+                <Label>Nova senha (deixe vazio para manter)</Label>
+                <div className="relative">
+                  <Input type={showEditPassword ? "text" : "password"} placeholder="••••••••" value={editPassword} onChange={e => setEditPassword(e.target.value)} />
+                  <button type="button" className="absolute right-3 top-1/2 -translate-y-1/2 text-muted-foreground" onClick={() => setShowEditPassword(!showEditPassword)}>
+                    {showEditPassword ? <EyeOff className="h-4 w-4" /> : <Eye className="h-4 w-4" />}
+                  </button>
+                </div>
+              </div>
+              <div className="space-y-2">
+                <Label>Aplicações autorizadas</Label>
+                <div className="space-y-2 max-h-40 overflow-y-auto rounded-md border border-border p-3">
+                  {apps.length === 0 && <p className="text-xs text-muted-foreground">Nenhuma aplicação encontrada</p>}
+                  {apps.map(app => (
+                    <div key={app.id} className="flex items-center gap-2">
+                      <Checkbox checked={editApps.includes(app.id)} onCheckedChange={(checked) => setEditApps(prev => checked ? [...prev, app.id] : prev.filter(id => id !== app.id))} />
+                      <span className="text-sm text-foreground">{app.name}</span>
+                    </div>
+                  ))}
+                </div>
+              </div>
+              <Button className="w-full" disabled={saving} onClick={handleSaveEdit}>{saving ? "Salvando..." : "Salvar Alterações"}</Button>
+            </div>
+          )}
+        </DialogContent>
+      </Dialog>
+
+      {/* License Detail Modal */}
+      <LicenseDetailModal
+        license={selectedLicense ? buildLicenseDetail(selectedLicense) : null}
+        open={!!selectedLicense}
+        onClose={() => setSelectedLicense(null)}
+      />
     </DashboardLayout>
   );
 };

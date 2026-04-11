@@ -1,7 +1,7 @@
 import { useState, useEffect, useRef, useCallback } from "react";
 import { usePanelUser } from "@/contexts/PanelUserContext";
 import { toast } from "sonner";
-import { Key, Trash2, RotateCcw, LogOut, Plus, Users, Search, Copy, Clock } from "lucide-react";
+import { Key, Trash2, RotateCcw, LogOut, Plus, Users, Search, Copy, Clock, Eye } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -10,11 +10,10 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog";
 import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle, AlertDialogTrigger } from "@/components/ui/alert-dialog";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
-
-
+import { LicenseDetailModal } from "@/components/LicenseDetailModal";
 
 interface App { id: string; name: string; }
-interface License { id: string; license_key: string; status: string; remaining_seconds: number | null; note: string | null; created_at: string; application_id: string; }
+interface License { id: string; license_key: string; status: string; remaining_seconds: number | null; note: string | null; created_at: string; application_id: string; expires_at?: string | null; hwid?: string | null; claimed_by?: string | null; activated_at?: string | null; ban_reason?: string | null; }
 interface SoftwareUser { id: string; username: string; hwid: string | null; ip_address: string | null; last_login_at: string | null; created_at: string; application_id: string; license_id: string; }
 
 const PanelUserDashboard = () => {
@@ -33,6 +32,7 @@ const PanelUserDashboard = () => {
   const [createQty, setCreateQty] = useState("1");
   const [createNote, setCreateNote] = useState("");
   const [creating, setCreating] = useState(false);
+  const [selectedLicenseDetail, setSelectedLicenseDetail] = useState<License | null>(null);
 
   const canvasRef = useRef<HTMLCanvasElement>(null);
 
@@ -297,9 +297,14 @@ const PanelUserDashboard = () => {
                         {filteredLicenses.map(l => (
                           <tr key={l.id} className="border-b border-border/50 hover:bg-muted/10">
                             <td className="px-4 py-3">
-                              <button className="flex items-center gap-1.5 font-mono text-xs text-foreground hover:text-primary transition-colors" onClick={() => { navigator.clipboard.writeText(l.license_key); toast.success("Copiada!"); }}>
-                                <Copy className="h-3 w-3" /> {l.license_key}
-                              </button>
+                              <div className="flex items-center gap-1.5">
+                                <button className="font-mono text-xs text-foreground hover:text-primary transition-colors" onClick={() => setSelectedLicenseDetail(l)}>
+                                  {l.license_key}
+                                </button>
+                                <button className="text-muted-foreground hover:text-primary" onClick={() => { navigator.clipboard.writeText(l.license_key); toast.success("Copiada!"); }}>
+                                  <Copy className="h-3 w-3" />
+                                </button>
+                              </div>
                             </td>
                             <td className="px-4 py-3 text-xs text-muted-foreground">{getAppName(l.application_id)}</td>
                             <td className="px-4 py-3">
@@ -394,6 +399,28 @@ const PanelUserDashboard = () => {
           </Tabs>
         )}
       </main>
+
+      <LicenseDetailModal
+        license={selectedLicenseDetail ? {
+          license_key: selectedLicenseDetail.license_key,
+          status: selectedLicenseDetail.status,
+          expires_at: selectedLicenseDetail.expires_at,
+          activated_at: selectedLicenseDetail.activated_at,
+          created_at: selectedLicenseDetail.created_at,
+          hwid: selectedLicenseDetail.hwid,
+          claimed_by: selectedLicenseDetail.claimed_by,
+          note: selectedLicenseDetail.note,
+          remaining_seconds: selectedLicenseDetail.remaining_seconds,
+          ban_reason: selectedLicenseDetail.ban_reason,
+          application_name: getAppName(selectedLicenseDetail.application_id),
+          software_user: users.find(u => u.license_id === selectedLicenseDetail.id) ? (() => {
+            const su = users.find(u => u.license_id === selectedLicenseDetail.id)!;
+            return { username: su.username, hwid: su.hwid, ip_address: su.ip_address, last_login_at: su.last_login_at, created_at: su.created_at };
+          })() : null,
+        } : null}
+        open={!!selectedLicenseDetail}
+        onClose={() => setSelectedLicenseDetail(null)}
+      />
     </div>
   );
 };
