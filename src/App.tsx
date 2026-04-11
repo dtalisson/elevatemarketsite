@@ -26,35 +26,39 @@ const queryClient = new QueryClient();
 
 const ADMIN_BASE = "/sys-ctrl";
 
+const AdminRoutes = () => (
+  <AuthProvider>
+    <Routes>
+      <Route path="login" element={<Login />} />
+      <Route path="" element={<ProtectedRoute><Dashboard /></ProtectedRoute>} />
+      <Route path="applications" element={<ProtectedRoute><Applications /></ProtectedRoute>} />
+      <Route path="licenses" element={<ProtectedRoute><Licenses /></ProtectedRoute>} />
+      <Route path="users" element={<ProtectedRoute><UsersPage /></ProtectedRoute>} />
+      <Route path="logs" element={<ProtectedRoute><LogsPage /></ProtectedRoute>} />
+      <Route path="hwid-logs" element={<ProtectedRoute><HwidLogsPage /></ProtectedRoute>} />
+      <Route path="online" element={<ProtectedRoute><OnlinePage /></ProtectedRoute>} />
+      <Route path="security-logs" element={<ProtectedRoute><SecurityLogsPage /></ProtectedRoute>} />
+      <Route path="downloads" element={<ProtectedRoute><DownloadsPage /></ProtectedRoute>} />
+      <Route path="blacklist" element={<ProtectedRoute><BlacklistPage /></ProtectedRoute>} />
+      <Route path="docs" element={<ProtectedRoute><ApiDocs /></ProtectedRoute>} />
+      <Route path="site-security" element={<ProtectedRoute><SiteSecurityPage /></ProtectedRoute>} />
+    </Routes>
+  </AuthProvider>
+);
+
 const App = () => (
   <QueryClientProvider client={queryClient}>
-    <AuthProvider>
-      <TooltipProvider>
-        <Toaster />
-        <Sonner />
-        <BrowserRouter>
-          <Routes>
-            <Route path="/" element={<PublicDownload />} />
-            
-            {/* Admin routes - hidden path */}
-            <Route path={`${ADMIN_BASE}/login`} element={<Login />} />
-            <Route path={ADMIN_BASE} element={<ProtectedRoute><Dashboard /></ProtectedRoute>} />
-            <Route path={`${ADMIN_BASE}/applications`} element={<ProtectedRoute><Applications /></ProtectedRoute>} />
-            <Route path={`${ADMIN_BASE}/licenses`} element={<ProtectedRoute><Licenses /></ProtectedRoute>} />
-            <Route path={`${ADMIN_BASE}/users`} element={<ProtectedRoute><UsersPage /></ProtectedRoute>} />
-            <Route path={`${ADMIN_BASE}/logs`} element={<ProtectedRoute><LogsPage /></ProtectedRoute>} />
-            <Route path={`${ADMIN_BASE}/hwid-logs`} element={<ProtectedRoute><HwidLogsPage /></ProtectedRoute>} />
-            <Route path={`${ADMIN_BASE}/online`} element={<ProtectedRoute><OnlinePage /></ProtectedRoute>} />
-            <Route path={`${ADMIN_BASE}/security-logs`} element={<ProtectedRoute><SecurityLogsPage /></ProtectedRoute>} />
-            <Route path={`${ADMIN_BASE}/downloads`} element={<ProtectedRoute><DownloadsPage /></ProtectedRoute>} />
-            <Route path={`${ADMIN_BASE}/blacklist`} element={<ProtectedRoute><BlacklistPage /></ProtectedRoute>} />
-            <Route path={`${ADMIN_BASE}/docs`} element={<ProtectedRoute><ApiDocs /></ProtectedRoute>} />
-            <Route path={`${ADMIN_BASE}/site-security`} element={<ProtectedRoute><SiteSecurityPage /></ProtectedRoute>} />
-            <Route path="*" element={<NotFound />} />
-          </Routes>
-        </BrowserRouter>
-      </TooltipProvider>
-    </AuthProvider>
+    <TooltipProvider>
+      <Toaster />
+      <Sonner />
+      <BrowserRouter>
+        <Routes>
+          <Route path="/" element={<PublicDownload />} />
+          <Route path={`${ADMIN_BASE}/*`} element={<AdminRoutes />} />
+          <Route path="*" element={<NotFound />} />
+        </Routes>
+      </BrowserRouter>
+    </TooltipProvider>
   </QueryClientProvider>
 );
 
