@@ -28,6 +28,10 @@ const ApiDocs = () => {
             <Code className="h-3.5 w-3.5" />
             Exemplo C++
           </TabsTrigger>
+          <TabsTrigger value="csharp" className="gap-1.5">
+            <Code className="h-3.5 w-3.5" />
+            Exemplo C#
+          </TabsTrigger>
           <TabsTrigger value="discord" className="gap-1.5">
             <Bot className="h-3.5 w-3.5" />
             Discord Bot
