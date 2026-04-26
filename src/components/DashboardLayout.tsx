@@ -63,19 +63,22 @@ export const DashboardLayout = ({ children }: { children: ReactNode }) => {
           sidebarOpen ? "translate-x-0" : "-translate-x-full"
         )}
       >
-        <div className="flex h-14 items-center justify-between border-b border-border/80 px-5">
-           <span className="text-xl font-heading font-bold text-foreground tracking-tight">
-            Elevate<span className="text-primary">Auth</span>
-          </span>
+        <div className="flex h-16 items-center justify-between border-b border-border/60 px-5">
+          <div className="flex items-center gap-2.5">
+            <Shield className="h-5 w-5 text-primary" strokeWidth={2.2} />
+            <span className="text-[15px] font-heading font-bold text-foreground tracking-tight">
+              Admin Panel
+            </span>
+          </div>
           <button className="lg:hidden text-muted-foreground hover:text-foreground" onClick={() => setSidebarOpen(false)}>
             <X className="h-4 w-4" />
           </button>
         </div>
 
-        <nav className="flex-1 space-y-5 overflow-y-auto px-3 py-4">
+        <nav className="flex-1 space-y-6 overflow-y-auto px-3 py-5">
           {navSections.map((section) => (
             <div key={section.label}>
-              <p className="mb-1.5 px-3 text-[10px] font-semibold uppercase tracking-[0.12em] text-muted-foreground/50">
+              <p className="mb-2 px-3 text-[10px] font-semibold uppercase tracking-[0.14em] text-muted-foreground/60">
                 {section.label}
               </p>
               <div className="space-y-0.5">
@@ -90,7 +93,7 @@ export const DashboardLayout = ({ children }: { children: ReactNode }) => {
                         "flex items-center gap-2.5 rounded-md px-3 py-2 text-[13px] font-medium transition-colors",
                         active
                           ? "bg-primary/10 text-primary"
-                          : "text-muted-foreground hover:bg-muted hover:text-foreground"
+                          : "text-muted-foreground hover:bg-muted/60 hover:text-foreground"
                       )}
                     >
                       <item.icon className="h-4 w-4" />
@@ -103,8 +106,15 @@ export const DashboardLayout = ({ children }: { children: ReactNode }) => {
           ))}
         </nav>
 
-        <div className="border-t border-border/80 px-3 pb-3 pt-2">
-          <div className="mb-1 flex items-center gap-2.5 px-3 py-2">
+        <div className="border-t border-border/60 px-3 pb-3 pt-3 space-y-1">
+          <Link
+            to="/"
+            className="flex items-center gap-2 rounded-md px-3 py-2 text-[11px] font-medium text-muted-foreground transition-colors hover:bg-muted/60 hover:text-foreground"
+          >
+            <ArrowLeft className="h-3.5 w-3.5" />
+            Back to site
+          </Link>
+          <div className="flex items-center gap-2.5 px-3 py-2">
             <div className="flex h-7 w-7 items-center justify-center rounded-full bg-primary/15 text-[11px] font-bold text-primary">
               {(user?.user_metadata?.username || "U")[0].toUpperCase()}
             </div>
@@ -126,13 +136,14 @@ export const DashboardLayout = ({ children }: { children: ReactNode }) => {
       </aside>
 
       <div className="flex flex-1 flex-col">
-        <header className="flex h-14 items-center gap-4 border-b border-border/80 bg-background/70 px-6 backdrop-blur-xl lg:hidden">
+        <header className="flex h-14 items-center gap-4 border-b border-border/60 bg-background/70 px-6 backdrop-blur-xl lg:hidden">
           <button onClick={() => setSidebarOpen(true)} className="rounded-md p-2 text-muted-foreground hover:bg-muted hover:text-foreground">
             <Menu className="h-5 w-5" />
           </button>
-          <span className="text-xl font-heading font-bold text-foreground">
-            Elevate<span className="text-primary">Auth</span>
-          </span>
+          <div className="flex items-center gap-2">
+            <Shield className="h-4 w-4 text-primary" />
+            <span className="text-sm font-heading font-bold text-foreground">Admin Panel</span>
+          </div>
         </header>
         <main className="flex-1 overflow-auto p-6 lg:p-8">{children}</main>
       </div>
