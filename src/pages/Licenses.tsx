@@ -62,7 +62,7 @@ const Licenses = () => {
 
   const fetchData = async () => {
     const [licRes, appRes, usersRes] = await Promise.all([
-      supabase.from("licenses").select("*").order("created_at", { ascending: false }),
+      supabase.from("licenses").select("*").is("panel_user_id", null).order("created_at", { ascending: false }),
       supabase.from("applications").select("id, name"),
       supabase.from("software_users_safe").select("id, username, hwid, license_id"),
     ]);
@@ -196,6 +196,17 @@ const Licenses = () => {
   };
 
   const copyKey = (text: string) => { navigator.clipboard.writeText(text); toast.success("Copiado!"); };
+
+  const cleanupByStatus = async (mode: "unused" | "expired") => {
+    const targets = licenses.filter((l) => {
+      if (filterApp !== "all" && l.application_id !== filterApp) return false;
+      return getEffectiveStatus(l) === mode;
+    });
+    if (targets.length === 0) { toast.info(`Nenhuma licença ${mode === "unused" ? "não usada" : "expirada"} encontrada`); return; }
+    const { error } = await supabase.from("licenses").delete().in("id", targets.map((t) => t.id));
+    if (error) toast.error(error.message);
+    else { toast.success(`${targets.length} licença(s) ${mode === "unused" ? "não usadas" : "expiradas"} excluída(s)`); fetchData(); }
+  };
   const formatDate = (date: string) => new Date(date).toLocaleDateString("pt-BR", { day: "2-digit", month: "2-digit", year: "numeric", hour: "2-digit", minute: "2-digit" });
   const getAppName = (appId: string) => apps.find((a) => a.id === appId)?.name || "—";
 
@@ -232,10 +243,49 @@ const Licenses = () => {
           <h1 className="text-2xl font-heading font-bold text-foreground tracking-tight">Licenças</h1>
           <p className="text-sm text-muted-foreground mt-1">Gerencie suas keys</p>
         </div>
-        <Dialog open={open} onOpenChange={setOpen}>
-          <DialogTrigger asChild>
-            <Button disabled={apps.length === 0} size="sm" className="gap-1.5"><Plus className="h-3.5 w-3.5" />Gerar</Button>
-          </DialogTrigger>
+        <div className="flex items-center gap-2">
+          <AlertDialog>
+            <AlertDialogTrigger asChild>
+              <Button variant="outline" size="sm" className="gap-1.5 text-muted-foreground hover:text-foreground">
+                <Trash2 className="h-3.5 w-3.5" />Limpar não usadas
+              </Button>
+            </AlertDialogTrigger>
+            <AlertDialogContent>
+              <AlertDialogHeader>
+                <AlertDialogTitle className="font-heading">Excluir licenças não usadas?</AlertDialogTitle>
+                <AlertDialogDescription>
+                  Todas as licenças com status <strong>unused</strong>{filterApp !== "all" ? " da aplicação selecionada" : ""} serão removidas. Ação irreversível.
+                </AlertDialogDescription>
+              </AlertDialogHeader>
+              <AlertDialogFooter>
+                <AlertDialogCancel>Cancelar</AlertDialogCancel>
+                <AlertDialogAction onClick={() => cleanupByStatus("unused")} className="bg-destructive hover:bg-destructive/90">Excluir</AlertDialogAction>
+              </AlertDialogFooter>
+            </AlertDialogContent>
+          </AlertDialog>
+          <AlertDialog>
+            <AlertDialogTrigger asChild>
+              <Button variant="outline" size="sm" className="gap-1.5 text-muted-foreground hover:text-foreground">
+                <Trash2 className="h-3.5 w-3.5" />Limpar expiradas
+              </Button>
+            </AlertDialogTrigger>
+            <AlertDialogContent>
+              <AlertDialogHeader>
+                <AlertDialogTitle className="font-heading">Excluir licenças expiradas?</AlertDialogTitle>
+                <AlertDialogDescription>
+                  Todas as licenças com status <strong>expired</strong>{filterApp !== "all" ? " da aplicação selecionada" : ""} serão removidas. Ação irreversível.
+                </AlertDialogDescription>
+              </AlertDialogHeader>
+              <AlertDialogFooter>
+                <AlertDialogCancel>Cancelar</AlertDialogCancel>
+                <AlertDialogAction onClick={() => cleanupByStatus("expired")} className="bg-destructive hover:bg-destructive/90">Excluir</AlertDialogAction>
+              </AlertDialogFooter>
+            </AlertDialogContent>
+          </AlertDialog>
+          <Dialog open={open} onOpenChange={setOpen}>
+            <DialogTrigger asChild>
+              <Button disabled={apps.length === 0} size="sm" className="gap-1.5"><Plus className="h-3.5 w-3.5" />Gerar</Button>
+            </DialogTrigger>
           <DialogContent>
             <DialogHeader><DialogTitle className="font-heading">Gerar Licenças</DialogTitle></DialogHeader>
             <form onSubmit={createLicenses} className="space-y-4">
@@ -266,6 +316,7 @@ const Licenses = () => {
             </form>
           </DialogContent>
         </Dialog>
+        </div>
       </div>
 
       <Dialog open={showCreatedDialog} onOpenChange={setShowCreatedDialog}>
