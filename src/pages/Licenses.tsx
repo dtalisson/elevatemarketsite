@@ -316,6 +316,7 @@ const Licenses = () => {
             </form>
           </DialogContent>
         </Dialog>
+        </div>
       </div>
 
       <Dialog open={showCreatedDialog} onOpenChange={setShowCreatedDialog}>
