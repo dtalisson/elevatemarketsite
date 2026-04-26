@@ -2,38 +2,43 @@ import { ReactNode, useState } from "react";
 import { Link, useLocation } from "react-router-dom";
 import { useAuth } from "@/contexts/AuthContext";
 import {
-  LayoutDashboard, ScrollText, Key, AppWindow, Users, LogOut, Code, Menu, X, Wifi, ShieldAlert, ShieldX, Download, Ban, UserCog,
+  LayoutDashboard, ScrollText, Key, AppWindow, Users, LogOut, Code, Menu, X, Wifi, ShieldAlert, ShieldX, Download, Ban, UserCog, Shield, ArrowLeft,
 } from "lucide-react";
 import { cn } from "@/lib/utils";
 
 const navSections = [
   {
-    label: "PRINCIPAL",
+    label: "OVERVIEW",
     items: [
       { label: "Dashboard", icon: LayoutDashboard, href: "/dashboard" },
-      { label: "Aplicações", icon: AppWindow, href: "/dashboard/applications" },
-      { label: "Licenças", icon: Key, href: "/dashboard/licenses" },
-      { label: "Usuários", icon: Users, href: "/dashboard/users" },
+    ],
+  },
+  {
+    label: "PEOPLE",
+    items: [
+      { label: "Users", icon: Users, href: "/dashboard/users" },
+      { label: "Panel Users", icon: UserCog, href: "/dashboard/panel-users" },
       { label: "Online", icon: Wifi, href: "/dashboard/online" },
-      { label: "Painel Users", icon: UserCog, href: "/dashboard/panel-users" },
     ],
   },
   {
-    label: "LOGS",
+    label: "COMMERCE",
     items: [
-      { label: "Autenticação", icon: ScrollText, href: "/dashboard/logs" },
-      { label: "HWID", icon: ShieldAlert, href: "/dashboard/hwid-logs" },
+      { label: "Applications", icon: AppWindow, href: "/dashboard/applications" },
+      { label: "Licenses", icon: Key, href: "/dashboard/licenses" },
     ],
   },
   {
-    label: "SEGURANÇA",
+    label: "SECURITY",
     items: [
-      { label: "Alertas", icon: ShieldX, href: "/dashboard/security-logs" },
+      { label: "Auth Logs", icon: ScrollText, href: "/dashboard/logs" },
+      { label: "HWID Logs", icon: ShieldAlert, href: "/dashboard/hwid-logs" },
+      { label: "Alerts", icon: ShieldX, href: "/dashboard/security-logs" },
       { label: "Blacklist", icon: Ban, href: "/dashboard/blacklist" },
     ],
   },
   {
-    label: "FERRAMENTAS",
+    label: "PLATFORM",
     items: [
       { label: "Downloads", icon: Download, href: "/dashboard/downloads" },
       { label: "API Docs", icon: Code, href: "/dashboard/docs" },
