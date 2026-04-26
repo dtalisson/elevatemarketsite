@@ -1038,6 +1038,232 @@ bool verify_response(const json& response, const std::string& app_secret) {
           </div>
         </TabsContent>
 
+        {/* ==================== C# TAB ==================== */}
+        <TabsContent value="csharp">
+          <div className="space-y-6">
+            <Card className="border-border/50 bg-card">
+              <CardHeader>
+                <CardTitle className="text-base">📦 Exemplo Completo C# (.NET) — HMAC + Anti-Debug</CardTitle>
+                <p className="text-xs text-muted-foreground mt-1">
+                  Inclui HMAC signing, verificação de resposta, app-status, registro, login, HWID e anti-debug. Compatível com .NET 6+ / .NET Framework 4.7.2+
+                </p>
+              </CardHeader>
+              <CardContent>
+                <div>
+                  <p className="mb-3 text-xs font-medium text-muted-foreground">DEPENDÊNCIAS: System.Net.Http, System.Text.Json (built-in no .NET 6+)</p>
+                  <pre className="rounded-lg bg-muted p-3 font-mono text-xs text-foreground overflow-x-auto">
+{`using System;
+using System.Collections.Generic;
+using System.Diagnostics;
+using System.Linq;
+using System.Management;
+using System.Net.Http;
+using System.Runtime.InteropServices;
+using System.Security.Cryptography;
+using System.Text;
+using System.Text.Json;
+using System.Threading.Tasks;
+
+public static class ElevateAuth
+{
+    private const string BASE_URL = "${baseUrl}";
+    private const string APP_ID = "seu-app-id-uuid";
+
+    // ⚠️ NUNCA em plaintext em produção — use ofuscação/criptografia
+    private const string APP_SECRET = "seu-secret-key-uuid";
+
+    private static readonly HttpClient http = new HttpClient();
+
+    // ========== HMAC ==========
+    private static string HmacSha256(string key, string message)
+    {
+        using var hmac = new HMACSHA256(Encoding.UTF8.GetBytes(key));
+        var hash = hmac.ComputeHash(Encoding.UTF8.GetBytes(message));
+        return BitConverter.ToString(hash).Replace("-", "").ToLowerInvariant();
+    }
+
+    private static string RandomNonce(int len = 16)
+    {
+        const string chars = "abcdef0123456789";
+        var rng = RandomNumberGenerator.Create();
+        var bytes = new byte[len];
+        rng.GetBytes(bytes);
+        var sb = new StringBuilder(len);
+        foreach (var b in bytes) sb.Append(chars[b % chars.Length]);
+        return sb.ToString();
+    }
+
+    private static Dictionary<string, object> SignRequest(Dictionary<string, object> fields)
+    {
+        long ms = DateTimeOffset.UtcNow.ToUnixTimeMilliseconds();
+        string nonce = RandomNonce();
+
+        // Ordena as chaves alfabeticamente para canonical JSON
+        var sorted = fields.OrderBy(kv => kv.Key, StringComparer.Ordinal)
+                           .ToDictionary(kv => kv.Key, kv => kv.Value);
+        string canonical = JsonSerializer.Serialize(sorted);
+        string message = $"{ms}:{nonce}:{canonical}";
+        string sig = HmacSha256(APP_SECRET, message);
+
+        var request = new Dictionary<string, object>(fields)
+        {
+            ["app_id"] = APP_ID,
+            ["timestamp"] = ms,
+            ["nonce"] = nonce,
+            ["signature"] = sig
+        };
+        return request;
+    }
+
+    private static bool VerifyResponse(JsonElement response)
+    {
+        if (!response.TryGetProperty("_sig", out var sigEl)) return false;
+        string receivedSig = sigEl.GetString() ?? "";
+
+        // Reconstroi sem _sig
+        var dict = new Dictionary<string, JsonElement>();
+        foreach (var p in response.EnumerateObject())
+            if (p.Name != "_sig") dict[p.Name] = p.Value;
+
+        string canonical = JsonSerializer.Serialize(dict);
+        return HmacSha256(APP_SECRET, canonical) == receivedSig;
+    }
+
+    // ========== HTTP ==========
+    private static async Task<JsonElement> PostAsync(string endpoint, Dictionary<string, object> body)
+    {
+        string json = JsonSerializer.Serialize(body);
+        var content = new StringContent(json, Encoding.UTF8, "application/json");
+        var resp = await http.PostAsync($"{BASE_URL}/{endpoint}", content);
+        string text = await resp.Content.ReadAsStringAsync();
+        return JsonDocument.Parse(text).RootElement.Clone();
+    }
+
+    // ========== ANTI-DEBUG ==========
+    [DllImport("kernel32.dll")] static extern bool IsDebuggerPresent();
+    [DllImport("kernel32.dll")] static extern bool CheckRemoteDebuggerPresent(IntPtr h, ref bool b);
+
+    public static void AntiDebug()
+    {
+        if (IsDebuggerPresent()) Environment.Exit(0);
+        bool remote = false;
+        CheckRemoteDebuggerPresent(Process.GetCurrentProcess().Handle, ref remote);
+        if (remote) Environment.Exit(0);
+        if (Debugger.IsAttached) Environment.Exit(0);
+    }
+
+    // ========== HWID ==========
+    public static string GetHwid()
+    {
+        try
+        {
+            using var searcher = new ManagementObjectSearcher("SELECT ProcessorId FROM Win32_Processor");
+            foreach (var item in searcher.Get())
+            {
+                var id = item["ProcessorId"]?.ToString() ?? "";
+                using var sha = SHA256.Create();
+                var hash = sha.ComputeHash(Encoding.UTF8.GetBytes(id));
+                return BitConverter.ToString(hash).Replace("-", "").ToLowerInvariant();
+            }
+        }
+        catch { }
+        return "unknown-hwid";
+    }
+
+    // ========== API CALLS ==========
+    public static async Task<bool> CheckStatusAsync(string version = "1.0.0")
+    {
+        AntiDebug();
+        var body = SignRequest(new Dictionary<string, object> { ["version"] = version });
+        var res = await PostAsync("app-status", body);
+        if (!VerifyResponse(res)) Environment.Exit(0);
+
+        string status = res.GetProperty("status").GetString() ?? "";
+        if (status == "disabled" || status == "outdated")
+        {
+            Console.WriteLine(res.GetProperty("message").GetString());
+            return false;
+        }
+        return true;
+    }
+
+    public static async Task<bool> RegisterAsync(string licenseKey, string user, string pass, string hwid = "")
+    {
+        var body = SignRequest(new Dictionary<string, object>
+        {
+            ["license_key"] = licenseKey,
+            ["username"] = user,
+            ["password"] = pass,
+            ["hwid"] = hwid
+        });
+        var res = await PostAsync("register-with-license", body);
+        if (!VerifyResponse(res)) Environment.Exit(0);
+        return res.TryGetProperty("success", out var s) && s.GetBoolean();
+    }
+
+    public static async Task<string?> LoginAsync(string user, string pass, string hwid = "")
+    {
+        AntiDebug();
+        var body = SignRequest(new Dictionary<string, object>
+        {
+            ["username"] = user,
+            ["password"] = pass,
+            ["hwid"] = hwid
+        });
+        var res = await PostAsync("login", body);
+        if (!VerifyResponse(res)) Environment.Exit(0);
+
+        if (!res.TryGetProperty("success", out var s) || !s.GetBoolean()) return null;
+        return res.GetProperty("session_token").GetString();
+    }
+}
+
+// ========== USO ==========
+// public static async Task Main()
+// {
+//     if (!await ElevateAuth.CheckStatusAsync("1.0.0")) return;
+//
+//     string hwid = ElevateAuth.GetHwid();
+//
+//     // Registro (primeira vez):
+//     // await ElevateAuth.RegisterAsync("SUA-KEY", "usuario", "senha", hwid);
+//
+//     string? token = await ElevateAuth.LoginAsync("usuario", "senha", hwid);
+//     if (token != null)
+//         Console.WriteLine($"✅ Programa liberado! Session: {token}");
+//     else
+//         Environment.Exit(0);
+// }`}
+                  </pre>
+                </div>
+
+                <div className="mt-4">
+                  <p className="mb-2 text-xs font-medium text-muted-foreground">📦 PACOTES NUGET NECESSÁRIOS</p>
+                  <pre className="rounded-lg bg-muted p-3 font-mono text-xs text-foreground overflow-x-auto">
+{`# .NET 6+ (System.Text.Json e HttpClient já incluídos)
+dotnet add package System.Management   # para HWID via WMI
+
+# .NET Framework 4.7.2+
+Install-Package System.Text.Json
+Install-Package System.Management`}
+                  </pre>
+                </div>
+
+                <div className="mt-4">
+                  <p className="mb-2 text-xs font-medium text-muted-foreground">⚠️ PROTEÇÕES ADICIONAIS RECOMENDADAS</p>
+                  <ul className="list-disc list-inside text-xs text-muted-foreground space-y-1">
+                    <li>Ofusque o binário com <code className="text-primary">ConfuserEx</code>, <code className="text-primary">Eazfuscator</code> ou <code className="text-primary">.NET Reactor</code></li>
+                    <li>NUNCA armazene <code className="text-primary">APP_SECRET</code> em plaintext — use string encryption no obfuscator</li>
+                    <li>Adicione checagem periódica via <code className="text-primary">validate-session</code> em uma <code className="text-primary">Task</code> em background</li>
+                    <li>Combine <code className="text-primary">AntiDebug()</code> com detecção de máquinas virtuais e processos suspeitos</li>
+                    <li>Use <code className="text-primary">AppDomain.CurrentDomain.UnhandledException</code> para abortar em crashes suspeitos</li>
+                  </ul>
+                </div>
+              </CardContent>
+            </Card>
+          </div>
+        </TabsContent>
+
         {/* ==================== DISCORD BOT TAB ==================== */}
         <TabsContent value="discord">
           <div className="space-y-6">
