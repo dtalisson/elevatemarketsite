@@ -1371,7 +1371,7 @@ Install-Package System.Management`}
 DISCORD_TOKEN=seu-token-do-bot-discord
 GUILD_ID=id-do-servidor
 
-# Elevate Auth
+# Elevate Services
 ELEVATE_API_URL=${baseUrl}
 APP_SECRET=secret-key-da-sua-aplicacao
 
@@ -1489,7 +1489,7 @@ client.on('interactionCreate', async interaction => {
       if (usuario) {
         try {
           await usuario.send(
-            \`🔑 **Sua licença Elevate Auth**\\n\\n\` +
+            \`🔑 **Sua licença Elevate Services**\\n\\n\` +
             \`📋 Plano: **\${plan.label}**\\n\` +
             \`🔐 Key(s):\\n\\\`\\\`\\\`\\n\${keys}\\n\\\`\\\`\\\`\\n\\n\` +
             \`Use essa key no programa para ativar.\\n\` +

@@ -64,12 +64,9 @@ export const DashboardLayout = ({ children }: { children: ReactNode }) => {
         )}
       >
         <div className="flex h-16 items-center justify-between border-b border-border/60 px-5">
-          <div className="flex items-center gap-2.5">
-            <Shield className="h-5 w-5 text-primary" strokeWidth={2.2} />
-            <span className="text-[15px] font-heading font-bold text-foreground tracking-tight">
-              Admin Panel
-            </span>
-          </div>
+          <span className="text-[15px] font-heading font-bold text-foreground tracking-tight">
+            Admin Panel
+          </span>
           <button className="lg:hidden text-muted-foreground hover:text-foreground" onClick={() => setSidebarOpen(false)}>
             <X className="h-4 w-4" />
           </button>
@@ -140,10 +137,7 @@ export const DashboardLayout = ({ children }: { children: ReactNode }) => {
           <button onClick={() => setSidebarOpen(true)} className="rounded-md p-2 text-muted-foreground hover:bg-muted hover:text-foreground">
             <Menu className="h-5 w-5" />
           </button>
-          <div className="flex items-center gap-2">
-            <Shield className="h-4 w-4 text-primary" />
-            <span className="text-sm font-heading font-bold text-foreground">Admin Panel</span>
-          </div>
+          <span className="text-sm font-heading font-bold text-foreground">Admin Panel</span>
         </header>
         <main className="flex-1 overflow-auto p-6 lg:p-8">{children}</main>
       </div>
