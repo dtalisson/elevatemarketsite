@@ -170,7 +170,7 @@ const PublicDownload = () => {
         </div>
 
         <p className="mt-6 text-center text-[11px] text-muted-foreground/40">
-          Elevate Auth · Secure Downloads
+          Elevate Services · Secure Downloads
         </p>
       </div>
     </div>

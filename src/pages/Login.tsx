@@ -180,7 +180,7 @@ const Login = () => {
         </div>
 
         <p className="mt-6 text-center text-[11px] text-muted-foreground/40">
-          Acesso restrito · Elevate Auth
+          Acesso restrito · Elevate Services
         </p>
       </div>
     </div>
