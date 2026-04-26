@@ -87,9 +87,16 @@ const Licenses = () => {
     const inserts = Array.from({ length: qty }, () => ({
       application_id: selectedApp, created_by: user.id, max_uses: 1, remaining_seconds: durationSeconds, expires_at: null as string | null, note: note || null,
     }));
-    const { error } = await supabase.from("licenses").insert(inserts);
+    const { data, error } = await supabase.from("licenses").insert(inserts).select("license_key");
     if (error) toast.error(error.message);
-    else { toast.success(`${qty} licença(s) criada(s)!`); setOpen(false); setNote(""); setExpValue(""); setExpUnit("days"); setQuantity("1"); fetchData(); }
+    else {
+      const keys = (data || []).map((d: { license_key: string }) => d.license_key);
+      setCreatedKeys(keys);
+      setShowCreatedDialog(true);
+      toast.success(`${qty} licença(s) criada(s)!`);
+      setOpen(false); setNote(""); setExpValue(""); setExpUnit("days"); setQuantity("1");
+      fetchData();
+    }
     setLoading(false);
   };
 
