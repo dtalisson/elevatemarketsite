@@ -57,7 +57,7 @@ const PanelUserLogin = () => {
       <div className="relative z-10 w-full max-w-[360px]">
         <div className="mb-10 text-center">
           <h1 className="text-4xl font-heading font-bold tracking-tight text-foreground">
-            Elevate<span className="text-primary">Auth</span>
+            Elevate<span className="text-primary">Services</span>
           </h1>
           <p className="mt-2 text-sm text-muted-foreground">Painel do revendedor</p>
         </div>
