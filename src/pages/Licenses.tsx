@@ -268,6 +268,43 @@ const Licenses = () => {
         </Dialog>
       </div>
 
+      <Dialog open={showCreatedDialog} onOpenChange={setShowCreatedDialog}>
+        <DialogContent className="max-w-lg">
+          <DialogHeader>
+            <DialogTitle className="font-heading">
+              {createdKeys.length} licença(s) gerada(s)
+            </DialogTitle>
+          </DialogHeader>
+          <div className="space-y-3">
+            <div className="flex items-center justify-between">
+              <p className="text-xs text-muted-foreground">Copie suas keys abaixo</p>
+              <Button
+                size="sm"
+                variant="outline"
+                className="h-7 gap-1.5 text-[11px]"
+                onClick={() => { navigator.clipboard.writeText(createdKeys.join("\n")); toast.success("Todas copiadas!"); }}
+              >
+                <Copy className="h-3 w-3" />Copiar todas
+              </Button>
+            </div>
+            <div className="max-h-[360px] overflow-y-auto rounded-md border border-border bg-muted/30 divide-y divide-border">
+              {createdKeys.map((k) => (
+                <div key={k} className="flex items-center gap-2 px-3 py-2">
+                  <code className="flex-1 truncate font-mono text-[12px] text-foreground">{k}</code>
+                  <button
+                    onClick={() => { navigator.clipboard.writeText(k); toast.success("Copiada!"); }}
+                    className="text-muted-foreground hover:text-primary transition-colors"
+                  >
+                    <Copy className="h-3.5 w-3.5" />
+                  </button>
+                </div>
+              ))}
+            </div>
+            <Button className="w-full" onClick={() => setShowCreatedDialog(false)}>Fechar</Button>
+          </div>
+        </DialogContent>
+      </Dialog>
+
       {apps.length > 1 && (
         <div className="mb-4 flex gap-1 overflow-x-auto pb-1">
           <button
