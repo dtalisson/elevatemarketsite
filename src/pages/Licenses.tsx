@@ -57,6 +57,8 @@ const Licenses = () => {
   const [banReason, setBanReason] = useState("");
   const [showBanDialog, setShowBanDialog] = useState(false);
   const [banTargetId, setBanTargetId] = useState<string | null>(null);
+  const [createdKeys, setCreatedKeys] = useState<string[]>([]);
+  const [showCreatedDialog, setShowCreatedDialog] = useState(false);
 
   const fetchData = async () => {
     const [licRes, appRes, usersRes] = await Promise.all([
