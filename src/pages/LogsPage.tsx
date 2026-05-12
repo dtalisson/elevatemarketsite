@@ -44,6 +44,7 @@ const eventLabels: Record<string, { label: string; color: string; description: s
   login_banned: { label: "Banido", color: "bg-destructive/10 text-destructive", description: "O usuário tentou login mas sua licença está banida." },
   login_expired: { label: "Expirado", color: "bg-warning/10 text-warning", description: "O usuário tentou login mas sua licença está expirada." },
   login_hwid_mismatch: { label: "HWID ≠", color: "bg-warning/10 text-warning", description: "O HWID do dispositivo não corresponde ao registrado na licença." },
+  pre_auth_hwid_mismatch: { label: "HWID ≠ (Pre)", color: "bg-warning/10 text-warning", description: "HWID divergente detectado na fase de pre-auth (challenge token)." },
   register_success: { label: "Registro OK", color: "bg-primary/10 text-primary", description: "Novo usuário registrado com sucesso usando uma licença válida." },
   register_failed: { label: "Registro Falha", color: "bg-destructive/10 text-destructive", description: "Tentativa de registro falhou. A licença pode já estar em uso ou ser inválida." },
   validate_success: { label: "Validação OK", color: "bg-primary/10 text-primary", description: "A licença do usuário foi validada com sucesso." },
