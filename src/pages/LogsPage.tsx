@@ -44,6 +44,7 @@ const eventLabels: Record<string, { label: string; color: string; description: s
   login_banned: { label: "Banido", color: "bg-destructive/10 text-destructive", description: "O usuário tentou login mas sua licença está banida." },
   login_expired: { label: "Expirado", color: "bg-warning/10 text-warning", description: "O usuário tentou login mas sua licença está expirada." },
   login_hwid_mismatch: { label: "HWID ≠", color: "bg-warning/10 text-warning", description: "O HWID do dispositivo não corresponde ao registrado na licença." },
+  pre_auth_hwid_mismatch: { label: "HWID ≠ (Pre)", color: "bg-warning/10 text-warning", description: "HWID divergente detectado na fase de pre-auth (challenge token)." },
   register_success: { label: "Registro OK", color: "bg-primary/10 text-primary", description: "Novo usuário registrado com sucesso usando uma licença válida." },
   register_failed: { label: "Registro Falha", color: "bg-destructive/10 text-destructive", description: "Tentativa de registro falhou. A licença pode já estar em uso ou ser inválida." },
   validate_success: { label: "Validação OK", color: "bg-primary/10 text-primary", description: "A licença do usuário foi validada com sucesso." },
@@ -78,6 +79,42 @@ const LogsPage = () => {
   const [cleanupPeriod, setCleanupPeriod] = useState("1d");
   const [showCleanup, setShowCleanup] = useState(false);
   const [cleanupLoading, setCleanupLoading] = useState(false);
+  const [resettingHwid, setResettingHwid] = useState(false);
+
+  const isHwidMismatch = (eventType: string) =>
+    eventType === "login_hwid_mismatch" ||
+    eventType === "validate_hwid_mismatch" ||
+    eventType === "pre_auth_hwid_mismatch";
+
+  const resetHwidForLog = async (log: AuthLog) => {
+    if (!log.username) { toast.error("Log sem username"); return; }
+    setResettingHwid(true);
+    try {
+      // Find the software_user to get the license
+      const { data: su, error: suErr } = await supabase
+        .from("software_users")
+        .select("id, license_id")
+        .eq("application_id", log.application_id)
+        .eq("username", log.username.toLowerCase())
+        .maybeSingle();
+      if (suErr) throw suErr;
+      if (!su) { toast.error("Usuário não encontrado"); return; }
+
+      const [{ error: licErr }, { error: userErr }] = await Promise.all([
+        supabase.from("licenses").update({ hwid: null }).eq("id", su.license_id),
+        supabase.from("software_users").update({ hwid: null }).eq("id", su.id),
+      ]);
+      if (licErr) throw licErr;
+      if (userErr) throw userErr;
+
+      toast.success(`HWID de ${log.username} resetado`);
+      fetchData();
+    } catch (e: any) {
+      toast.error(e.message || "Falha ao resetar HWID");
+    } finally {
+      setResettingHwid(false);
+    }
+  };
 
   // Panel logs state
   const [panelLogs, setPanelLogs] = useState<PanelUserLog[]>([]);
@@ -429,6 +466,22 @@ const LogsPage = () => {
                 )}
                 {selectedLog.details && (
                   <p className="text-[11px] font-mono text-muted-foreground/70 bg-muted/30 rounded-md px-3 py-2 break-all">{selectedLog.details}</p>
+                )}
+                {isHwidMismatch(selectedLog.event_type) && selectedLog.username && (
+                  <div className="flex items-center justify-between gap-3 rounded-lg border border-warning/30 bg-warning/5 px-3 py-2.5">
+                    <div className="text-[11px] text-muted-foreground">
+                      Resetar HWID permite que <span className="font-mono text-foreground">{selectedLog.username}</span> faça login do novo dispositivo.
+                    </div>
+                    <Button
+                      size="sm"
+                      variant="outline"
+                      className="border-warning/40 text-warning hover:bg-warning/10 flex-shrink-0"
+                      disabled={resettingHwid}
+                      onClick={() => resetHwidForLog(selectedLog)}
+                    >
+                      {resettingHwid ? "Resetando..." : "Resetar HWID"}
+                    </Button>
+                  </div>
                 )}
               </div>
             );
