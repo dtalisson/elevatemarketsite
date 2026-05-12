@@ -467,6 +467,22 @@ const LogsPage = () => {
                 {selectedLog.details && (
                   <p className="text-[11px] font-mono text-muted-foreground/70 bg-muted/30 rounded-md px-3 py-2 break-all">{selectedLog.details}</p>
                 )}
+                {isHwidMismatch(selectedLog.event_type) && selectedLog.username && (
+                  <div className="flex items-center justify-between gap-3 rounded-lg border border-warning/30 bg-warning/5 px-3 py-2.5">
+                    <div className="text-[11px] text-muted-foreground">
+                      Resetar HWID permite que <span className="font-mono text-foreground">{selectedLog.username}</span> faça login do novo dispositivo.
+                    </div>
+                    <Button
+                      size="sm"
+                      variant="outline"
+                      className="border-warning/40 text-warning hover:bg-warning/10 flex-shrink-0"
+                      disabled={resettingHwid}
+                      onClick={() => resetHwidForLog(selectedLog)}
+                    >
+                      {resettingHwid ? "Resetando..." : "Resetar HWID"}
+                    </Button>
+                  </div>
+                )}
               </div>
             );
           })()}
