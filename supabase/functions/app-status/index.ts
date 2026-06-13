@@ -147,6 +147,34 @@ Deno.serve(async (req) => {
       message = "A new version is available";
     }
 
+    // Attach download payload (signed URL, 5 min) when an update is required or available
+    let download: Record<string, unknown> | null = null;
+    if (update_required || update_available) {
+      const { data: dl } = await supabase
+        .from("downloads")
+        .select("file_name, file_path, file_size, version")
+        .eq("application_id", app.id)
+        .order("created_at", { ascending: false })
+        .limit(1)
+        .single();
+
+      if (dl) {
+        const { data: signed } = await supabase.storage
+          .from("downloads")
+          .createSignedUrl(dl.file_path, 300);
+
+        if (signed?.signedUrl) {
+          download = {
+            url: signed.signedUrl,
+            file_name: dl.file_name,
+            file_size: dl.file_size,
+            version: dl.version,
+            expires_in: 300,
+          };
+        }
+      }
+    }
+
     const responseData = {
       success: true,
       status,
@@ -159,6 +187,7 @@ Deno.serve(async (req) => {
         update_required,
         update_available,
       },
+      download,
       nonce: nonce || null,
     };
 
