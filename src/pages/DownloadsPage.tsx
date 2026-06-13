@@ -60,10 +60,12 @@ const DownloadsPage = () => {
     e.preventDefault();
     if (!selectedFile || !selectedApp) return;
 
-    if (!selectedFile.name.endsWith(".zip")) {
-      toast.error("Apenas arquivos .zip são permitidos");
+    const lower = selectedFile.name.toLowerCase();
+    if (!lower.endsWith(".zip") && !lower.endsWith(".exe")) {
+      toast.error("Apenas arquivos .zip ou .exe são permitidos");
       return;
     }
+
 
     setUploading(true);
     const filePath = `${selectedApp}/${Date.now()}_${selectedFile.name}`;
@@ -184,14 +186,15 @@ const DownloadsPage = () => {
                   <Input value={version} onChange={e => setVersion(e.target.value)} placeholder="ex: 1.0.0" />
                 </div>
                 <div className="space-y-2">
-                  <Label>Arquivo (.zip)</Label>
+                  <Label>Arquivo (.zip ou .exe)</Label>
                   <Input
                     ref={fileRef}
                     type="file"
-                    accept=".zip"
+                    accept=".zip,.exe"
                     onChange={e => setSelectedFile(e.target.files?.[0] || null)}
                     required
                   />
+
                 </div>
                 <Button type="submit" className="w-full gap-2" disabled={uploading || !selectedApp || !selectedFile}>
                   <Upload className="h-4 w-4" />
