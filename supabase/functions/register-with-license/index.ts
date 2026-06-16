@@ -383,9 +383,10 @@ Deno.serve(async (req) => {
       }, app.secret_key)),
       { status: 201, headers: allHeaders }
     );
-  } catch {
+  } catch (err) {
+    console.error("register-with-license error:", err instanceof Error ? err.stack || err.message : String(err));
     return new Response(
-      JSON.stringify({ success: false, message: "Internal server error" }),
+      JSON.stringify({ success: false, message: "Internal server error", debug: err instanceof Error ? err.message : String(err) }),
       { status: 500, headers: allHeaders }
     );
   }
