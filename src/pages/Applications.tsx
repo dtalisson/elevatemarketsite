@@ -222,12 +222,18 @@ const Applications = () => {
               <div className="mb-4">
                 <p className="text-[10px] uppercase tracking-wider text-muted-foreground mb-1.5">Secret Key</p>
                 <div className="flex items-center gap-2">
-                  <code className="flex-1 truncate rounded-md bg-muted px-3 py-1.5 font-mono text-[11px] text-foreground/80">{app.secret_key}</code>
-                  <button onClick={() => copyKey(app.secret_key)} className="text-muted-foreground hover:text-primary transition-colors">
+                  <code className="flex-1 truncate rounded-md bg-muted px-3 py-1.5 font-mono text-[11px] text-foreground/80">
+                    {revealing[app.id] && secrets[app.id] ? secrets[app.id] : "••••••••••••••••••••••••"}
+                  </code>
+                  <button onClick={() => revealSecret(app.id)} className="text-muted-foreground hover:text-primary transition-colors">
+                    {revealing[app.id] ? <EyeOff className="h-3.5 w-3.5" /> : <Eye className="h-3.5 w-3.5" />}
+                  </button>
+                  <button onClick={() => copySecret(app.id)} className="text-muted-foreground hover:text-primary transition-colors">
                     <Copy className="h-3.5 w-3.5" />
                   </button>
                 </div>
               </div>
+
 
               {(app.current_version || app.min_version) && (
                 <div className="flex gap-4 text-xs mb-3">
