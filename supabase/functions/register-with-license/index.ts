@@ -325,15 +325,8 @@ Deno.serve(async (req) => {
       activated_at: new Date().toISOString(),
     };
     // Calculate expires_at from remaining_seconds at activation time
-    const remSec = Number(license.remaining_seconds);
-    if (Number.isFinite(remSec) && remSec > 0) {
-      // Clamp to max safe Date (year ~275760). Cap at 100 years to avoid overflow.
-      const MAX_SECONDS = 100 * 365 * 24 * 60 * 60; // 100 years
-      const safeSec = Math.min(remSec, MAX_SECONDS);
-      const expiresMs = Date.now() + safeSec * 1000;
-      if (Number.isFinite(expiresMs) && expiresMs < 8.64e15) {
-        licenseUpdates.expires_at = new Date(expiresMs).toISOString();
-      }
+    if (license.remaining_seconds && license.remaining_seconds > 0) {
+      licenseUpdates.expires_at = new Date(Date.now() + license.remaining_seconds * 1000).toISOString();
     }
     const { data: claimedLicense, error: claimError } = await supabase
       .from("licenses")
@@ -390,10 +383,9 @@ Deno.serve(async (req) => {
       }, app.secret_key)),
       { status: 201, headers: allHeaders }
     );
-  } catch (err) {
-    console.error("register-with-license error:", err instanceof Error ? err.stack || err.message : String(err));
+  } catch {
     return new Response(
-      JSON.stringify({ success: false, message: "Internal server error", debug: err instanceof Error ? err.message : String(err) }),
+      JSON.stringify({ success: false, message: "Internal server error" }),
       { status: 500, headers: allHeaders }
     );
   }
