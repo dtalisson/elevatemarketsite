@@ -783,6 +783,7 @@ export type Database = {
         Args: { p_app_id: string; p_username: string }
         Returns: undefined
       }
+      get_application_secret: { Args: { p_app_id: string }; Returns: string }
       has_role: {
         Args: {
           _role: Database["public"]["Enums"]["app_role"]
