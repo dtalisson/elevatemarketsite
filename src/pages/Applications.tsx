@@ -8,10 +8,10 @@ import { Switch } from "@/components/ui/switch";
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/contexts/AuthContext";
 import { toast } from "sonner";
-import { Plus, Copy, Trash2, Settings2, Save } from "lucide-react";
+import { Plus, Copy, Trash2, Settings2, Save, Eye, EyeOff } from "lucide-react";
 
 interface Application {
-  id: string; name: string; description: string | null; secret_key: string; enabled: boolean;
+  id: string; name: string; description: string | null; enabled: boolean;
   current_version: string | null; min_version: string | null; msg_outdated: string | null;
   msg_disabled: string | null; msg_maintenance: string | null; created_at: string;
 }
@@ -32,9 +32,35 @@ const Applications = () => {
   const [editName, setEditName] = useState("");
   const [saving, setSaving] = useState(false);
 
+  const [secrets, setSecrets] = useState<Record<string, string>>({});
+  const [revealing, setRevealing] = useState<Record<string, boolean>>({});
+
   const fetchApps = async () => {
     const { data } = await supabase.from("applications").select("*").order("created_at", { ascending: false });
     if (data) setApps(data as Application[]);
+  };
+
+  const revealSecret = async (appId: string) => {
+    if (secrets[appId]) {
+      setRevealing((r) => ({ ...r, [appId]: !r[appId] }));
+      return;
+    }
+    const { data, error } = await supabase.rpc("get_application_secret", { p_app_id: appId });
+    if (error || !data) { toast.error("Falha ao buscar secret"); return; }
+    setSecrets((s) => ({ ...s, [appId]: data as string }));
+    setRevealing((r) => ({ ...r, [appId]: true }));
+  };
+
+  const copySecret = async (appId: string) => {
+    let key = secrets[appId];
+    if (!key) {
+      const { data, error } = await supabase.rpc("get_application_secret", { p_app_id: appId });
+      if (error || !data) { toast.error("Falha ao buscar secret"); return; }
+      key = data as string;
+      setSecrets((s) => ({ ...s, [appId]: key }));
+    }
+    navigator.clipboard.writeText(key);
+    toast.success("Copiado!");
   };
 
   useEffect(() => { if (user) fetchApps(); }, [user]);
@@ -126,12 +152,18 @@ const Applications = () => {
               <div>
                 <p className="text-[10px] uppercase tracking-wider text-muted-foreground mb-1.5">Secret Key</p>
                 <div className="flex items-center gap-2">
-                  <code className="flex-1 truncate rounded-md bg-muted px-3 py-1.5 font-mono text-[11px] text-foreground/80">{settingsApp?.secret_key}</code>
-                  <button onClick={() => settingsApp && copyKey(settingsApp.secret_key)} className="text-muted-foreground hover:text-primary transition-colors">
+                  <code className="flex-1 truncate rounded-md bg-muted px-3 py-1.5 font-mono text-[11px] text-foreground/80">
+                    {settingsApp && revealing[settingsApp.id] && secrets[settingsApp.id] ? secrets[settingsApp.id] : "••••••••••••••••••••••••"}
+                  </code>
+                  <button onClick={() => settingsApp && revealSecret(settingsApp.id)} className="text-muted-foreground hover:text-primary transition-colors">
+                    {settingsApp && revealing[settingsApp.id] ? <EyeOff className="h-3.5 w-3.5" /> : <Eye className="h-3.5 w-3.5" />}
+                  </button>
+                  <button onClick={() => settingsApp && copySecret(settingsApp.id)} className="text-muted-foreground hover:text-primary transition-colors">
                     <Copy className="h-3.5 w-3.5" />
                   </button>
                 </div>
               </div>
+
             </div>
             <div className="flex items-center justify-between rounded-lg border border-border p-4">
               <div>
@@ -190,12 +222,18 @@ const Applications = () => {
               <div className="mb-4">
                 <p className="text-[10px] uppercase tracking-wider text-muted-foreground mb-1.5">Secret Key</p>
                 <div className="flex items-center gap-2">
-                  <code className="flex-1 truncate rounded-md bg-muted px-3 py-1.5 font-mono text-[11px] text-foreground/80">{app.secret_key}</code>
-                  <button onClick={() => copyKey(app.secret_key)} className="text-muted-foreground hover:text-primary transition-colors">
+                  <code className="flex-1 truncate rounded-md bg-muted px-3 py-1.5 font-mono text-[11px] text-foreground/80">
+                    {revealing[app.id] && secrets[app.id] ? secrets[app.id] : "••••••••••••••••••••••••"}
+                  </code>
+                  <button onClick={() => revealSecret(app.id)} className="text-muted-foreground hover:text-primary transition-colors">
+                    {revealing[app.id] ? <EyeOff className="h-3.5 w-3.5" /> : <Eye className="h-3.5 w-3.5" />}
+                  </button>
+                  <button onClick={() => copySecret(app.id)} className="text-muted-foreground hover:text-primary transition-colors">
                     <Copy className="h-3.5 w-3.5" />
                   </button>
                 </div>
               </div>
+
 
               {(app.current_version || app.min_version) && (
                 <div className="flex gap-4 text-xs mb-3">
