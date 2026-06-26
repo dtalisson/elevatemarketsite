@@ -8,10 +8,10 @@ import { Switch } from "@/components/ui/switch";
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/contexts/AuthContext";
 import { toast } from "sonner";
-import { Plus, Copy, Trash2, Settings2, Save } from "lucide-react";
+import { Plus, Copy, Trash2, Settings2, Save, Eye, EyeOff } from "lucide-react";
 
 interface Application {
-  id: string; name: string; description: string | null; secret_key: string; enabled: boolean;
+  id: string; name: string; description: string | null; enabled: boolean;
   current_version: string | null; min_version: string | null; msg_outdated: string | null;
   msg_disabled: string | null; msg_maintenance: string | null; created_at: string;
 }
