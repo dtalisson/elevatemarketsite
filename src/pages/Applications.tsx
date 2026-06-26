@@ -32,9 +32,35 @@ const Applications = () => {
   const [editName, setEditName] = useState("");
   const [saving, setSaving] = useState(false);
 
+  const [secrets, setSecrets] = useState<Record<string, string>>({});
+  const [revealing, setRevealing] = useState<Record<string, boolean>>({});
+
   const fetchApps = async () => {
     const { data } = await supabase.from("applications").select("*").order("created_at", { ascending: false });
     if (data) setApps(data as Application[]);
+  };
+
+  const revealSecret = async (appId: string) => {
+    if (secrets[appId]) {
+      setRevealing((r) => ({ ...r, [appId]: !r[appId] }));
+      return;
+    }
+    const { data, error } = await supabase.rpc("get_application_secret", { p_app_id: appId });
+    if (error || !data) { toast.error("Falha ao buscar secret"); return; }
+    setSecrets((s) => ({ ...s, [appId]: data as string }));
+    setRevealing((r) => ({ ...r, [appId]: true }));
+  };
+
+  const copySecret = async (appId: string) => {
+    let key = secrets[appId];
+    if (!key) {
+      const { data, error } = await supabase.rpc("get_application_secret", { p_app_id: appId });
+      if (error || !data) { toast.error("Falha ao buscar secret"); return; }
+      key = data as string;
+      setSecrets((s) => ({ ...s, [appId]: key }));
+    }
+    navigator.clipboard.writeText(key);
+    toast.success("Copiado!");
   };
 
   useEffect(() => { if (user) fetchApps(); }, [user]);
