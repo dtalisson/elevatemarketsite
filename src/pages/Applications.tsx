@@ -152,12 +152,18 @@ const Applications = () => {
               <div>
                 <p className="text-[10px] uppercase tracking-wider text-muted-foreground mb-1.5">Secret Key</p>
                 <div className="flex items-center gap-2">
-                  <code className="flex-1 truncate rounded-md bg-muted px-3 py-1.5 font-mono text-[11px] text-foreground/80">{settingsApp?.secret_key}</code>
-                  <button onClick={() => settingsApp && copyKey(settingsApp.secret_key)} className="text-muted-foreground hover:text-primary transition-colors">
+                  <code className="flex-1 truncate rounded-md bg-muted px-3 py-1.5 font-mono text-[11px] text-foreground/80">
+                    {settingsApp && revealing[settingsApp.id] && secrets[settingsApp.id] ? secrets[settingsApp.id] : "••••••••••••••••••••••••"}
+                  </code>
+                  <button onClick={() => settingsApp && revealSecret(settingsApp.id)} className="text-muted-foreground hover:text-primary transition-colors">
+                    {settingsApp && revealing[settingsApp.id] ? <EyeOff className="h-3.5 w-3.5" /> : <Eye className="h-3.5 w-3.5" />}
+                  </button>
+                  <button onClick={() => settingsApp && copySecret(settingsApp.id)} className="text-muted-foreground hover:text-primary transition-colors">
                     <Copy className="h-3.5 w-3.5" />
                   </button>
                 </div>
               </div>
+
             </div>
             <div className="flex items-center justify-between rounded-lg border border-border p-4">
               <div>
