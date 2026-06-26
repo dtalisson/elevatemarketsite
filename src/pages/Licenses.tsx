@@ -542,7 +542,7 @@ const Licenses = () => {
                         setSelectedLicense(null);
                       }}><CheckCircle2 className="mr-1.5 h-3.5 w-3.5" />Ativar</Button>
                   )}
-                  {selectedLicense.hwid && (
+                  {(selectedLicense.hwid || softwareUsers[selectedLicense.id]?.hwid || selectedLicense.status === "active") && (
                     <AlertDialog>
                       <AlertDialogTrigger asChild>
                         <Button variant="outline" className="flex-1 text-warning border-warning/30 hover:bg-warning/10" size="sm"><RotateCcw className="mr-1.5 h-3.5 w-3.5" />HWID</Button>
