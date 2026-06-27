@@ -36,7 +36,11 @@ const Applications = () => {
   const [revealing, setRevealing] = useState<Record<string, boolean>>({});
 
   const fetchApps = async () => {
-    const { data } = await supabase.from("applications").select("*").order("created_at", { ascending: false });
+    const { data, error } = await supabase
+      .from("applications")
+      .select("id,name,description,enabled,current_version,min_version,msg_outdated,msg_disabled,msg_maintenance,created_at")
+      .order("created_at", { ascending: false });
+    if (error) { toast.error(error.message); return; }
     if (data) setApps(data as Application[]);
   };
 
