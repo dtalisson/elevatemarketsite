@@ -267,7 +267,7 @@ Deno.serve(async (req) => {
 
     if (licError || !license) {
       if (hwid) {
-        await supabase.rpc("record_hwid_failure", { p_app_id: app.id, p_hwid: hwid, p_reason: "Auto: key inválida no registro", p_max: 5, p_window_seconds: 31536000 });
+        await supabase.rpc("record_hwid_failure", { p_app_id: app.id, p_hwid: hwid, p_reason: "Auto: key inválida no registro", p_max: 3, p_window_seconds: 31536000 });
       }
       await supabase.from("auth_logs").insert({
         application_id: app.id, event_type: "register_failed", username: username.toLowerCase(),
@@ -304,7 +304,7 @@ Deno.serve(async (req) => {
     // Check if license already claimed (atomic check via current_uses)
     if (license.status !== "unused" || license.current_uses >= license.max_uses) {
       if (hwid) {
-        await supabase.rpc("record_hwid_failure", { p_app_id: app.id, p_hwid: hwid, p_reason: "Auto: tentou registrar key já usada", p_max: 5, p_window_seconds: 31536000 });
+        await supabase.rpc("record_hwid_failure", { p_app_id: app.id, p_hwid: hwid, p_reason: "Auto: tentou registrar key já usada", p_max: 3, p_window_seconds: 31536000 });
       }
       await supabase.from("auth_logs").insert({
         application_id: app.id, event_type: "register_failed", username: username.toLowerCase(),
@@ -323,7 +323,7 @@ Deno.serve(async (req) => {
 
     if (existingUsername) {
       if (hwid) {
-        await supabase.rpc("record_hwid_failure", { p_app_id: app.id, p_hwid: hwid, p_reason: "Auto: tentou registrar username já usado", p_max: 5, p_window_seconds: 31536000 });
+        await supabase.rpc("record_hwid_failure", { p_app_id: app.id, p_hwid: hwid, p_reason: "Auto: tentou registrar username já usado", p_max: 3, p_window_seconds: 31536000 });
       }
       await supabase.from("auth_logs").insert({
         application_id: app.id, event_type: "register_failed", username: username.toLowerCase(),
