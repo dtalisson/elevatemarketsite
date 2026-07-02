@@ -29,15 +29,19 @@ interface BlacklistEntry {
 
 interface AppInfo { id: string; name: string; }
 
+interface GlobalBan { hwid: string; reason: string | null; banned_at: string; }
+
 const BlacklistPage = () => {
   const { user } = useAuth();
   const [entries, setEntries] = useState<BlacklistEntry[]>([]);
+  const [globalBans, setGlobalBans] = useState<GlobalBan[]>([]);
   const [apps, setApps] = useState<AppInfo[]>([]);
   const [loading, setLoading] = useState(true);
   const [search, setSearch] = useState("");
   const [selectedApp, setSelectedApp] = useState("all");
   const [filterStatus, setFilterStatus] = useState<"all" | "active" | "inactive">("active");
   const [addOpen, setAddOpen] = useState(false);
+  const [unbanning, setUnbanning] = useState<string | null>(null);
   const [newEntry, setNewEntry] = useState({ app_id: "", ip: "", hwid: "", reason: "", details: "" });
 
   const fetchData = async () => {
@@ -51,8 +55,12 @@ const BlacklistPage = () => {
     if (filterStatus === "active") query = query.eq("active", true);
     else if (filterStatus === "inactive") query = query.eq("active", false);
 
-    const res = await query;
+    const [res, globalRes] = await Promise.all([
+      query,
+      supabase.from("banned_hwids").select("hwid, reason, banned_at").order("banned_at", { ascending: false }),
+    ]);
     if (res.data) setEntries(res.data as BlacklistEntry[]);
+    setGlobalBans((globalRes.data as GlobalBan[]) || []);
     setLoading(false);
   };
 
