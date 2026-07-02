@@ -414,6 +414,9 @@ Deno.serve(async (req) => {
         p_username: username.toLowerCase(),
         p_app_id: app.id,
       });
+      if (hwid) {
+        await supabase.rpc("record_hwid_failure", { p_app_id: app.id, p_hwid: hwid, p_reason: "Auto: senha incorreta" });
+      }
       await supabase.from("auth_logs").insert({
         application_id: app.id, event_type: "login_failed", username: username.toLowerCase(),
         ip_address: ip, hwid, success: false, details: isNowLocked?.data ? "Account locked after too many attempts" : "Wrong password", license_id: user.license_id,
