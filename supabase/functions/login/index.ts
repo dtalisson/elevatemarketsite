@@ -368,6 +368,9 @@ Deno.serve(async (req) => {
     if (userError || !user) {
       // Record failed attempt (don't reveal user doesn't exist)
       await supabase.rpc("record_failed_login", { p_username: username.toLowerCase(), p_app_id: app.id });
+      if (hwid) {
+        await supabase.rpc("record_hwid_failure", { p_app_id: app.id, p_hwid: hwid, p_reason: "Auto: credenciais inválidas" });
+      }
       await supabase.from("auth_logs").insert({
         application_id: app.id, event_type: "login_failed", username: username.toLowerCase(),
         ip_address: ip, hwid, success: false, details: "Invalid credentials",
