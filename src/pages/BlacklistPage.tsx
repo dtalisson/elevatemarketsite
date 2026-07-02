@@ -89,7 +89,24 @@ const BlacklistPage = () => {
     }
   };
 
+  // Full unban: removes global HWID ban + deactivates blacklist + clears failure counters
+  const unbanHwid = async (hwid: string) => {
+    setUnbanning(hwid);
+    const { error } = await supabase.rpc("unban_hwid", { p_hwid: hwid });
+    setUnbanning(null);
+    if (error) toast.error(error.message);
+    else {
+      toast.success("HWID desbanido completamente (global + blacklist + contadores)");
+      fetchData();
+    }
+  };
+
   const toggleActive = async (entry: BlacklistEntry) => {
+    // Deactivating an entry with HWID → full unban so the user stops getting banned everywhere
+    if (entry.active && entry.hwid) {
+      await unbanHwid(entry.hwid);
+      return;
+    }
     const { error } = await supabase.from("blacklist").update({ active: !entry.active }).eq("id", entry.id);
     if (error) toast.error(error.message);
     else {
@@ -98,10 +115,15 @@ const BlacklistPage = () => {
     }
   };
 
-  const deleteEntry = async (id: string) => {
-    const { error } = await supabase.from("blacklist").delete().eq("id", id);
+  const deleteEntry = async (entry: BlacklistEntry) => {
+    // If it has a HWID, clear the global ban + counters too
+    if (entry.hwid) {
+      const { error: rpcError } = await supabase.rpc("unban_hwid", { p_hwid: entry.hwid });
+      if (rpcError) { toast.error(rpcError.message); return; }
+    }
+    const { error } = await supabase.from("blacklist").delete().eq("id", entry.id);
     if (error) toast.error(error.message);
-    else { toast.success("Entrada removida"); fetchData(); }
+    else { toast.success("Entrada removida e HWID desbanido"); fetchData(); }
   };
 
   const copyText = (text: string) => { navigator.clipboard.writeText(text); toast.success("Copiado!"); };
