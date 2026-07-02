@@ -190,6 +190,27 @@ export type Database = {
           },
         ]
       }
+      banned_hwids: {
+        Row: {
+          banned_at: string
+          hwid: string
+          id: string
+          reason: string | null
+        }
+        Insert: {
+          banned_at?: string
+          hwid: string
+          id?: string
+          reason?: string | null
+        }
+        Update: {
+          banned_at?: string
+          hwid?: string
+          id?: string
+          reason?: string | null
+        }
+        Relationships: []
+      }
       blacklist: {
         Row: {
           active: boolean
