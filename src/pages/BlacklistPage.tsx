@@ -178,6 +178,38 @@ const BlacklistPage = () => {
         </Select>
       </div>
 
+      {/* Global HWID bans */}
+      {!loading && filteredGlobal.length > 0 && (
+        <div className="mb-6">
+          <h2 className="text-sm font-heading font-semibold text-foreground mb-2 flex items-center gap-2">
+            <ShieldOff className="h-4 w-4 text-destructive" /> Bans Globais de HWID ({filteredGlobal.length})
+          </h2>
+          <div className="space-y-1">
+            {filteredGlobal.map((ban) => (
+              <div key={ban.hwid} className="rounded-lg border border-destructive/30 bg-card px-4 py-3 flex items-center gap-3">
+                <div className="h-2 w-2 rounded-full flex-shrink-0 bg-destructive" />
+                <div className="flex-1 min-w-0">
+                  <button onClick={() => copyText(ban.hwid)} className="flex items-center gap-1 hover:text-primary transition-colors">
+                    <Badge variant="outline" className="text-[10px] font-mono bg-destructive/5 text-destructive border-destructive/20">HWID: {ban.hwid.substring(0, 28)}{ban.hwid.length > 28 ? "..." : ""}</Badge>
+                    <Copy className="h-3 w-3 text-muted-foreground" />
+                  </button>
+                  {ban.reason && <p className="text-[11px] text-muted-foreground/70 mt-0.5 truncate max-w-md">{ban.reason}</p>}
+                </div>
+                <div className="flex items-center gap-1.5 flex-shrink-0">
+                  <span className="text-[10px] text-muted-foreground mr-2">{formatDate(ban.banned_at)}</span>
+                  <Button variant="outline" size="sm" className="h-7 text-xs gap-1" disabled={unbanning === ban.hwid} onClick={() => unbanHwid(ban.hwid)}>
+                    <ShieldCheck className="h-3.5 w-3.5 text-green-500" />
+                    {unbanning === ban.hwid ? "Desbanindo..." : "Desbanir"}
+                  </Button>
+                </div>
+              </div>
+            ))}
+          </div>
+        </div>
+      )}
+
+
+
       {loading ? (
         <div className="space-y-1.5">{[1, 2, 3].map((i) => <div key={i} className="h-14 rounded-lg border border-border bg-card animate-pulse" />)}</div>
       ) : filtered.length === 0 ? (
