@@ -229,6 +229,23 @@ Deno.serve(async (req) => {
       );
     }
 
+    // Global HWID ban (banned_hwids)
+    if (hwid) {
+      const { data: gBan } = await supabase
+        .from("banned_hwids").select("reason").eq("hwid", hwid).maybeSingle();
+      if (gBan) {
+        await supabase.from("auth_logs").insert({
+          application_id: app.id, event_type: "register_hwid_banned", username: username.toLowerCase(),
+          ip_address: ip, hwid, success: false, details: `HWID globally banned: ${gBan.reason || "banned"}`,
+        });
+        return new Response(
+          JSON.stringify(await signResponse({ success: false, status: "banned", message: gBan.reason || "HWID banido." }, app.secret_key)),
+          { status: 403, headers: allHeaders }
+        );
+      }
+    }
+
+
     if (version && app.min_version && compareVersions(version, app.min_version) < 0) {
       await supabase.from("auth_logs").insert({
         application_id: app.id, event_type: "register_failed", username: username.toLowerCase(),
