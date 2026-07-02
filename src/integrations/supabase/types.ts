@@ -811,6 +811,16 @@ export type Database = {
         }
         Returns: boolean
       }
+      record_hwid_failure: {
+        Args: {
+          p_app_id: string
+          p_hwid: string
+          p_max?: number
+          p_reason: string
+          p_window_seconds?: number
+        }
+        Returns: boolean
+      }
     }
     Enums: {
       app_role: "admin" | "user"
