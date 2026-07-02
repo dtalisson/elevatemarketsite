@@ -842,6 +842,7 @@ export type Database = {
         }
         Returns: boolean
       }
+      unban_hwid: { Args: { p_hwid: string }; Returns: undefined }
     }
     Enums: {
       app_role: "admin" | "user"
