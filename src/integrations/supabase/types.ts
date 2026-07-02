@@ -688,7 +688,7 @@ export type Database = {
           {
             foreignKeyName: "software_users_license_id_fkey"
             columns: ["license_id"]
-            isOneToOne: false
+            isOneToOne: true
             referencedRelation: "licenses"
             referencedColumns: ["id"]
           },
@@ -762,7 +762,7 @@ export type Database = {
           {
             foreignKeyName: "software_users_license_id_fkey"
             columns: ["license_id"]
-            isOneToOne: false
+            isOneToOne: true
             referencedRelation: "licenses"
             referencedColumns: ["id"]
           },
