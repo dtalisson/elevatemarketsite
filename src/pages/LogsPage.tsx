@@ -80,6 +80,40 @@ const LogsPage = () => {
   const [showCleanup, setShowCleanup] = useState(false);
   const [cleanupLoading, setCleanupLoading] = useState(false);
   const [resettingHwid, setResettingHwid] = useState(false);
+  const [banningHwid, setBanningHwid] = useState(false);
+
+  const banHwidForLog = async (log: AuthLog) => {
+    if (!log.hwid) { toast.error("Log sem HWID"); return; }
+    const reason = window.prompt("Motivo do ban HWID:", log.details || "Ban manual via auth log");
+    if (reason === null) return;
+    setBanningHwid(true);
+    try {
+      // Global HWID ban
+      const { error: gErr } = await supabase
+        .from("banned_hwids")
+        .upsert({ hwid: log.hwid, reason: reason || "Ban manual" }, { onConflict: "hwid" });
+      if (gErr) throw gErr;
+
+      // App-scoped blacklist
+      const { error: bErr } = await supabase.from("blacklist").insert({
+        application_id: log.application_id,
+        hwid: log.hwid,
+        ip_address: log.ip_address,
+        reason: reason || "Ban manual",
+        details: `Ban manual via auth log (${log.event_type})`,
+        active: true,
+        created_by: user?.id,
+      });
+      if (bErr && bErr.code !== "23505") throw bErr;
+
+      toast.success("HWID banido (global + blacklist da app)");
+      setSelectedLog(null);
+    } catch (e: any) {
+      toast.error(e.message || "Falha ao banir HWID");
+    } finally {
+      setBanningHwid(false);
+    }
+  };
 
   const isHwidMismatch = (eventType: string) =>
     eventType === "login_hwid_mismatch" ||
