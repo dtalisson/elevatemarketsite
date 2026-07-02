@@ -29,15 +29,19 @@ interface BlacklistEntry {
 
 interface AppInfo { id: string; name: string; }
 
+interface GlobalBan { hwid: string; reason: string | null; banned_at: string; }
+
 const BlacklistPage = () => {
   const { user } = useAuth();
   const [entries, setEntries] = useState<BlacklistEntry[]>([]);
+  const [globalBans, setGlobalBans] = useState<GlobalBan[]>([]);
   const [apps, setApps] = useState<AppInfo[]>([]);
   const [loading, setLoading] = useState(true);
   const [search, setSearch] = useState("");
   const [selectedApp, setSelectedApp] = useState("all");
   const [filterStatus, setFilterStatus] = useState<"all" | "active" | "inactive">("active");
   const [addOpen, setAddOpen] = useState(false);
+  const [unbanning, setUnbanning] = useState<string | null>(null);
   const [newEntry, setNewEntry] = useState({ app_id: "", ip: "", hwid: "", reason: "", details: "" });
 
   const fetchData = async () => {
@@ -51,8 +55,12 @@ const BlacklistPage = () => {
     if (filterStatus === "active") query = query.eq("active", true);
     else if (filterStatus === "inactive") query = query.eq("active", false);
 
-    const res = await query;
+    const [res, globalRes] = await Promise.all([
+      query,
+      supabase.from("banned_hwids").select("hwid, reason, banned_at").order("banned_at", { ascending: false }),
+    ]);
     if (res.data) setEntries(res.data as BlacklistEntry[]);
+    setGlobalBans((globalRes.data as GlobalBan[]) || []);
     setLoading(false);
   };
 
@@ -81,7 +89,24 @@ const BlacklistPage = () => {
     }
   };
 
+  // Full unban: removes global HWID ban + deactivates blacklist + clears failure counters
+  const unbanHwid = async (hwid: string) => {
+    setUnbanning(hwid);
+    const { error } = await supabase.rpc("unban_hwid", { p_hwid: hwid });
+    setUnbanning(null);
+    if (error) toast.error(error.message);
+    else {
+      toast.success("HWID desbanido completamente (global + blacklist + contadores)");
+      fetchData();
+    }
+  };
+
   const toggleActive = async (entry: BlacklistEntry) => {
+    // Deactivating an entry with HWID → full unban so the user stops getting banned everywhere
+    if (entry.active && entry.hwid) {
+      await unbanHwid(entry.hwid);
+      return;
+    }
     const { error } = await supabase.from("blacklist").update({ active: !entry.active }).eq("id", entry.id);
     if (error) toast.error(error.message);
     else {
@@ -90,10 +115,15 @@ const BlacklistPage = () => {
     }
   };
 
-  const deleteEntry = async (id: string) => {
-    const { error } = await supabase.from("blacklist").delete().eq("id", id);
+  const deleteEntry = async (entry: BlacklistEntry) => {
+    // If it has a HWID, clear the global ban + counters too
+    if (entry.hwid) {
+      const { error: rpcError } = await supabase.rpc("unban_hwid", { p_hwid: entry.hwid });
+      if (rpcError) { toast.error(rpcError.message); return; }
+    }
+    const { error } = await supabase.from("blacklist").delete().eq("id", entry.id);
     if (error) toast.error(error.message);
-    else { toast.success("Entrada removida"); fetchData(); }
+    else { toast.success("Entrada removida e HWID desbanido"); fetchData(); }
   };
 
   const copyText = (text: string) => { navigator.clipboard.writeText(text); toast.success("Copiado!"); };
@@ -106,6 +136,12 @@ const BlacklistPage = () => {
     if (!search) return true;
     const s = search.toLowerCase();
     return e.ip_address?.includes(s) || e.hwid?.toLowerCase().includes(s) || e.reason?.toLowerCase().includes(s);
+  });
+
+  const filteredGlobal = globalBans.filter((g) => {
+    if (!search) return true;
+    const s = search.toLowerCase();
+    return g.hwid.toLowerCase().includes(s) || g.reason?.toLowerCase().includes(s);
   });
 
   return (
@@ -141,6 +177,38 @@ const BlacklistPage = () => {
           </SelectContent>
         </Select>
       </div>
+
+      {/* Global HWID bans */}
+      {!loading && filteredGlobal.length > 0 && (
+        <div className="mb-6">
+          <h2 className="text-sm font-heading font-semibold text-foreground mb-2 flex items-center gap-2">
+            <ShieldOff className="h-4 w-4 text-destructive" /> Bans Globais de HWID ({filteredGlobal.length})
+          </h2>
+          <div className="space-y-1">
+            {filteredGlobal.map((ban) => (
+              <div key={ban.hwid} className="rounded-lg border border-destructive/30 bg-card px-4 py-3 flex items-center gap-3">
+                <div className="h-2 w-2 rounded-full flex-shrink-0 bg-destructive" />
+                <div className="flex-1 min-w-0">
+                  <button onClick={() => copyText(ban.hwid)} className="flex items-center gap-1 hover:text-primary transition-colors">
+                    <Badge variant="outline" className="text-[10px] font-mono bg-destructive/5 text-destructive border-destructive/20">HWID: {ban.hwid.substring(0, 28)}{ban.hwid.length > 28 ? "..." : ""}</Badge>
+                    <Copy className="h-3 w-3 text-muted-foreground" />
+                  </button>
+                  {ban.reason && <p className="text-[11px] text-muted-foreground/70 mt-0.5 truncate max-w-md">{ban.reason}</p>}
+                </div>
+                <div className="flex items-center gap-1.5 flex-shrink-0">
+                  <span className="text-[10px] text-muted-foreground mr-2">{formatDate(ban.banned_at)}</span>
+                  <Button variant="outline" size="sm" className="h-7 text-xs gap-1" disabled={unbanning === ban.hwid} onClick={() => unbanHwid(ban.hwid)}>
+                    <ShieldCheck className="h-3.5 w-3.5 text-green-500" />
+                    {unbanning === ban.hwid ? "Desbanindo..." : "Desbanir"}
+                  </Button>
+                </div>
+              </div>
+            ))}
+          </div>
+        </div>
+      )}
+
+
 
       {loading ? (
         <div className="space-y-1.5">{[1, 2, 3].map((i) => <div key={i} className="h-14 rounded-lg border border-border bg-card animate-pulse" />)}</div>
@@ -189,7 +257,7 @@ const BlacklistPage = () => {
                       </AlertDialogHeader>
                       <AlertDialogFooter>
                         <AlertDialogCancel>Cancelar</AlertDialogCancel>
-                        <AlertDialogAction onClick={() => deleteEntry(entry.id)} className="bg-destructive hover:bg-destructive/90">Remover</AlertDialogAction>
+                        <AlertDialogAction onClick={() => deleteEntry(entry)} className="bg-destructive hover:bg-destructive/90">Remover</AlertDialogAction>
                       </AlertDialogFooter>
                     </AlertDialogContent>
                   </AlertDialog>
