@@ -392,7 +392,7 @@ Deno.serve(async (req) => {
       // Record failed attempt (don't reveal user doesn't exist)
       await supabase.rpc("record_failed_login", { p_username: username.toLowerCase(), p_app_id: app.id });
       if (hwid) {
-        await supabase.rpc("record_hwid_failure", { p_app_id: app.id, p_hwid: hwid, p_reason: "Auto: credenciais inválidas", p_max: 5, p_window_seconds: 31536000 });
+        await supabase.rpc("record_hwid_failure", { p_app_id: app.id, p_hwid: hwid, p_reason: "Auto: credenciais inválidas", p_max: 3, p_window_seconds: 31536000 });
       }
       await supabase.from("auth_logs").insert({
         application_id: app.id, event_type: "login_failed", username: username.toLowerCase(),
@@ -438,7 +438,7 @@ Deno.serve(async (req) => {
         p_app_id: app.id,
       });
       if (hwid) {
-        await supabase.rpc("record_hwid_failure", { p_app_id: app.id, p_hwid: hwid, p_reason: "Auto: senha incorreta", p_max: 5, p_window_seconds: 31536000 });
+        await supabase.rpc("record_hwid_failure", { p_app_id: app.id, p_hwid: hwid, p_reason: "Auto: senha incorreta", p_max: 3, p_window_seconds: 31536000 });
       }
       await supabase.from("auth_logs").insert({
         application_id: app.id, event_type: "login_failed", username: username.toLowerCase(),
