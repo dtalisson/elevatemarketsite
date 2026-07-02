@@ -501,6 +501,22 @@ const LogsPage = () => {
                 {selectedLog.details && (
                   <p className="text-[11px] font-mono text-muted-foreground/70 bg-muted/30 rounded-md px-3 py-2 break-all">{selectedLog.details}</p>
                 )}
+                {selectedLog.hwid && (
+                  <div className="flex items-center justify-between gap-3 rounded-lg border border-destructive/30 bg-destructive/5 px-3 py-2.5">
+                    <div className="text-[11px] text-muted-foreground">
+                      Banir o HWID <span className="font-mono text-foreground">{selectedLog.hwid.substring(0, 16)}…</span> globalmente e adicioná-lo à blacklist desta aplicação.
+                    </div>
+                    <Button
+                      size="sm"
+                      variant="outline"
+                      className="border-destructive/40 text-destructive hover:bg-destructive/10 flex-shrink-0"
+                      disabled={banningHwid}
+                      onClick={() => banHwidForLog(selectedLog)}
+                    >
+                      {banningHwid ? "Banindo..." : "Ban HWID"}
+                    </Button>
+                  </div>
+                )}
                 {isHwidMismatch(selectedLog.event_type) && selectedLog.username && (
                   <div className="flex items-center justify-between gap-3 rounded-lg border border-warning/30 bg-warning/5 px-3 py-2.5">
                     <div className="text-[11px] text-muted-foreground">
