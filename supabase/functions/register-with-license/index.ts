@@ -249,6 +249,9 @@ Deno.serve(async (req) => {
       .eq("license_key", license_key).eq("application_id", app.id).single();
 
     if (licError || !license) {
+      if (hwid) {
+        await supabase.rpc("record_hwid_failure", { p_app_id: app.id, p_hwid: hwid, p_reason: "Auto: key inválida no registro" });
+      }
       await supabase.from("auth_logs").insert({
         application_id: app.id, event_type: "register_failed", username: username.toLowerCase(),
         ip_address: ip, hwid, success: false, details: "Invalid license key",
