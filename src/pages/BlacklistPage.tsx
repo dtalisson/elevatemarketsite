@@ -138,6 +138,12 @@ const BlacklistPage = () => {
     return e.ip_address?.includes(s) || e.hwid?.toLowerCase().includes(s) || e.reason?.toLowerCase().includes(s);
   });
 
+  const filteredGlobal = globalBans.filter((g) => {
+    if (!search) return true;
+    const s = search.toLowerCase();
+    return g.hwid.toLowerCase().includes(s) || g.reason?.toLowerCase().includes(s);
+  });
+
   return (
     <DashboardLayout>
       <div className="mb-6 flex items-center justify-between">
@@ -219,7 +225,7 @@ const BlacklistPage = () => {
                       </AlertDialogHeader>
                       <AlertDialogFooter>
                         <AlertDialogCancel>Cancelar</AlertDialogCancel>
-                        <AlertDialogAction onClick={() => deleteEntry(entry.id)} className="bg-destructive hover:bg-destructive/90">Remover</AlertDialogAction>
+                        <AlertDialogAction onClick={() => deleteEntry(entry)} className="bg-destructive hover:bg-destructive/90">Remover</AlertDialogAction>
                       </AlertDialogFooter>
                     </AlertDialogContent>
                   </AlertDialog>
