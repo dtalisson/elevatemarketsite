@@ -124,10 +124,19 @@ const Login = () => {
   }, []);
 
   return (
-    <div className="dark relative flex min-h-screen items-center justify-center overflow-hidden bg-transparent p-4">
+    <div className="dark relative flex min-h-screen items-center justify-center overflow-hidden bg-black p-4">
+      <video
+        autoPlay
+        loop
+        muted
+        playsInline
+        className="fixed inset-0 z-0 h-full w-full object-cover pointer-events-none"
+      >
+        <source src="/login-bg.mp4" type="video/mp4" />
+      </video>
+      <div className="fixed inset-0 z-0 bg-black/60 pointer-events-none" />
       <canvas ref={canvasRef} className="fixed inset-0 z-0 pointer-events-none" />
-      <div className="absolute top-[-20%] left-[-10%] h-[600px] w-[600px] rounded-full opacity-[0.04]" style={{ background: "radial-gradient(circle, hsl(217 90% 58%), transparent 70%)" }} />
-      <div className="absolute bottom-[-20%] right-[-10%] h-[500px] w-[500px] rounded-full opacity-[0.03]" style={{ background: "radial-gradient(circle, hsl(217 90% 58%), transparent 70%)" }} />
+
 
       <div className="relative z-10 w-full max-w-[360px]">
         <div className="mb-10 text-center">
