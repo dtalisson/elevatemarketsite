@@ -4,6 +4,8 @@ import { supabase } from "@/integrations/supabase/client";
 import { usePanelUser } from "@/contexts/PanelUserContext";
 import { toast } from "sonner";
 import { ArrowRight } from "lucide-react";
+import loginBg from "@/assets/login-bg.mp4.asset.json";
+
 
 const API_BASE = `${import.meta.env.VITE_SUPABASE_URL}/functions/v1`;
 
@@ -132,7 +134,7 @@ const Login = () => {
         playsInline
         className="fixed inset-0 z-0 h-full w-full object-cover pointer-events-none"
       >
-        <source src="/login-bg.mp4" type="video/mp4" />
+        <source src={loginBg.url} type="video/mp4" />
       </video>
       <div className="fixed inset-0 z-0 bg-black/60 pointer-events-none" />
       <canvas ref={canvasRef} className="fixed inset-0 z-0 pointer-events-none" />
