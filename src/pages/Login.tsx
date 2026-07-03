@@ -4,6 +4,8 @@ import { supabase } from "@/integrations/supabase/client";
 import { usePanelUser } from "@/contexts/PanelUserContext";
 import { toast } from "sonner";
 import { ArrowRight } from "lucide-react";
+import loginBg from "@/assets/login-bg.mp4.asset.json";
+
 
 const API_BASE = `${import.meta.env.VITE_SUPABASE_URL}/functions/v1`;
 
