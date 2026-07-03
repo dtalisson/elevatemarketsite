@@ -112,9 +112,15 @@ const DownloadsPage = () => {
     else { toast.success("Removido!"); fetchData(); }
   };
 
-  const handleDownload = (dl: DownloadEntry) => {
-    const { data } = supabase.storage.from("downloads").getPublicUrl(dl.file_path);
-    window.open(data.publicUrl, "_blank");
+  const handleDownload = async (dl: DownloadEntry) => {
+    const { data, error } = await supabase.storage
+      .from("downloads")
+      .createSignedUrl(dl.file_path, 300);
+    if (error || !data) {
+      toast.error("Erro ao gerar link: " + (error?.message || "desconhecido"));
+      return;
+    }
+    window.open(data.signedUrl, "_blank");
   };
 
   const filtered = downloads.filter(dl => {
