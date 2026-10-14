@@ -1,0 +1,3 @@
+GRANT SELECT (id,owner_id,name,description,enabled,created_at,updated_at,current_version,min_version,msg_outdated,msg_disabled,msg_maintenance) ON public.applications TO authenticated;
+GRANT SELECT (id,username,created_by,is_active,expires_at,created_at,updated_at) ON public.panel_users TO authenticated;
+GRANT SELECT (id,license_id,application_id,username,hwid,created_at,updated_at,ip_address,last_ip,last_login_at) ON public.software_users TO authenticated;
