@@ -127,16 +127,6 @@ const Login = () => {
 
   return (
     <div className="dark relative flex min-h-screen items-center justify-center overflow-hidden bg-black p-4">
-      <video
-        autoPlay
-        loop
-        muted
-        playsInline
-        className="fixed inset-0 z-0 h-full w-full object-cover pointer-events-none"
-      >
-        <source src="/login-bg.mp4" type="video/mp4" />
-      </video>
-      <div className="fixed inset-0 z-0 bg-black/60 pointer-events-none" />
       <canvas ref={canvasRef} className="fixed inset-0 z-0 pointer-events-none" />
 
 
