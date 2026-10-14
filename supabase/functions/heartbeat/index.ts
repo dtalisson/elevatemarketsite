@@ -176,7 +176,7 @@ Deno.serve(async (req) => {
       );
     }
 
-    const license = user.licenses as { status: string; expires_at: string | null } | null;
+    const license = user.licenses as unknown as { status: string; expires_at: string | null } | null;
 
     if (!license) {
       return new Response(

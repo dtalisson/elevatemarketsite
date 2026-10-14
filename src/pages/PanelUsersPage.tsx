@@ -84,7 +84,7 @@ const PanelUsersPage = () => {
     if (!user) return;
     setLoading(true);
     const [puRes, appsRes, puaRes] = await Promise.all([
-      supabase.from("panel_users").select("*").order("created_at", { ascending: false }),
+      supabase.from("panel_users").select("id, username, created_by, is_active, expires_at, created_at, updated_at").order("created_at", { ascending: false }),
       supabase.from("applications").select("id, name").eq("owner_id", user.id),
       supabase.from("panel_user_applications").select("*"),
     ]);
