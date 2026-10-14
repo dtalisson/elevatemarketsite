@@ -177,9 +177,3 @@ Compatível com **Vercel** (preset Vite):
 - Build command: `npm run build`
 - Output directory: `dist`
 - Configure as variáveis de ambiente acima no painel da Vercel.
-
----
-
-## Autor
-
-Desenvolvido por **Darlan Talisson**.
